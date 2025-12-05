@@ -11,6 +11,7 @@
     <style>
                         /* Filtre alanları ve sidebar için responsive ve kutu gibi görünüm */
                         .sidebar {
+                            margin-top: auto;
                             min-width: 240px;
                             max-width: 320px;
                             width: 100%;
@@ -55,7 +56,7 @@
                         }
                 .header {
                     width: 100%;
-                    background: #fff;
+                    background: #222;
                     padding: 18px 32px 0 32px;
                     box-sizing: border-box;
                     margin-bottom: 0;
@@ -64,7 +65,7 @@
                     margin: 0;
                     font-size: 2.2rem;
                     font-weight: 700;
-                    color: #222;
+                    color: #e0e0e0;
                 }
                 .main-layout {
                     display: flex;
@@ -74,11 +75,14 @@
                     max-width: 100vw;
                     box-sizing: border-box;
                     padding: 0 32px;
+                    color: #181A20;
+                    background-color: #181A20;
                 }
                 .sidebar {
                     min-width: 260px;
                     max-width: 320px;
-                    background: #fff;
+                    background: #23242a;
+                    color: #e0e0e0;
                     border-radius: 8px;
                     box-shadow: 0 2px 8px rgba(0,0,0,0.06);
                     padding: 18px 18px 18px 18px;
@@ -153,7 +157,8 @@
         }
         
         .card {
-            background: white;
+            background: #23242a;
+            color: #e0e0e0;
             border-radius: 8px;
             padding: 20px;
             margin-bottom: 20px;
@@ -162,7 +167,8 @@
         
         .card h2 {
             margin-top: 0;
-            color: #2c3e50;
+            color: #00eaff;
+            border-bottom: 3px solid #00eaff;
             font-size: 18px;
             border-bottom: 3px solid #3498db;
             padding-bottom: 10px;
@@ -176,8 +182,8 @@
         }
         
         .stat-card {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            color: white;
+            background: linear-gradient(125deg, #23242a 0%, #181A20 100%);
+            color: #00eaff;
             padding: 20px;
             border-radius: 8px;
             text-align: center;
@@ -204,7 +210,8 @@
         }
         
         .chart-container {
-            background: white;
+            background: rgb(0, 0, 0);
+            color: #e0e0e0;
             border-radius: 8px;
             padding: 15px;
             box-shadow: 0 2px 8px rgba(0,0,0,0.1);
@@ -214,7 +221,7 @@
         .chart-container h4 {
             margin: 0 0 10px 0;
             font-size: 14px;
-            color: #2c3e50;
+            color: #e0e0e0;
         }
         
         #dashboard {
@@ -223,9 +230,13 @@
         
         .no-data {
             text-align: center;
-            color: #7f8c8d;
+            color: #888;
             padding: 40px;
             font-size: 14px;
+        }
+        .body{
+            background: #181A20;
+            color: #e0e0e0;
         }
     </style>
 </head>
@@ -312,6 +323,14 @@
                     <div class="chart-container">
                         <h4>BEKLETEN İŞLETMELER</h4>
                         <div id="pieChartBekleten" style="height:300px"></div>
+                    </div>
+                    <div class="chart-container">
+                        <h4>Kişilere Göre Dolduran</h4>
+                        <div id="personChartDolduran" style="height:300px"></div>
+                    </div>
+                    <div class="chart-container">
+                        <h4>Kişilere Göre Bekleten</h4>
+                        <div id="personChartBekleten" style="height:300px"></div>
                     </div>
                     <div class="chart-container">
                         <h4>Bekleme Süresi Dağılımı (Gün)</h4>
@@ -559,6 +578,8 @@
                 renderPieChart(data);
                 renderBarChart(data);
                 renderLineChart(data);
+                renderPersonChartDolduran(data);
+                renderPersonChartBekleten(data);
             } catch (err) {
                 console.warn('Grafik render hatası', err);
             }
@@ -623,47 +644,160 @@
         }
         
         // Yeni: Bekleyen gün histogram / dağılımı. Tarih verileri yoksa da dağılım anlamlı gösterir.
+                // Kişilere göre dolduran chart
+                function renderPersonChartDolduran(data) {
+                    try {
+                        const grouped = data
+                            .reduce((acc, d) => {
+                                const key = d.FormuDolduran || 'Bilinmiyor';
+                                const existing = acc.find(x => x.category === key);
+                                if (existing) existing.value++;
+                                else acc.push({ category: key, value: 1 });
+                                return acc;
+                            }, [])
+                            .sort((a, b) => b.value - a.value)
+                            .slice(0, 15);
+                        new DevExpress.viz.dxChart(document.getElementById('personChartDolduran'), {
+                            dataSource: grouped,
+                            rotated: true,
+                            animation: { enabled: true, duration: 800, easing: 'easeOutCubic' },
+                            series: [{
+                                argumentField: 'category',
+                                valueField: 'value',
+                                type: 'bar',
+                                color: '#00eaff',
+                                label: {
+                                    visible: true,
+                                    font: { color: '#fff', size: 14 },
+                                    backgroundColor: 'rgba(0,0,0,0.7)',
+                                    customizeText: function(arg) { return arg.valueText; }
+                                }
+                            }],
+                            argumentAxis: {
+                                label: { font: { color: '#fff', size: 13 } },
+                                color: '#444',
+                            },
+                            valueAxis: {
+                                label: { font: { color: '#fff', size: 13 } },
+                                color: '#444',
+                            },
+                            tooltip: {
+                                enabled: true,
+                                customizeTooltip: function(arg) {
+                                    return { text: `${arg.argumentText}: ${arg.valueText}` };
+                                }
+                            },
+                            palette: ['#00eaff', '#00bfae', '#0081a7', '#005f73'],
+                            legend: { visible: false },
+                        });
+                    } catch (e) {
+                        console.warn('Kişilere göre dolduran chart error', e);
+                    }
+                }
+
+                // Kişilere göre bekleten chart
+                function renderPersonChartBekleten(data) {
+                    try {
+                        const grouped = data
+                            .reduce((acc, d) => {
+                                const key = d.FormuBekleten || 'Bilinmiyor';
+                                const existing = acc.find(x => x.category === key);
+                                if (existing) existing.value++;
+                                else acc.push({ category: key, value: 1 });
+                                return acc;
+                            }, [])
+                            .sort((a, b) => b.value - a.value)
+                            .slice(0, 15);
+                        new DevExpress.viz.dxChart(document.getElementById('personChartBekleten'), {
+                            dataSource: grouped,
+                            rotated: true,
+                            animation: { enabled: true, duration: 800, easing: 'easeOutCubic' },
+                            series: [{
+                                argumentField: 'category',
+                                valueField: 'value',
+                                type: 'bar',
+                                color: '#ff9800',
+                                label: {
+                                    visible: true,
+                                    font: { color: '#fff', size: 14 },
+                                    backgroundColor: 'rgba(0,0,0,0.7)',
+                                    customizeText: function(arg) { return arg.valueText; }
+                                }
+                            }],
+                            argumentAxis: {
+                                label: { font: { color: '#fff', size: 13 } },
+                                color: '#444',
+                            },
+                            valueAxis: {
+                                label: { font: { color: '#fff', size: 13 } },
+                                color: '#444',
+                            },
+                            tooltip: {
+                                enabled: true,
+                                customizeTooltip: function(arg) {
+                                    return { text: `${arg.argumentText}: ${arg.valueText}` };
+                                }
+                            },
+                            palette: ['#ff9800', '#ffb300', '#ff6f00', '#c43e00'],
+                            legend: { visible: false },
+                        });
+                    } catch (e) {
+                        console.warn('Kişilere göre bekleten chart error', e);
+                    }
+                }
         function renderLineChart(data) {
             try {
                 const buckets = [
                     { key: '0-7', min: 0, max: 7 },
-                    { key: '8-15', min: 8, max: 15 },
                     { key: '16-30', min: 16, max: 30 },
                     { key: '31-60', min: 31, max: 60 },
                     { key: '61-180', min: 61, max: 180 },
                     { key: '>180', min: 181, max: Infinity }
                 ];
 
-                const grouped = buckets.map(b => ({ bucket: b.key, count: 0, sum: 0, min: b.min, max: b.max }));
 
-                data.forEach(d => {
-                    const v = Number(d.BekleyenGun) || 0;
-                    const b = grouped.find(x => v >= x.min && v <= x.max);
-                    if (b) { b.count++; b.sum += v; }
+                // Bucket'lara göre dağıtım
+                const grouped = buckets.map(b => ({ bucket: b.key, count: 0, min: b.min, max: b.max }));
+                (data || []).forEach(d => {
+                    const gun = Number(d.BekleyenGun) || 0;
+                    const bucket = grouped.find(b => gun >= b.min && gun <= b.max);
+                    if (bucket) bucket.count++;
                 });
 
-                const ds = grouped.map(g => ({ bucket: g.bucket, count: g.count, avg: g.count ? Math.round(g.sum / g.count) : 0 }));
-
-                // Eğer tüm bucket'lar sıfırsa bilgi göster
-                const allZero = ds.every(x => x.count === 0);
-                if (allZero) {
-                    document.getElementById('lineChart').innerHTML = '<div class="no-data">Bekleyen gün verisi yetersiz</div>';
-                    return;
-                }
+                const chartData = grouped.map(g => ({ label: g.bucket, value: g.count }));
 
                 new DevExpress.viz.dxChart(document.getElementById('lineChart'), {
-                    dataSource: ds,
-                    commonSeriesSettings: { argumentField: 'bucket', valueField: 'count', type: 'bar' },
-                    series: [{}],
+                    dataSource: chartData,
+                    rotated: true,
+                    animation: { enabled: true, duration: 800, easing: 'easeOutCubic' },
+                    series: [{
+                        argumentField: 'label',
+                        valueField: 'value',
+                        type: 'bar',
+                        color: '#ff4081',
+                        label: {
+                            visible: true,
+                            font: { color: '#fff', size: 14 },
+                            backgroundColor: 'rgba(0,0,0,0.7)',
+                            customizeText: function(arg) { return arg.valueText; }
+                        }
+                    }],
+                    argumentAxis: {
+                        label: { font: { color: '#fff', size: 13 } },
+                        color: '#444',
+                    },
+                    valueAxis: {
+                        label: { font: { color: '#fff', size: 13 } },
+                        color: '#444',
+                    },
+                    tooltip: {
+                        enabled: true,
+                        customizeTooltip: function(arg) {
+                            return { text: `${arg.argumentText}: ${arg.valueText}` };
+                        }
+                    },
+                    palette: ['#ff4081', '#ff79b0', '#c60055', '#ffb3de'],
                     legend: { visible: false },
-                    tooltip: { enabled: true, customizeTooltip: function(arg) {
-                        const d = arg.point.data;
-                        return { html: `<div style="padding:6px"><strong>${d.bucket}</strong><br/>Adet: ${d.count}<br/>Ortalama Bekleyen: ${d.avg} gün</div>` };
-                    }},
-                    onPointClick: function(e) {
-                        const bucket = e.target.data.bucket;
-                        applyBucketFilter(bucket);
-                    }
                 });
             } catch (e) {
                 console.warn('Histogram chart error', e);
@@ -716,10 +850,10 @@
             mudCard.style.display = 'flex';
             mudCard.style.flexDirection = 'column';
             mudCard.style.alignItems = 'center';
-            mudCard.style.background = '#fff';
-            mudCard.style.border = '1px solid #e0e0e0';
+            mudCard.style.background = '#000';
+            mudCard.style.border = '1px solid #222';
             mudCard.style.borderRadius = '12px';
-            mudCard.style.boxShadow = '0 2px 8px rgba(0,0,0,0.04)';
+            mudCard.style.boxShadow = '0 2px 16px rgba(0,0,0,0.5)';
             mudCard.style.padding = '18px 18px 10px 18px';
             mudCard.style.margin = '0 12px 0 0';
             mudCard.style.width = '540px';
@@ -728,7 +862,7 @@
             mudCard.style.flex = '1 1 400px';
 
             const mudTitle = document.createElement('div');
-            mudTitle.innerHTML = `<h4 style='margin-bottom:10px;margin-top:0'>Müdürlük Dağılımı</h4>`;
+            mudTitle.innerHTML = `<h4 style='margin-bottom:10px;margin-top:0;color:#e0e0e0;background:#000'>Müdürlüklere Göre Dağılım</h4>`;
             mudCard.appendChild(mudTitle);
 
             const mudDiv = document.createElement('div');
@@ -745,6 +879,7 @@
                     legend: { visible: false },
                     tooltip: { enabled: true, contentTemplate: d => `${d.argumentText}: ${d.value}` }
                 });
+                /*
                 // Küçük legend - grid, satır arası boşluk minimum
                 const legendDiv = document.createElement('div');
                 legendDiv.className = 'legend-container';
@@ -764,6 +899,7 @@
                     legendDiv.appendChild(row);
                 });
                 mudCard.appendChild(legendDiv);
+                */
 		} else {
 			mudDiv.innerHTML = '<div class="no-data">Müdürlük verisi bulunamadı</div>';
 		}
@@ -773,10 +909,10 @@
             formCard.style.display = 'flex';
             formCard.style.flexDirection = 'column';
             formCard.style.alignItems = 'center';
-            formCard.style.background = '#fff';
-            formCard.style.border = '1px solid #e0e0e0';
+            formCard.style.background = '#000';
+            formCard.style.border = '1px solid #222';
             formCard.style.borderRadius = '12px';
-            formCard.style.boxShadow = '0 2px 8px rgba(0,0,0,0.04)';
+            formCard.style.boxShadow = '0 2px 16px rgba(0,0,0,0.5)';
             formCard.style.padding = '18px 18px 10px 18px';
             formCard.style.margin = '0 0 0 12px';
             formCard.style.width = '540px';
@@ -785,7 +921,7 @@
             formCard.style.flex = '1 1 400px';
 
             const formTitle = document.createElement('div');
-            formTitle.innerHTML = `<h4 style='margin-bottom:10px;margin-top:0'>Form Dağılımı</h4>`;
+            formTitle.innerHTML = `<h4 style='margin-bottom:10px;margin-top:0;color:#e0e0e0;background:#000'>Süreç Formlarının Dağılımı</h4>`;
             formCard.appendChild(formTitle);
 
             const formDiv = document.createElement('div');
@@ -802,6 +938,7 @@
                     legend: { visible: false },
                     tooltip: { enabled: true, contentTemplate: d => `${d.argumentText}: ${d.value}` }
                 });
+                /*
                 // Küçük legend - grid, satır arası boşluk minimum
                 const legendDiv = document.createElement('div');
                 legendDiv.className = 'legend-container';
@@ -821,6 +958,7 @@
                     legendDiv.appendChild(row);
                 });
                 formCard.appendChild(legendDiv);
+                */
             } else {
                 formDiv.innerHTML = '<div class="no-data">Form verisi bulunamadı</div>';
             }
