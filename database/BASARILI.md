@@ -108,3 +108,5 @@ ORDER BY BekleyenGun DESC;
 
 Sistem çalışıyor! 3656 kayıt VIEW'dan Fact tablosuna kopyalandı ve API üzerinden erişilebilir durumda! 🎉
 
+
+

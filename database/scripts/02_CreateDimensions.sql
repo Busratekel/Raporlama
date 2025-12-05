@@ -81,3 +81,5 @@ PRINT 'Dimension tabloları başarıyla oluşturuldu.';
 GO
 
 
+
+

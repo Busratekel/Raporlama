@@ -66,3 +66,5 @@ PRINT 'Fact_BekleyenSurecler tablosu hazır!';
 PRINT 'ETL Service bu tabloyu View_eBABekleyen VIEW''ından dolduracak.';
 GO
 
+
+

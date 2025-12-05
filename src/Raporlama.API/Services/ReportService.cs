@@ -17,18 +17,6 @@ namespace Raporlama.API.Services
         {
             _reports.Add(new Report
             {
-                ReportID = 1,
-                ReportName = "Çalışanlar (örnek)",
-                ReportCode = "RPT_CALISANLAR",
-                SourceDatabase = "BoytasWH",
-                Query = "SELECT TOP 100 1 AS Dummy",
-                DataSourceType = null,
-                CacheDuration = 5,
-                IsActive = true
-            });
-            
-            _reports.Add(new Report
-            {
                 ReportID = 2,
                 ReportName = "Bekleyen Süreçler",
                 ReportCode = "RPT_BEKLEYEN",

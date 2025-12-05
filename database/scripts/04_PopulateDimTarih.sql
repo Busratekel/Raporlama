@@ -65,3 +65,5 @@ PRINT 'Dim_Tarih tablosu dolduruldu: ' + CAST(@@ROWCOUNT AS VARCHAR) + ' kayıt 
 GO
 
 
+
+

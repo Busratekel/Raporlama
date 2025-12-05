@@ -23,3 +23,5 @@ PRINT 'Raporlama_DW veritabanı başarıyla oluşturuldu.';
 GO
 
 
+
+

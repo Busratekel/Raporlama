@@ -80,3 +80,5 @@ PRINT 'Fact tabloları başarıyla oluşturuldu.';
 GO
 
 
+
+
