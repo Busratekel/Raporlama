@@ -72,3 +72,6 @@ coverage/
 # Ignore ETL logs
 src/Raporlama.ETL/logs/
 
+# Ignore decision document
+KARAR_DOKUMANI.md
+
