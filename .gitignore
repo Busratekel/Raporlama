@@ -25,6 +25,7 @@ appsettings.Production.json
 # Ignore local configuration and secrets
 secrets.json
 **/appsettings*.json
+!**/appsettings.example.json
 
 # Logs
 **/logs/
