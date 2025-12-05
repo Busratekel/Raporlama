@@ -283,7 +283,7 @@
                     </div>
                     <div class="chart-container">
                         <h4>Dağılım: Bekleten Kişiler</h4>
-                        <div id="barChart" style="height:300px"></div>
+                        <div id="pieChartBekleten" style="height:300px"></div>
                     </div>
                     <div class="chart-container">
                         <h4>Bekleme Süresi Dağılımı (Gün)</h4>
@@ -309,6 +309,7 @@
     <script>
         let currentDataGrid = null;
         let allData = [];
+        let filterState = { dolduranKisi: null, bekletenKisi: null, bucket: null };
         const API_BASE = 'http://localhost:5000/api';
         
         // Sayfa yüklendiğinde
@@ -374,6 +375,28 @@
                     const dEklenmeTarihi = d.EklenmeTarihi ? new Date(d.EklenmeTarihi) : null;
                     if (tarihBas && dEklenmeTarihi < new Date(tarihBas)) match = false;
                     if (tarihBit && dEklenmeTarihi > new Date(tarihBit)) match = false;
+                }
+                
+                // Drill-down filtreleri: seçili kişilere göre filtrele
+                if (filterState.dolduranKisi) {
+                    const dolduranKey = d.FormuDolduranSirketi || d.FormuDolduranSicil;
+                    if (dolduranKey !== filterState.dolduranKisi) match = false;
+                }
+                
+                if (filterState.bekletenKisi) {
+                    const bekletenKey = d.FormuBekletenSirketi || d.FormuBekletenSicil;
+                    if (bekletenKey !== filterState.bekletenKisi) match = false;
+                }
+                
+                if (filterState.bucket) {
+                    const ranges = {
+                        '0-7': [0,7], '8-15': [8,15], '16-30': [16,30], '31-60': [31,60], '61-180': [61,180], '>180': [181, Number.MAX_SAFE_INTEGER]
+                    };
+                    const range = ranges[filterState.bucket];
+                    if (range) {
+                        const v = Number(d.BekleyenGun) || 0;
+                        if (!(v >= range[0] && v <= range[1])) match = false;
+                    }
                 }
                 
                 return match;
@@ -515,7 +538,12 @@
                 new DevExpress.viz.dxPieChart(document.getElementById('pieChart'), {
                     dataSource: grouped,
                     series: [{ argumentField: 'category', valueField: 'value', label: { visible: true, connector: { visible: true } } }],
-                    tooltip: { enabled: true, contentTemplate: d => `${d.argumentText}: ${d.value}` }
+                    tooltip: { enabled: true, contentTemplate: d => `${d.argumentText}: ${d.value}` },
+                    onPointClick: function(e) {
+                        const category = e.target.originalArgument;
+                        filterState.dolduranKisi = category;
+                        applyFilters();
+                    }
                 });
             } catch (e) {
                 console.warn('Pie chart error', e);
@@ -535,15 +563,18 @@
                     .sort((a, b) => b.value - a.value)
                     .slice(0, 15);
 
-                new DevExpress.viz.dxChart(document.getElementById('barChart'), {
+                new DevExpress.viz.dxPieChart(document.getElementById('pieChartBekleten'), {
                     dataSource: grouped,
-                    commonSeriesSettings: { argumentField: 'category', valueField: 'value', type: 'bar' },
-                    series: [{}],
-                    legend: { visible: false },
-                    tooltip: { enabled: true }
+                    series: [{ argumentField: 'category', valueField: 'value', label: { visible: true, connector: { visible: true } } }],
+                    tooltip: { enabled: true, contentTemplate: d => `${d.argumentText}: ${d.value}` },
+                    onPointClick: function(e) {
+                        const category = e.target.originalArgument;
+                        filterState.bekletenKisi = category;
+                        applyFilters();
+                    }
                 });
             } catch (e) {
-                console.warn('Bar chart error', e);
+                console.warn('Bekleten pie chart error', e);
             }
         }
         
@@ -597,22 +628,8 @@
 
         // Bir histogram bucket'ına tıklanınca tabloyu filtreler
         function applyBucketFilter(bucketKey) {
-            const ranges = {
-                '0-7': [0,7], '8-15': [8,15], '16-30': [16,30], '31-60': [31,60], '61-180': [61,180], '>180': [181, Number.MAX_SAFE_INTEGER]
-            };
-            const range = ranges[bucketKey];
-            if (!range) return;
-
-            const filtered = allData.filter(d => {
-                const v = Number(d.BekleyenGun) || 0;
-                return v >= range[0] && v <= range[1];
-            });
-
-            // Görüntüyü güncelle
-            updateStats(filtered);
-            renderDataGrid(filtered);
-            // Ayrıca grafikleri de güncelle (seçili bucket içinde diğer grafikleri görmek için)
-            loadCharts(filtered);
+            filterState.bucket = bucketKey;
+            applyFilters();
         }
         
         // Filtreleri temizle
@@ -622,9 +639,11 @@
             document.getElementById('filterRol').value = '';
             document.getElementById('filterTarihBaslangic').value = '';
             document.getElementById('filterTarihBitis').value = '';
+            filterState = { dolduranKisi: null, bekletenKisi: null, bucket: null };
             applyFilters();
         }
     </script>
 </body>
 </html>
+
 
