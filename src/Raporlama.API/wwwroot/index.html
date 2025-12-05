@@ -9,71 +9,99 @@
     <link rel="stylesheet" href="https://cdn3.devexpress.com/jslib/24.2.3/css/dx.light.css" />
     
     <style>
+                        /* Filtre alanları ve sidebar için responsive ve kutu gibi görünüm */
+                        .sidebar {
+                            min-width: 240px;
+                            max-width: 320px;
+                            width: 100%;
+                            box-sizing: border-box;
+                        }
+                        .filter-group {
+                            margin-bottom: 16px;
+                        }
+                        .filter-label {
+                            display: block;
+                            font-size: 13px;
+                            font-weight: 600;
+                            margin-bottom: 4px;
+                        }
+                        .sidebar select,
+                        .sidebar input[type="date"] {
+                            width: 100%;
+                            padding: 7px 10px;
+                            border: 1px solid #ccc;
+                            border-radius: 4px;
+                            font-size: 14px;
+                            margin-bottom: 2px;
+                            box-sizing: border-box;
+                            background: #fafbfc;
+                            transition: border 0.2s;
+                        }
+                        .sidebar select:focus,
+                        .sidebar input[type="date"]:focus {
+                            border-color: #3498db;
+                            outline: none;
+                        }
+                        @media (max-width: 900px) {
+                            .main-layout {
+                                flex-direction: column;
+                                padding: 0 8px;
+                            }
+                            .sidebar {
+                                max-width: 100%;
+                                margin-right: 0;
+                                margin-bottom: 18px;
+                            }
+                        }
+                .header {
+                    width: 100%;
+                    background: #fff;
+                    padding: 18px 32px 0 32px;
+                    box-sizing: border-box;
+                    margin-bottom: 0;
+                }
+                .header h1 {
+                    margin: 0;
+                    font-size: 2.2rem;
+                    font-weight: 700;
+                    color: #222;
+                }
+                .main-layout {
+                    display: flex;
+                    flex-direction: row;
+                    align-items: flex-start;
+                    width: 100%;
+                    max-width: 100vw;
+                    box-sizing: border-box;
+                    padding: 0 32px;
+                }
+                .sidebar {
+                    min-width: 260px;
+                    max-width: 320px;
+                    background: #fff;
+                    border-radius: 8px;
+                    box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+                    padding: 18px 18px 18px 18px;
+                    margin-right: 24px;
+                    margin-top: 0;
+                }
+                .content {
+                    flex: 1;
+                    padding: 0;
+                    min-width: 0;
+                }
+                .filter-group {
+                    margin-bottom: 12px;
+                }
+                .filter-label {
+                    display: block;
+                    font-size: 13px;
+                    font-weight: 600;
+                    margin-bottom: 4px;
+                }
         * { box-sizing: border-box; }
         body {
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            margin: 0;
-            padding: 0;
-            background-color: #ecf0f1;
-        }
-        
-        .header {
-            background: linear-gradient(135deg, #2c3e50 0%, #34495e 100%);
-            color: white;
-            padding: 20px;
-            box-shadow: 0 4px 6px rgba(0,0,0,0.2);
-        }
-        
-        .header h1 {
-            margin: 0;
-            font-size: 28px;
-            font-weight: 600;
-        }
-        
-        .main-layout {
-            display: flex;
-            min-height: calc(100vh - 80px);
-            gap: 0;
-        }
-        
-        .sidebar {
-            width: 280px;
-            background: white;
-            padding: 20px;
-            box-shadow: 2px 0 8px rgba(0,0,0,0.1);
-            overflow-y: auto;
-        }
-        
-        .sidebar h3 {
-            margin: 20px 0 10px 0;
-            color: #2c3e50;
-            font-size: 14px;
-            font-weight: 600;
-            text-transform: uppercase;
-            border-bottom: 2px solid #3498db;
-            padding-bottom: 8px;
-        }
-        
-        .filter-group {
-            margin-bottom: 20px;
-        }
-        
-        .filter-label {
-            display: block;
-            font-size: 12px;
-            font-weight: 600;
-            color: #34495e;
-            margin-bottom: 6px;
-        }
-        
-        select, input[type="date"] {
-            width: 100%;
-            padding: 8px 10px;
-            border: 1px solid #bdc3c7;
-            border-radius: 4px;
-            font-size: 12px;
-            background: white;
-            cursor: pointer;
         }
         
         select:hover, input:hover {
@@ -278,11 +306,11 @@
                 <h2>📈 Grafikler</h2>
                 <div class="charts-grid">
                     <div class="chart-container">
-                        <h4>Dağılım: Dolduran Kişiler</h4>
+                        <h4>DOLDURAN İŞLETMELER</h4>
                         <div id="pieChart" style="height:300px"></div>
                     </div>
                     <div class="chart-container">
-                        <h4>Dağılım: Bekleten Kişiler</h4>
+                        <h4>BEKLETEN İŞLETMELER</h4>
                         <div id="pieChartBekleten" style="height:300px"></div>
                     </div>
                     <div class="chart-container">
@@ -293,6 +321,11 @@
                 </div>
             </div>
             
+            <!-- Drill-down Detay Paneli -->
+            <div class="card" id="detailPanelCard" style="display:none">
+                <h2 id="detailPanelTitle">🔎 Detay Paneli</h2>
+                <div id="chartsFlexRow" style="display:flex;flex-wrap:wrap;gap:48px;justify-content:center;align-items:flex-start;width:100%;max-width:100%;"></div>
+            </div>
             <!-- Tablo -->
             <div class="card">
                 <h2>📋 Detaylı Liste</h2>
@@ -302,7 +335,7 @@
     </div>
 
     <!-- jQuery (DevExpress cellTemplate uses $ in our code) -->
-    <script src="https://code.jquery.com/jquery-3.6.0.min.js" integrity="sha256-/xUj+3OJ+Y3Q5Y2b8a2eYk6Q5KkN1Q9a2c7X+Y8m4vY=" crossorigin="anonymous"></script>
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js" integrity="sha256-/xUj+3OJU5yExlq6GSYGSHk7tPXikynS7ogEvDej/m4=" crossorigin="anonymous"></script>
     <!-- DevExpress JS -->
     <script src="https://cdn3.devexpress.com/jslib/24.2.3/js/dx.all.js"></script>
     
@@ -464,7 +497,12 @@
                         const v = options.value;
                         const dv = document.createElement('div');
                         dv.textContent = v || '-';
-                        container.appendChild(dv);
+                        // Support both DOM element and jQuery object
+                        if (container && container.appendChild) {
+                            container.appendChild(dv);
+                        } else if (window.jQuery && container && container[0] && container[0].appendChild) {
+                            container[0].appendChild(dv);
+                        }
                     } },
                     { dataField: 'FormAdi', caption: 'Form', width: 220 },
                     { dataField: 'FormuDolduran', caption: 'Dolduran', width: 140 },
@@ -473,17 +511,21 @@
                     { dataField: 'FormuBekleten', caption: 'Bekleten', width: 140 },
                     { dataField: 'FormuBekletenSicil', caption: 'Bekleten (Sicil)', width: 110 },
                     { dataField: 'FormuBekletenSirketi', caption: 'Bekleten (Şirket)', width: 150 },
-                    { dataField: 'BekleyenGun', caption: 'Bekleyen Gün', width: 100, dataType: 'number',
-                      cellTemplate: function(container, options) {
-                          const value = options.value || 0;
-                          const color = value > 30 ? '#e74c3c' : value > 15 ? '#f39c12' : '#27ae60';
-                          const dv = document.createElement('div');
-                          dv.style.color = color;
-                          dv.style.fontWeight = 'bold';
-                          dv.textContent = value;
-                          container.appendChild(dv);
-                      }
-                    },
+                                        { dataField: 'BekleyenGun', caption: 'Bekleyen Gün', width: 100, dataType: 'number',
+                                            cellTemplate: function(container, options) {
+                                                    const value = options.value || 0;
+                                                    const color = value > 30 ? '#e74c3c' : value > 15 ? '#f39c12' : '#27ae60';
+                                                    const dv = document.createElement('div');
+                                                    dv.style.color = color;
+                                                    dv.style.fontWeight = 'bold';
+                                                    dv.textContent = value;
+                                                    if (container && container.appendChild) {
+                                                            container.appendChild(dv);
+                                                    } else if (window.jQuery && container && container[0] && container[0].appendChild) {
+                                                            container[0].appendChild(dv);
+                                                    }
+                                            }
+                                        },
                     { dataField: 'MudurlukAdi', caption: 'Müdürlük', width: 160 },
                     { dataField: 'DirektorlukAdi', caption: 'Direktörlük', width: 160 },
                     { dataField: 'FormuGonderenBolum', caption: 'Gönderen Bölüm', width: 200 },
@@ -543,6 +585,7 @@
                         const category = e.target.originalArgument;
                         filterState.dolduranKisi = category;
                         applyFilters();
+                        showDetailPanel('dolduran', category);
                     }
                 });
             } catch (e) {
@@ -571,6 +614,7 @@
                         const category = e.target.originalArgument;
                         filterState.bekletenKisi = category;
                         applyFilters();
+                        showDetailPanel('bekleten', category);
                     }
                 });
             } catch (e) {
@@ -642,8 +686,159 @@
             filterState = { dolduranKisi: null, bekletenKisi: null, bucket: null };
             applyFilters();
         }
-    </script>
-</body>
-</html>
+
+        // Detay Paneli ve Alt Grafikler (Müdürlük ve Form)
+        function showDetailPanel(type, key) {
+                                                // Detay panelini görünür yap
+                                                document.getElementById('detailPanelCard').style.display = '';
+                                    const pieColors = [
+                                        '#2196f3', '#e91e63', '#ff9800', '#4caf50', '#9c27b0', '#00bcd4', '#ffc107', '#8bc34a', '#f44336', '#607d8b',
+                                        '#3f51b5', '#009688', '#cddc39', '#ff5722', '#795548', '#673ab7', '#bdbdbd', '#607d8b', '#e65100', '#43a047'
+                                    ];
+                        let filtered = allData;
+                        if (type === 'dolduran') {
+                            filtered = allData.filter(d => {
+                                const dolduranKey = d.FormuDolduranSirketi || d.FormuDolduranSicil;
+                                return dolduranKey === key;
+                            });
+                        } else if (type === 'bekleten') {
+                            filtered = allData.filter(d => {
+                                const bekletenKey = d.FormuBekletenSirketi || d.FormuBekletenSicil;
+                                return bekletenKey === key;
+                            });
+                        }
+            // Ortak responsive container
+            const chartsFlexRow = document.getElementById('chartsFlexRow');
+            chartsFlexRow.innerHTML = '';
+
+            // Müdürlük Dağılımı - Kart
+            const mudCard = document.createElement('div');
+            mudCard.style.display = 'flex';
+            mudCard.style.flexDirection = 'column';
+            mudCard.style.alignItems = 'center';
+            mudCard.style.background = '#fff';
+            mudCard.style.border = '1px solid #e0e0e0';
+            mudCard.style.borderRadius = '12px';
+            mudCard.style.boxShadow = '0 2px 8px rgba(0,0,0,0.04)';
+            mudCard.style.padding = '18px 18px 10px 18px';
+            mudCard.style.margin = '0 12px 0 0';
+            mudCard.style.width = '540px';
+            mudCard.style.minWidth = '340px';
+            mudCard.style.boxSizing = 'border-box';
+            mudCard.style.flex = '1 1 400px';
+
+            const mudTitle = document.createElement('div');
+            mudTitle.innerHTML = `<h4 style='margin-bottom:10px;margin-top:0'>Müdürlük Dağılımı</h4>`;
+            mudCard.appendChild(mudTitle);
+
+            const mudDiv = document.createElement('div');
+            mudDiv.style.height = '400px';
+            mudDiv.style.width = '400px';
+            mudCard.appendChild(mudDiv);
+            const mudurlukData = groupByCount(filtered, 'MudurlukAdi');
+            if (mudurlukData.length > 0) {
+                new DevExpress.viz.dxPieChart(mudDiv, {
+                    dataSource: mudurlukData.map((x, idx) => ({ category: x.MudurlukAdi, value: x.count })),
+                    palette: pieColors,
+                    size: { height: 400, width: 400 },
+                    series: [{ argumentField: 'category', valueField: 'value', label: { visible: true, connector: { visible: true } } }],
+                    legend: { visible: false },
+                    tooltip: { enabled: true, contentTemplate: d => `${d.argumentText}: ${d.value}` }
+                });
+                // Küçük legend - grid, satır arası boşluk minimum
+                const legendDiv = document.createElement('div');
+                legendDiv.className = 'legend-container';
+                legendDiv.style.display = 'grid';
+                legendDiv.style.gridTemplateColumns = 'repeat(3, minmax(0, 1fr))';
+                legendDiv.style.gap = '2px 14px';
+                legendDiv.style.marginTop = '10px';
+                legendDiv.style.marginLeft = '0px';
+                legendDiv.style.justifyContent = 'flex-start';
+                legendDiv.style.alignItems = 'flex-start';
+                legendDiv.style.width = '100%';
+                mudurlukData.slice(0, pieColors.length).forEach((item, idx) => {
+                    const row = document.createElement('div');
+                    row.style.display = 'flex';
+                    row.style.alignItems = 'center';
+                    row.innerHTML = `<span style='display:inline-block;width:12px;height:12px;margin-right:6px;border-radius:50%;background:${pieColors[idx]}'></span><span style='font-size:12px'>${item.category || item.MudurlukAdi} <b>(${item.count || item.value})</b></span>`;
+                    legendDiv.appendChild(row);
+                });
+                mudCard.appendChild(legendDiv);
+		} else {
+			mudDiv.innerHTML = '<div class="no-data">Müdürlük verisi bulunamadı</div>';
+		}
+
+            // Form Dağılımı - Kart
+            const formCard = document.createElement('div');
+            formCard.style.display = 'flex';
+            formCard.style.flexDirection = 'column';
+            formCard.style.alignItems = 'center';
+            formCard.style.background = '#fff';
+            formCard.style.border = '1px solid #e0e0e0';
+            formCard.style.borderRadius = '12px';
+            formCard.style.boxShadow = '0 2px 8px rgba(0,0,0,0.04)';
+            formCard.style.padding = '18px 18px 10px 18px';
+            formCard.style.margin = '0 0 0 12px';
+            formCard.style.width = '540px';
+            formCard.style.minWidth = '340px';
+            formCard.style.boxSizing = 'border-box';
+            formCard.style.flex = '1 1 400px';
+
+            const formTitle = document.createElement('div');
+            formTitle.innerHTML = `<h4 style='margin-bottom:10px;margin-top:0'>Form Dağılımı</h4>`;
+            formCard.appendChild(formTitle);
+
+            const formDiv = document.createElement('div');
+            formDiv.style.height = '400px';
+            formDiv.style.width = '400px';
+            formCard.appendChild(formDiv);
+            const formData = groupByCount(filtered, 'FormAdi');
+            if (formData.length > 0) {
+                new DevExpress.viz.dxPieChart(formDiv, {
+                    dataSource: formData.map((x, idx) => ({ category: x.FormAdi, value: x.count })),
+                    palette: pieColors,
+                    size: { height: 400, width: 400 },
+                    series: [{ argumentField: 'category', valueField: 'value', label: { visible: true, connector: { visible: true } } }],
+                    legend: { visible: false },
+                    tooltip: { enabled: true, contentTemplate: d => `${d.argumentText}: ${d.value}` }
+                });
+                // Küçük legend - grid, satır arası boşluk minimum
+                const legendDiv = document.createElement('div');
+                legendDiv.className = 'legend-container';
+                legendDiv.style.display = 'grid';
+                legendDiv.style.gridTemplateColumns = 'repeat(3, minmax(0, 1fr))';
+                legendDiv.style.gap = '2px 14px';
+                legendDiv.style.marginTop = '10px';
+                legendDiv.style.marginLeft = '0px';
+                legendDiv.style.justifyContent = 'flex-start';
+                legendDiv.style.alignItems = 'flex-start';
+                legendDiv.style.width = '100%';
+                formData.slice(0, pieColors.length).forEach((item, idx) => {
+                    const row = document.createElement('div');
+                    row.style.display = 'flex';
+                    row.style.alignItems = 'center';
+                    row.innerHTML = `<span style='display:inline-block;width:12px;height:12px;margin-right:6px;border-radius:50%;background:${pieColors[idx]}'></span><span style='font-size:12px'>${item.category || item.FormAdi} <b>(${item.count || item.value})</b></span>`;
+                    legendDiv.appendChild(row);
+                });
+                formCard.appendChild(legendDiv);
+            } else {
+                formDiv.innerHTML = '<div class="no-data">Form verisi bulunamadı</div>';
+            }
+            // Kartları yan yana ekle (kartlar yukarıda tanımlandıktan sonra eklenmeli)
+            if (typeof mudCard !== 'undefined') chartsFlexRow.appendChild(mudCard);
+            if (typeof formCard !== 'undefined') chartsFlexRow.appendChild(formCard);
+            // Yardımcı: Alan bazında gruplayıp adet döndürür
+            function groupByCount(arr, field) {
+                const map = {};
+                arr.forEach(d => {
+                    const key = d[field] || 'Bilinmiyor';
+                    map[key] = (map[key] || 0) + 1;
+                });
+                return Object.entries(map).map(([k, v]) => ({ [field]: k, count: v }));
+            }
+        }
+        </script>
+    </body>
+    </html>
 
 
