@@ -1,0 +1,36 @@
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 17
+VisualStudioVersion = 17.5.2.0
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "src", "src", "{827E0CD3-B72D-47B6-A68D-7590B98EB39B}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Raporlama.API", "src\Raporlama.API\Raporlama.API.csproj", "{308FF124-5F02-9FFF-F298-C6A3DE61CCF7}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Raporlama.ETL", "src\Raporlama.ETL\Raporlama.ETL.csproj", "{14B13EA1-E05D-4BF7-21BB-A98360902E48}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{308FF124-5F02-9FFF-F298-C6A3DE61CCF7}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{308FF124-5F02-9FFF-F298-C6A3DE61CCF7}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{308FF124-5F02-9FFF-F298-C6A3DE61CCF7}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{308FF124-5F02-9FFF-F298-C6A3DE61CCF7}.Release|Any CPU.Build.0 = Release|Any CPU
+		{14B13EA1-E05D-4BF7-21BB-A98360902E48}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{14B13EA1-E05D-4BF7-21BB-A98360902E48}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{14B13EA1-E05D-4BF7-21BB-A98360902E48}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{14B13EA1-E05D-4BF7-21BB-A98360902E48}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(NestedProjects) = preSolution
+		{308FF124-5F02-9FFF-F298-C6A3DE61CCF7} = {827E0CD3-B72D-47B6-A68D-7590B98EB39B}
+		{14B13EA1-E05D-4BF7-21BB-A98360902E48} = {827E0CD3-B72D-47B6-A68D-7590B98EB39B}
+	EndGlobalSection
+	GlobalSection(ExtensibilityGlobals) = postSolution
+		SolutionGuid = {A1EA7481-A802-4A19-8AC9-945B9E5E18C0}
+	EndGlobalSection
+EndGlobal

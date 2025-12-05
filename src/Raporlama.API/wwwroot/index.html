@@ -1,0 +1,630 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Bellona Raporlama Sistemi</title>
+    
+    <!-- DevExpress CSS -->
+    <link rel="stylesheet" href="https://cdn3.devexpress.com/jslib/24.2.3/css/dx.light.css" />
+    
+    <style>
+        * { box-sizing: border-box; }
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            margin: 0;
+            padding: 0;
+            background-color: #ecf0f1;
+        }
+        
+        .header {
+            background: linear-gradient(135deg, #2c3e50 0%, #34495e 100%);
+            color: white;
+            padding: 20px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.2);
+        }
+        
+        .header h1 {
+            margin: 0;
+            font-size: 28px;
+            font-weight: 600;
+        }
+        
+        .main-layout {
+            display: flex;
+            min-height: calc(100vh - 80px);
+            gap: 0;
+        }
+        
+        .sidebar {
+            width: 280px;
+            background: white;
+            padding: 20px;
+            box-shadow: 2px 0 8px rgba(0,0,0,0.1);
+            overflow-y: auto;
+        }
+        
+        .sidebar h3 {
+            margin: 20px 0 10px 0;
+            color: #2c3e50;
+            font-size: 14px;
+            font-weight: 600;
+            text-transform: uppercase;
+            border-bottom: 2px solid #3498db;
+            padding-bottom: 8px;
+        }
+        
+        .filter-group {
+            margin-bottom: 20px;
+        }
+        
+        .filter-label {
+            display: block;
+            font-size: 12px;
+            font-weight: 600;
+            color: #34495e;
+            margin-bottom: 6px;
+        }
+        
+        select, input[type="date"] {
+            width: 100%;
+            padding: 8px 10px;
+            border: 1px solid #bdc3c7;
+            border-radius: 4px;
+            font-size: 12px;
+            background: white;
+            cursor: pointer;
+        }
+        
+        select:hover, input:hover {
+            border-color: #3498db;
+        }
+        
+        select:focus, input:focus {
+            outline: none;
+            border-color: #2980b9;
+            box-shadow: 0 0 0 3px rgba(52, 152, 219, 0.1);
+        }
+        
+        .filter-btn {
+            width: 100%;
+            padding: 10px;
+            background: linear-gradient(135deg, #27ae60 0%, #229954 100%);
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-weight: 600;
+            margin-top: 10px;
+            transition: all 0.3s;
+        }
+        
+        .filter-btn:hover {
+            background: linear-gradient(135deg, #229954 0%, #1e8449 100%);
+            transform: translateY(-2px);
+            box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+        }
+        
+        .clear-filters {
+            width: 100%;
+            padding: 8px;
+            background: #e74c3c;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 12px;
+            font-weight: 600;
+            margin-top: 5px;
+        }
+        
+        .content {
+            flex: 1;
+            padding: 20px;
+            overflow-y: auto;
+        }
+        
+        .card {
+            background: white;
+            border-radius: 8px;
+            padding: 20px;
+            margin-bottom: 20px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        }
+        
+        .card h2 {
+            margin-top: 0;
+            color: #2c3e50;
+            font-size: 18px;
+            border-bottom: 3px solid #3498db;
+            padding-bottom: 10px;
+        }
+        
+        .stats {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+        
+        .stat-card {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 20px;
+            border-radius: 8px;
+            text-align: center;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.15);
+        }
+        
+        .stat-card h3 {
+            margin: 0;
+            font-size: 32px;
+            font-weight: bold;
+        }
+        
+        .stat-card p {
+            margin: 8px 0 0 0;
+            font-size: 12px;
+            opacity: 0.95;
+        }
+        
+        .charts-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+        
+        .chart-container {
+            background: white;
+            border-radius: 8px;
+            padding: 15px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+            min-height: 350px;
+        }
+        
+        .chart-container h4 {
+            margin: 0 0 10px 0;
+            font-size: 14px;
+            color: #2c3e50;
+        }
+        
+        #dashboard {
+            height: 600px;
+        }
+        
+        .no-data {
+            text-align: center;
+            color: #7f8c8d;
+            padding: 40px;
+            font-size: 14px;
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>🎯 Bellona Raporlama Sistemi — EBA Bekleyen Süreçler</h1>
+    </div>
+    
+    <div class="main-layout">
+        <!-- SOL PANEL: FİLTRELER -->
+        <div class="sidebar">
+            <h3>🔍 Filtreler</h3>
+            
+            <div class="filter-group">
+                <label class="filter-label">Müdürlük</label>
+                <select id="filterMudurluk">
+                    <option value="">Tümü</option>
+                </select>
+            </div>
+            
+            <div class="filter-group">
+                <label class="filter-label">Direktörlük</label>
+                <select id="filterDirektorluk">
+                    <option value="">Tümü</option>
+                </select>
+            </div>
+            
+            <div class="filter-group">
+                <label class="filter-label">Çalışan Rolü</label>
+                <select id="filterRol">
+                    <option value="">Tümü</option>
+                    <option value="dolduran">Formu Dolduran</option>
+                    <option value="bekleten">Formu Bekleten</option>
+                </select>
+            </div>
+            
+            <div class="filter-group">
+                <label class="filter-label">Başlangıç Tarihi</label>
+                <input type="date" id="filterTarihBaslangic">
+            </div>
+            
+            <div class="filter-group">
+                <label class="filter-label">Bitiş Tarihi</label>
+                <input type="date" id="filterTarihBitis">
+            </div>
+            
+            <button class="filter-btn" onclick="applyFilters()">🔄 Filtrele</button>
+            <button class="clear-filters" onclick="clearFilters()">⊘ Temizle</button>
+        </div>
+        
+        <!-- SAĞ PANEL: VERİ VE GRAFİKLER -->
+        <div class="content">
+            <!-- İstatistikler -->
+            <div class="card">
+                <h2>📊 İstatistikler</h2>
+                <div class="stats">
+                    <div class="stat-card">
+                        <h3 id="totalRecords">-</h3>
+                        <p>Toplam Süreç</p>
+                    </div>
+                    <div class="stat-card" style="background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);">
+                        <h3 id="avgDays">-</h3>
+                        <p>Ortalama Bekleyen (Gün)</p>
+                    </div>
+                    <div class="stat-card" style="background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);">
+                        <h3 id="maxDays">-</h3>
+                        <p>En Uzun Bekleme (Gün)</p>
+                    </div>
+                    <div class="stat-card" style="background: linear-gradient(135deg, #fa709a 0%, #fee140 100%);">
+                        <h3 id="acilGun">-</h3>
+                        <p>Bugün Başlayan</p>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Grafikler -->
+            <div class="card">
+                <h2>📈 Grafikler</h2>
+                <div class="charts-grid">
+                    <div class="chart-container">
+                        <h4>Dağılım: Dolduran Kişiler</h4>
+                        <div id="pieChart" style="height:300px"></div>
+                    </div>
+                    <div class="chart-container">
+                        <h4>Dağılım: Bekleten Kişiler</h4>
+                        <div id="barChart" style="height:300px"></div>
+                    </div>
+                    <div class="chart-container">
+                        <h4>Bekleme Süresi Dağılımı (Gün)</h4>
+                        <p style="margin:6px 0 10px 0;color:#7f8c8d;font-size:13px">Bekleyen gün sayısının dağılımını gösterir. Bir çubuğa tıklayarak tabloyu ilgili aralığa filtreleyebilirsiniz.</p>
+                        <div id="lineChart" style="height:320px"></div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Tablo -->
+            <div class="card">
+                <h2>📋 Detaylı Liste</h2>
+                <div id="dashboard"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- jQuery (DevExpress cellTemplate uses $ in our code) -->
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js" integrity="sha256-/xUj+3OJ+Y3Q5Y2b8a2eYk6Q5KkN1Q9a2c7X+Y8m4vY=" crossorigin="anonymous"></script>
+    <!-- DevExpress JS -->
+    <script src="https://cdn3.devexpress.com/jslib/24.2.3/js/dx.all.js"></script>
+    
+    <script>
+        let currentDataGrid = null;
+        let allData = [];
+        const API_BASE = 'http://localhost:5000/api';
+        
+        // Sayfa yüklendiğinde
+        window.onload = function() {
+            loadAllData();
+        };
+        
+        // Tüm veriyi yükle
+        async function loadAllData() {
+            try {
+                const response = await fetch(`${API_BASE}/dashboard/data/bekleyen-surecler`);
+                allData = await response.json();
+                
+                // Filtreleri doldur
+                populateFilters();
+                
+                // Verileri göster
+                applyFilters();
+            } catch (error) {
+                console.error('Veri yükleme hatası:', error);
+                alert('Veri yüklenirken hata oluştu! API çalışıyor mu kontrol edin.');
+            }
+        }
+        
+        // Filtreleri doldur
+        function populateFilters() {
+            const mudurlukler = [...new Set(allData.map(d => d.MudurlukAdi).filter(Boolean))].sort();
+            const direktorlukler = [...new Set(allData.map(d => d.DirektorlukAdi).filter(Boolean))].sort();
+            
+            const mudSelect = document.getElementById('filterMudurluk');
+            const dirSelect = document.getElementById('filterDirektorluk');
+            
+            mudurlukler.forEach(m => {
+                const opt = document.createElement('option');
+                opt.value = m;
+                opt.text = m;
+                mudSelect.appendChild(opt);
+            });
+            
+            direktorlukler.forEach(d => {
+                const opt = document.createElement('option');
+                opt.value = d;
+                opt.text = d;
+                dirSelect.appendChild(opt);
+            });
+        }
+        
+        // Filtreleri uygula
+        function applyFilters() {
+            const mudurluk = document.getElementById('filterMudurluk').value;
+            const direktorluk = document.getElementById('filterDirektorluk').value;
+            const rol = document.getElementById('filterRol').value;
+            const tarihBas = document.getElementById('filterTarihBaslangic').value;
+            const tarihBit = document.getElementById('filterTarihBitis').value;
+            
+            let filtered = allData.filter(d => {
+                let match = true;
+                
+                if (mudurluk && d.MudurlukAdi !== mudurluk) match = false;
+                if (direktorluk && d.DirektorlukAdi !== direktorluk) match = false;
+                
+                if (tarihBas || tarihBit) {
+                    const dEklenmeTarihi = d.EklenmeTarihi ? new Date(d.EklenmeTarihi) : null;
+                    if (tarihBas && dEklenmeTarihi < new Date(tarihBas)) match = false;
+                    if (tarihBit && dEklenmeTarihi > new Date(tarihBit)) match = false;
+                }
+                
+                return match;
+            });
+            
+            // Veriyi göster
+            updateStats(filtered);
+            renderDataGrid(filtered);
+            loadCharts(filtered);
+        }
+        
+        // İstatistikleri güncelle
+        function updateStats(data) {
+            if (!data || data.length === 0) {
+                document.getElementById('totalRecords').textContent = '0';
+                document.getElementById('avgDays').textContent = '0';
+                document.getElementById('maxDays').textContent = '0';
+                document.getElementById('acilGun').textContent = '0';
+                return;
+            }
+            
+            const totalRecords = data.length;
+            const bekleyenGunler = data.map(d => d.BekleyenGun || 0);
+            const avgDays = Math.round(bekleyenGunler.reduce((a, b) => a + b, 0) / totalRecords);
+            const maxDays = Math.max(...bekleyenGunler);
+            
+            const bugun = new Date().toISOString().split('T')[0];
+            const acilBugun = data.filter(d => d.EklenmeTarihi && d.EklenmeTarihi.startsWith(bugun)).length;
+            
+            document.getElementById('totalRecords').textContent = totalRecords.toLocaleString('tr-TR');
+            document.getElementById('avgDays').textContent = avgDays;
+            document.getElementById('maxDays').textContent = maxDays;
+            document.getElementById('acilGun').textContent = acilBugun;
+        }
+        
+        // DevExpress DataGrid render
+        function renderDataGrid(data) {
+            if (currentDataGrid) {
+                currentDataGrid.dispose();
+            }
+            
+            const dashboardElement = document.getElementById('dashboard');
+            dashboardElement.innerHTML = '';
+            
+            if (data.length === 0) {
+                dashboardElement.innerHTML = '<div class="no-data">Seçili filtreler için veri bulunamadı</div>';
+                return;
+            }
+            
+            currentDataGrid = new DevExpress.ui.dxDataGrid(dashboardElement, {
+                dataSource: data,
+                showBorders: true,
+                showRowLines: true,
+                showColumnLines: true,
+                rowAlternationEnabled: true,
+                columnAutoWidth: false,
+                allowColumnReordering: true,
+                allowColumnResizing: true,
+                height: 600,
+                scrolling: { mode: 'standard' },
+                wordWrapEnabled: false,
+                columns: [
+                    { dataField: 'ID', caption: 'ID', width: 70 },
+                    { dataField: 'SurecNo', caption: 'Süreç No', width: 110, cellTemplate: function(container, options) {
+                        const v = options.value;
+                        const dv = document.createElement('div');
+                        dv.textContent = v || '-';
+                        container.appendChild(dv);
+                    } },
+                    { dataField: 'FormAdi', caption: 'Form', width: 220 },
+                    { dataField: 'FormuDolduran', caption: 'Dolduran', width: 140 },
+                    { dataField: 'FormuDolduranSicil', caption: 'Dolduran (Sicil)', width: 110 },
+                    { dataField: 'FormuDolduranSirketi', caption: 'Dolduran (Şirket)', width: 150 },
+                    { dataField: 'FormuBekleten', caption: 'Bekleten', width: 140 },
+                    { dataField: 'FormuBekletenSicil', caption: 'Bekleten (Sicil)', width: 110 },
+                    { dataField: 'FormuBekletenSirketi', caption: 'Bekleten (Şirket)', width: 150 },
+                    { dataField: 'BekleyenGun', caption: 'Bekleyen Gün', width: 100, dataType: 'number',
+                      cellTemplate: function(container, options) {
+                          const value = options.value || 0;
+                          const color = value > 30 ? '#e74c3c' : value > 15 ? '#f39c12' : '#27ae60';
+                          const dv = document.createElement('div');
+                          dv.style.color = color;
+                          dv.style.fontWeight = 'bold';
+                          dv.textContent = value;
+                          container.appendChild(dv);
+                      }
+                    },
+                    { dataField: 'MudurlukAdi', caption: 'Müdürlük', width: 160 },
+                    { dataField: 'DirektorlukAdi', caption: 'Direktörlük', width: 160 },
+                    { dataField: 'FormuGonderenBolum', caption: 'Gönderen Bölüm', width: 200 },
+                    { dataField: 'UserName', caption: 'UserName', width: 140 },
+                    { dataField: 'SurecBaslangicTarihi', caption: 'Süreç Başlangıç', width: 140, dataType: 'date' },
+                    { dataField: 'SurecBekleteneGelisTarihi', caption: 'Bekletene Geliş', width: 140, dataType: 'date' },
+                    { dataField: 'EklenmeTarihi', caption: 'Eklenme', width: 160, dataType: 'date' },
+                    { dataField: 'GuncellenmeTarihi', caption: 'Güncelleme', width: 160, dataType: 'date' }
+                ],
+                paging: { pageSize: 15 },
+                pager: { showPageSizeSelector: true, allowedPageSizes: [10, 15, 25, 50], showInfo: true },
+                filterRow: { visible: true },
+                headerFilter: { visible: true },
+                searchPanel: { visible: true, width: 240, placeholder: 'Ara...' },
+                groupPanel: { visible: true },
+                export: { enabled: true, fileName: 'Bekleyen_Surecler' },
+                columnChooser: { enabled: true, mode: 'select' },
+                loadPanel: { enabled: true },
+                summary: {
+                    totalItems: [
+                        { column: 'SurecNo', summaryType: 'count', displayFormat: 'Toplam: {0}' },
+                        { column: 'BekleyenGun', summaryType: 'avg', valueFormat: 'fixedPoint', displayFormat: 'Ortalama: {0} gün' }
+                    ]
+                }
+            });
+        }
+        
+        // Grafikleri yükle ve render
+        async function loadCharts(data) {
+            try {
+                renderPieChart(data);
+                renderBarChart(data);
+                renderLineChart(data);
+            } catch (err) {
+                console.warn('Grafik render hatası', err);
+            }
+        }
+        
+        function renderPieChart(data) {
+            try {
+                const grouped = data
+                    .reduce((acc, d) => {
+                        const key = d.FormuDolduranSirketi || d.FormuDolduranSicil || 'Bilinmiyor';
+                        const existing = acc.find(x => x.category === key);
+                        if (existing) existing.value++;
+                        else acc.push({ category: key, value: 1 });
+                        return acc;
+                    }, [])
+                    .sort((a, b) => b.value - a.value)
+                    .slice(0, 10);
+
+                new DevExpress.viz.dxPieChart(document.getElementById('pieChart'), {
+                    dataSource: grouped,
+                    series: [{ argumentField: 'category', valueField: 'value', label: { visible: true, connector: { visible: true } } }],
+                    tooltip: { enabled: true, contentTemplate: d => `${d.argumentText}: ${d.value}` }
+                });
+            } catch (e) {
+                console.warn('Pie chart error', e);
+            }
+        }
+        
+        function renderBarChart(data) {
+            try {
+                const grouped = data
+                    .reduce((acc, d) => {
+                        const key = d.FormuBekletenSirketi || d.FormuBekletenSicil || 'Bilinmiyor';
+                        const existing = acc.find(x => x.category === key);
+                        if (existing) existing.value++;
+                        else acc.push({ category: key, value: 1 });
+                        return acc;
+                    }, [])
+                    .sort((a, b) => b.value - a.value)
+                    .slice(0, 15);
+
+                new DevExpress.viz.dxChart(document.getElementById('barChart'), {
+                    dataSource: grouped,
+                    commonSeriesSettings: { argumentField: 'category', valueField: 'value', type: 'bar' },
+                    series: [{}],
+                    legend: { visible: false },
+                    tooltip: { enabled: true }
+                });
+            } catch (e) {
+                console.warn('Bar chart error', e);
+            }
+        }
+        
+        // Yeni: Bekleyen gün histogram / dağılımı. Tarih verileri yoksa da dağılım anlamlı gösterir.
+        function renderLineChart(data) {
+            try {
+                const buckets = [
+                    { key: '0-7', min: 0, max: 7 },
+                    { key: '8-15', min: 8, max: 15 },
+                    { key: '16-30', min: 16, max: 30 },
+                    { key: '31-60', min: 31, max: 60 },
+                    { key: '61-180', min: 61, max: 180 },
+                    { key: '>180', min: 181, max: Infinity }
+                ];
+
+                const grouped = buckets.map(b => ({ bucket: b.key, count: 0, sum: 0, min: b.min, max: b.max }));
+
+                data.forEach(d => {
+                    const v = Number(d.BekleyenGun) || 0;
+                    const b = grouped.find(x => v >= x.min && v <= x.max);
+                    if (b) { b.count++; b.sum += v; }
+                });
+
+                const ds = grouped.map(g => ({ bucket: g.bucket, count: g.count, avg: g.count ? Math.round(g.sum / g.count) : 0 }));
+
+                // Eğer tüm bucket'lar sıfırsa bilgi göster
+                const allZero = ds.every(x => x.count === 0);
+                if (allZero) {
+                    document.getElementById('lineChart').innerHTML = '<div class="no-data">Bekleyen gün verisi yetersiz</div>';
+                    return;
+                }
+
+                new DevExpress.viz.dxChart(document.getElementById('lineChart'), {
+                    dataSource: ds,
+                    commonSeriesSettings: { argumentField: 'bucket', valueField: 'count', type: 'bar' },
+                    series: [{}],
+                    legend: { visible: false },
+                    tooltip: { enabled: true, customizeTooltip: function(arg) {
+                        const d = arg.point.data;
+                        return { html: `<div style="padding:6px"><strong>${d.bucket}</strong><br/>Adet: ${d.count}<br/>Ortalama Bekleyen: ${d.avg} gün</div>` };
+                    }},
+                    onPointClick: function(e) {
+                        const bucket = e.target.data.bucket;
+                        applyBucketFilter(bucket);
+                    }
+                });
+            } catch (e) {
+                console.warn('Histogram chart error', e);
+            }
+        }
+
+        // Bir histogram bucket'ına tıklanınca tabloyu filtreler
+        function applyBucketFilter(bucketKey) {
+            const ranges = {
+                '0-7': [0,7], '8-15': [8,15], '16-30': [16,30], '31-60': [31,60], '61-180': [61,180], '>180': [181, Number.MAX_SAFE_INTEGER]
+            };
+            const range = ranges[bucketKey];
+            if (!range) return;
+
+            const filtered = allData.filter(d => {
+                const v = Number(d.BekleyenGun) || 0;
+                return v >= range[0] && v <= range[1];
+            });
+
+            // Görüntüyü güncelle
+            updateStats(filtered);
+            renderDataGrid(filtered);
+            // Ayrıca grafikleri de güncelle (seçili bucket içinde diğer grafikleri görmek için)
+            loadCharts(filtered);
+        }
+        
+        // Filtreleri temizle
+        function clearFilters() {
+            document.getElementById('filterMudurluk').value = '';
+            document.getElementById('filterDirektorluk').value = '';
+            document.getElementById('filterRol').value = '';
+            document.getElementById('filterTarihBaslangic').value = '';
+            document.getElementById('filterTarihBitis').value = '';
+            applyFilters();
+        }
+    </script>
+</body>
+</html>
+

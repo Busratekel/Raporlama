@@ -1,0 +1,73 @@
+## Visual Studio
+.vs/
+*.user
+*.suo
+bin/
+obj/
+
+## Rider
+.idea/
+
+## Build
+[Dd]ebug/
+[Rr]elease/
+
+## NuGet
+*.nupkg
+packages/
+
+## Environment
+.env
+appsettings.Development.json
+appsettings.Production.json
+
+# Additional ignores for security and cleanliness
+# Ignore local configuration and secrets
+secrets.json
+**/appsettings*.json
+
+# Logs
+**/logs/
+*.log
+
+# Dotnet artifacts
+artifacts/
+publish/
+runtimes/
+
+# VS Code
+.vscode/
+
+# Certificates and keys
+*.pfx
+*.key
+*.pem
+
+# Database files
+*.db
+*.sqlite
+
+# OS generated
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+
+# PowerShell history
+ConsoleHost_history.txt
+
+# Coverage and test results
+coverage/
+*.coverage
+*.coveragexml
+
+# Temporary files
+*.tmp
+*.temp
+
+# Ignore build outputs in solution-level and subfolders
+**/bin/
+**/obj/
+
+# Ignore ETL logs
+src/Raporlama.ETL/logs/
+
