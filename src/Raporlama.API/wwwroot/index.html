@@ -9,6 +9,22 @@
     <link rel="stylesheet" href="https://cdn3.devexpress.com/jslib/24.2.3/css/dx.light.css" />
     
     <style>
+                                /* DataGrid pager (sayfa numaraları) için beyaz tema */
+                                .dx-datagrid .dx-pager {
+                                    background: #fff !important;
+                                    color: #181A20 !important;
+                                    border-radius: 0 0 8px 8px;
+                                }
+                                .dx-datagrid .dx-pager .dx-page, 
+                                .dx-datagrid .dx-pager .dx-page-size, 
+                                .dx-datagrid .dx-pager .dx-info {
+                                    background: #fff !important;
+                                    color: #181A20 !important;
+                                }
+                                .dx-datagrid .dx-pager .dx-selection {
+                                    background: #00eaff !important;
+                                    color: #181A20 !important;
+                                }
                         /* Filtre alanları ve sidebar için responsive ve kutu gibi görünüm */
                         .sidebar {
                             margin-top: auto;
@@ -302,12 +318,12 @@
                         <p>Ortalama Bekleyen (Gün)</p>
                     </div>
                     <div class="stat-card" style="background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);">
-                        <h3 id="maxDays">-</h3>
-                        <p>En Uzun Bekleme (Gün)</p>
+                        <h3 id="maxDays" style="color:#181A20;text-shadow:0 2px 8px #fff,0 0 2px #00f2fe;font-weight:bold;">-</h3>
+                        <p style="color:#181A20;font-weight:600;text-shadow:0 1px 4px #fff;">En Uzun Bekleme (Gün)</p>
                     </div>
                     <div class="stat-card" style="background: linear-gradient(135deg, #fa709a 0%, #fee140 100%);">
-                        <h3 id="acilGun">-</h3>
-                        <p>Bugün Başlayan</p>
+                        <h3 id="acilGun" style="color:#181A20;text-shadow:0 2px 8px #fff,0 0 2px #00f2fe;font-weight:bold;">-</h3>
+                        <p style="color:#181A20;font-weight:600;text-shadow:0 1px 4px #fff;">Bugün Başlayan</p>
                     </div>
                 </div>
             </div>
@@ -325,17 +341,17 @@
                         <div id="pieChartBekleten" style="height:300px"></div>
                     </div>
                     <div class="chart-container">
+                        <h4>Bekleme Süresi Dağılımı (Gün)</h4>
+                        <p style="margin:6px 0 10px 0;color:#7f8c8d;font-size:13px">Bekleyen gün sayısının dağılımını gösterir. Bir çubuğa tıklayarak tabloyu ilgili aralığa filtreleyebilirsiniz.</p>
+                        <div id="lineChart" style="height:320px"></div>
+                    </div>
+                    <div class="chart-container">
                         <h4>Kişilere Göre Dolduran</h4>
                         <div id="personChartDolduran" style="height:300px"></div>
                     </div>
                     <div class="chart-container">
                         <h4>Kişilere Göre Bekleten</h4>
                         <div id="personChartBekleten" style="height:300px"></div>
-                    </div>
-                    <div class="chart-container">
-                        <h4>Bekleme Süresi Dağılımı (Gün)</h4>
-                        <p style="margin:6px 0 10px 0;color:#7f8c8d;font-size:13px">Bekleyen gün sayısının dağılımını gösterir. Bir çubuğa tıklayarak tabloyu ilgili aralığa filtreleyebilirsiniz.</p>
-                        <div id="lineChart" style="height:320px"></div>
                     </div>
                 </div>
             </div>
@@ -409,7 +425,6 @@
             });
         }
         
-        // Filtreleri uygula
         function applyFilters() {
             const mudurluk = document.getElementById('filterMudurluk').value;
             const direktorluk = document.getElementById('filterDirektorluk').value;
@@ -424,9 +439,12 @@
                 if (direktorluk && d.DirektorlukAdi !== direktorluk) match = false;
                 
                 if (tarihBas || tarihBit) {
-                    const dEklenmeTarihi = d.EklenmeTarihi ? new Date(d.EklenmeTarihi) : null;
-                    if (tarihBas && dEklenmeTarihi < new Date(tarihBas)) match = false;
-                    if (tarihBit && dEklenmeTarihi > new Date(tarihBit)) match = false;
+                    // Tarihleri Date nesnesi ile karşılaştır
+                    const dEklenmeTarihi = d.EklenmeTarihi ? new Date(d.EklenmeTarihi.substring(0,10)) : null;
+                    const basDate = tarihBas ? new Date(tarihBas) : null;
+                    const bitDate = tarihBit ? new Date(tarihBit) : null;
+                    if (basDate && dEklenmeTarihi && dEklenmeTarihi < basDate) match = false;
+                    if (bitDate && dEklenmeTarihi && dEklenmeTarihi > bitDate) match = false;
                 }
                 
                 // Drill-down filtreleri: seçili kişilere göre filtrele
@@ -551,8 +569,6 @@
                     { dataField: 'UserName', caption: 'UserName', width: 140 },
                     { dataField: 'SurecBaslangicTarihi', caption: 'Süreç Başlangıç', width: 140, dataType: 'date' },
                     { dataField: 'SurecBekleteneGelisTarihi', caption: 'Bekletene Geliş', width: 140, dataType: 'date' },
-                    { dataField: 'EklenmeTarihi', caption: 'Eklenme', width: 160, dataType: 'date' },
-                    { dataField: 'GuncellenmeTarihi', caption: 'Güncelleme', width: 160, dataType: 'date' }
                 ],
                 paging: { pageSize: 15 },
                 pager: { showPageSizeSelector: true, allowedPageSizes: [10, 15, 25, 50], showInfo: true },

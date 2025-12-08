@@ -110,3 +110,4 @@ Sistem çalışıyor! 3656 kayıt VIEW'dan Fact tablosuna kopyalandı ve API üz
 
 
 
+

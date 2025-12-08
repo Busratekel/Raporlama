@@ -74,16 +74,19 @@ public class ETLService
 
         try
         {
-            // KAYNAK: SQL sorguları artık config'ten okunuyor; appsettings.json içindeki ETL:Queries altını düzenleyin.
-            _logger.LogInformation("ETL: BekleyenSurecler sorgusu config'ten okunuyor...");
-            var bekleyenQuery = _configuration["ETL:Queries:BekleyenSurecler"];
+            // SorguTanimi tablosundan dinamik sorgu çek
+            var sorguKaydi = await hedefConn.QueryFirstOrDefaultAsync<dynamic>(
+                "SELECT TOP 1 SorguMetni FROM SorguTanimi WHERE SorguAdi = @adi AND Aktif = 1 ORDER BY Id DESC",
+                new { adi = "BekleyenSurecler" });
+            var bekleyenQuery = (string)sorguKaydi?.SorguMetni;
             if (string.IsNullOrWhiteSpace(bekleyenQuery))
             {
-                _logger.LogWarning("ETL: BekleyenSurecler sorgusu config'te tanımlı değil, varsayılan kullanılacak.");
-                bekleyenQuery = @"SELECT TOP (1000) [Süreç No] as SurecNo, [Form Adı] as FormAdi, [Formu Dolduran Sicil] as FormuDolduranSicil, [Formu Dolduran] as FormuDolduran, [Formu Gönderen Bölüm] as FormuGonderenBolum, [Formu Bekleten Sicil] as FormuBekletenSicil, [Formu Bekleten] as FormuBekleten, [Formu Bekleten Bölüm] as FormuBekletenBolum, [Süreç Başlangıç Tarihi] as SurecBaslangicTarihi, [Süreç Bekletene Geliş Tarihi] as SurecBekleteneGelisTarihi, [Bekleyen Gün] as BekleyenGun, [UserName] as UserName, [Mudurluk_Adi] as MudurlukAdi, [Direktorluk_Adi] as DirektorlukAdi FROM [BoytasWH].[dbo].[View_eBABekleyen]";
+                throw new Exception("ETL: SorguTanimi tablosunda aktif BekleyenSurecler sorgusu bulunamadı!");
             }
 
-            var bekleyenSurecler = (await kaynakConn.QueryAsync<dynamic>(bekleyenQuery)).ToList();
+            _logger.LogInformation("[ETL] Çalıştırılacak sorgu:\n{Sorgu}", bekleyenQuery);
+
+            var bekleyenSurecler = (await kaynakConn.QueryAsync<dynamic>(bekleyenQuery, null, null, null, System.Data.CommandType.Text)).ToList();
 
             _logger.LogInformation("Çekilen kayıt sayısı: {Count}", bekleyenSurecler.Count);
 
@@ -103,7 +106,15 @@ public class ETLService
             for (int i = 0; i < bekleyenSurecler.Count; i += batchSize)
             {
                 var batch = bekleyenSurecler.Skip(i).Take(batchSize).ToList();
-                
+
+                // Log: Süreç Başlangıç ve Bekletene Geliş tarihleri
+                foreach (var surec in batch)
+                {
+                    var baslangic = surec.SurecBaslangicTarihi;
+                    var gelis = surec.SurecBekleteneGelisTarihi;
+                    _logger.LogInformation($"[ETL] SurecNo: {surec.SurecNo}, SurecBaslangicTarihi: {baslangic}, SurecBekleteneGelisTarihi: {gelis}");
+                }
+
                 await hedefConn.ExecuteAsync(@"
                     INSERT INTO Fact_BekleyenSurecler (
                         SurecNo, FormAdi,
