@@ -74,14 +74,19 @@ public class ETLService
 
         try
         {
-            // SorguTanimi tablosundan dinamik sorgu çek
-            var sorguKaydi = await hedefConn.QueryFirstOrDefaultAsync<dynamic>(
-                "SELECT TOP 1 SorguMetni FROM SorguTanimi WHERE SorguAdi = @adi AND Aktif = 1 ORDER BY Id DESC",
-                new { adi = "BekleyenSurecler" });
-            var bekleyenQuery = (string)sorguKaydi?.SorguMetni;
+            // Önce appsettings.json'dan sorguyu oku
+            var bekleyenQuery = _configuration["ETL:Queries:BekleyenSurecler"];
             if (string.IsNullOrWhiteSpace(bekleyenQuery))
             {
-                throw new Exception("ETL: SorguTanimi tablosunda aktif BekleyenSurecler sorgusu bulunamadı!");
+                // Sorgu yoksa SorguTanimi tablosundan dinamik sorgu çek
+                var sorguKaydi = await hedefConn.QueryFirstOrDefaultAsync<dynamic>(
+                    "SELECT TOP 1 SorguMetni FROM SorguTanimi WHERE SorguAdi = @adi AND Aktif = 1 ORDER BY Id DESC",
+                    new { adi = "BekleyenSurecler" });
+                bekleyenQuery = (string)sorguKaydi?.SorguMetni;
+                if (string.IsNullOrWhiteSpace(bekleyenQuery))
+                {
+                    throw new Exception("ETL: appsettings veya SorguTanimi tablosunda aktif BekleyenSurecler sorgusu bulunamadı!");
+                }
             }
 
             _logger.LogInformation("[ETL] Çalıştırılacak sorgu:\n{Sorgu}", bekleyenQuery);
@@ -132,7 +137,6 @@ public class ETLService
                     )
                 ", batch.Select((surec, idx) => new
                 {
-                    // Eğer kaynakta SurecNo yoksa benzersiz bir fallback oluşturuyoruz: FormAdi + sıraNumarası
                     SurecNo = (surec.SurecNo as string) ?? ($"{(surec.FormAdi as string ?? "FORM")}_{i + idx + 1}"),
                     FormAdi = surec.FormAdi as string,
                     FormuDolduranSicil = surec.FormuDolduranSicil as string,
@@ -143,13 +147,22 @@ public class ETLService
                     FormuBekleten = surec.FormuBekleten as string,
                     FormuBekletenSirketi = surec.FormuBekletenSirketi as string,
                     FormuBekletenBolum = surec.FormuBekletenBolum as string,
-                    SurecBaslangicTarihi = surec.SurecBaslangicTarihi as DateTime?,
-                    SurecBekleteneGelisTarihi = surec.SurecBekleteneGelisTarihi as DateTime?,
+                    SurecBaslangicTarihi = ParseDate(surec.SurecBaslangicTarihi),
+                    SurecBekleteneGelisTarihi = ParseDate(surec.SurecBekleteneGelisTarihi),
                     BekleyenGun = surec.BekleyenGun as int?,
                     UserName = surec.UserName as string,
                     MudurlukAdi = surec.MudurlukAdi as string,
                     DirektorlukAdi = surec.DirektorlukAdi as string
                 }));
+
+                // Yardımcı fonksiyon: string'den DateTime'a  dönüştrme
+                DateTime? ParseDate(object value)
+                {
+                    if (value == null) return null;
+                    if (value is DateTime dt) return dt;
+                    if (value is string s && DateTime.TryParse(s, out var result)) return result;
+                    return null;
+                }
 
                 totalInserted += batch.Count;
                 _logger.LogInformation("Batch işlendi: {Inserted}/{Total}", totalInserted, bekleyenSurecler.Count);

@@ -86,7 +86,6 @@ namespace Raporlama.API.Controllers
             return rows;
         }
 
-        // --- Chart conversion helpers ---
         private object ConvertToPieChart(DataTable dt, string[] groupColumnCandidates)
         {
             var rows = dt.Rows.Cast<DataRow>();

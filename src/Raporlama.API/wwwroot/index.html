@@ -334,24 +334,67 @@
                 <div class="charts-grid">
                     <div class="chart-container">
                         <h4>DOLDURAN İŞLETMELER</h4>
+                        <select id="chartTypeDolduran" onchange="loadCharts(allData)">
+                            <option value="pie">Pasta</option>
+                            <option value="bar">Çubuk</option>
+                            <option value="line">Çizgi</option>
+                        </select>
                         <div id="pieChart" style="height:300px"></div>
                     </div>
                     <div class="chart-container">
                         <h4>BEKLETEN İŞLETMELER</h4>
+                        <select id="chartTypeBekleten" onchange="loadCharts(allData)">
+                            <option value="pie">Pasta</option>
+                            <option value="bar">Çubuk</option>
+                            <option value="line">Çizgi</option>
+                        </select>
                         <div id="pieChartBekleten" style="height:300px"></div>
                     </div>
                     <div class="chart-container">
                         <h4>Bekleme Süresi Dağılımı (Gün)</h4>
+                        <select id="chartTypeBekleme" onchange="loadCharts(allData)">
+                            <option value="bar">Çubuk</option>
+                            <option value="pie">Pasta</option>
+                            <option value="line">Çizgi</option>
+                        </select>
                         <p style="margin:6px 0 10px 0;color:#7f8c8d;font-size:13px">Bekleyen gün sayısının dağılımını gösterir. Bir çubuğa tıklayarak tabloyu ilgili aralığa filtreleyebilirsiniz.</p>
                         <div id="lineChart" style="height:320px"></div>
                     </div>
                     <div class="chart-container">
                         <h4>Kişilere Göre Dolduran</h4>
+                        <select id="chartTypePersonDolduran" onchange="loadCharts(allData)">
+                            <option value="bar">Çubuk</option>
+                            <option value="pie">Pasta</option>
+                            <option value="line">Çizgi</option>
+                        </select>
                         <div id="personChartDolduran" style="height:300px"></div>
                     </div>
                     <div class="chart-container">
                         <h4>Kişilere Göre Bekleten</h4>
+                        <select id="chartTypePersonBekleten" onchange="loadCharts(allData)">
+                            <option value="bar">Çubuk</option>
+                            <option value="pie">Pasta</option>
+                            <option value="line">Çizgi</option>
+                        </select>
                         <div id="personChartBekleten" style="height:300px"></div>
+                    </div>
+                    <div class="chart-container">
+                        <h4>MÜDÜRLÜKLERE GÖRE DAĞILIM</h4>
+                        <select id="chartTypeMudurluk" onchange="loadCharts(allData)">
+                            <option value="pie">Pasta</option>
+                            <option value="bar">Çubuk</option>
+                            <option value="line">Çizgi</option>
+                        </select>
+                        <div id="mudurlukChart" style="height:300px"></div>
+                    </div>
+                    <div class="chart-container">
+                        <h4>FORMLARA GÖRE DAĞILIM</h4>
+                        <select id="chartTypeForm" onchange="loadCharts(allData)">
+                            <option value="pie">Pasta</option>
+                            <option value="bar">Çubuk</option>
+                            <option value="line">Çizgi</option>
+                        </select>
+                        <div id="formChart" style="height:300px"></div>
                     </div>
                 </div>
             </div>
@@ -377,7 +420,7 @@
     <script>
         let currentDataGrid = null;
         let allData = [];
-        let filterState = { dolduranKisi: null, bekletenKisi: null, bucket: null };
+        let filterState = { dolduranKisi: null, bekletenKisi: null, bucket: null, mudurluk: null, form: null };
         const API_BASE = 'http://localhost:5000/api';
         
         // Sayfa yüklendiğinde
@@ -458,6 +501,12 @@
                     if (bekletenKey !== filterState.bekletenKisi) match = false;
                 }
                 
+                if (filterState.mudurluk) {
+                    if (d.MudurlukAdi !== filterState.mudurluk) match = false;
+                }
+                if (filterState.form) {
+                    if (d.FormAdi !== filterState.form) match = false;
+                }
                 if (filterState.bucket) {
                     const ranges = {
                         '0-7': [0,7], '8-15': [8,15], '16-30': [16,30], '31-60': [31,60], '61-180': [61,180], '>180': [181, Number.MAX_SAFE_INTEGER]
@@ -591,17 +640,26 @@
         // Grafikleri yükle ve render
         async function loadCharts(data) {
             try {
-                renderPieChart(data);
-                renderBarChart(data);
-                renderLineChart(data);
-                renderPersonChartDolduran(data);
-                renderPersonChartBekleten(data);
+                const typeDolduran = document.getElementById('chartTypeDolduran')?.value || 'pie';
+                const typeBekleten = document.getElementById('chartTypeBekleten')?.value || 'pie';
+                const typeMudurluk = document.getElementById('chartTypeMudurluk')?.value || 'pie';
+                const typeForm = document.getElementById('chartTypeForm')?.value || 'pie';
+                const typeBekleme = document.getElementById('chartTypeBekleme')?.value || 'bar';
+                const typePersonDolduran = document.getElementById('chartTypePersonDolduran')?.value || 'bar';
+                const typePersonBekleten = document.getElementById('chartTypePersonBekleten')?.value || 'bar';
+                renderPieChart(data, typeDolduran);
+                renderBarChart(data, typeBekleten);
+                renderMudurlukChart(data, typeMudurluk);
+                renderFormChart(data, typeForm);
+                renderLineChart(data, typeBekleme);
+                renderPersonChartDolduran(data, typePersonDolduran);
+                renderPersonChartBekleten(data, typePersonBekleten);
             } catch (err) {
                 console.warn('Grafik render hatası', err);
             }
         }
         
-        function renderPieChart(data) {
+        function renderPieChart(data, chartType) {
             try {
                 const grouped = data
                     .reduce((acc, d) => {
@@ -614,23 +672,41 @@
                     .sort((a, b) => b.value - a.value)
                     .slice(0, 10);
 
-                new DevExpress.viz.dxPieChart(document.getElementById('pieChart'), {
-                    dataSource: grouped,
-                    series: [{ argumentField: 'category', valueField: 'value', label: { visible: true, connector: { visible: true } } }],
-                    tooltip: { enabled: true, contentTemplate: d => `${d.argumentText}: ${d.value}` },
-                    onPointClick: function(e) {
-                        const category = e.target.originalArgument;
-                        filterState.dolduranKisi = category;
-                        applyFilters();
-                        showDetailPanel('dolduran', category);
-                    }
-                });
+                if (chartType === 'pie') {
+                    new DevExpress.viz.dxPieChart(document.getElementById('pieChart'), {
+                        dataSource: grouped,
+                        series: [{ argumentField: 'category', valueField: 'value', label: { visible: true, connector: { visible: true } } }],
+                        tooltip: { enabled: true, contentTemplate: d => `${d.argumentText}: ${d.value}` },
+                        legend: { visible: grouped.length <= 7 },
+                        onPointClick: function(e) {
+                            const category = e.target.originalArgument;
+                            filterState.dolduranKisi = category;
+                            applyFilters();
+                        }
+                    });
+                } else {
+                    new DevExpress.viz.dxChart(document.getElementById('pieChart'), {
+                        dataSource: grouped,
+                        series: [{
+                            argumentField: 'category',
+                            valueField: 'value',
+                            type: chartType,
+                            color: '#00eaff',
+                            label: { visible: true, font: { color: '#fff', size: 14 }, backgroundColor: 'rgba(0,0,0,0.7)', customizeText: function(arg) { return arg.valueText; } }
+                        }],
+                        argumentAxis: { label: { font: { color: '#fff', size: 13 } }, color: '#444' },
+                        valueAxis: { label: { font: { color: '#fff', size: 13 } }, color: '#444' },
+                        tooltip: { enabled: true, customizeTooltip: function(arg) { return { text: `${arg.argumentText}: ${arg.valueText}` }; } },
+                        palette: ['#00eaff', '#00bfae', '#0081a7', '#005f73'],
+                        legend: { visible: false },
+                    });
+                }
             } catch (e) {
                 console.warn('Pie chart error', e);
             }
         }
         
-        function renderBarChart(data) {
+        function renderBarChart(data, chartType) {
             try {
                 const grouped = data
                     .reduce((acc, d) => {
@@ -643,154 +719,80 @@
                     .sort((a, b) => b.value - a.value)
                     .slice(0, 15);
 
-                new DevExpress.viz.dxPieChart(document.getElementById('pieChartBekleten'), {
-                    dataSource: grouped,
-                    series: [{ argumentField: 'category', valueField: 'value', label: { visible: true, connector: { visible: true } } }],
-                    tooltip: { enabled: true, contentTemplate: d => `${d.argumentText}: ${d.value}` },
-                    onPointClick: function(e) {
-                        const category = e.target.originalArgument;
-                        filterState.bekletenKisi = category;
-                        applyFilters();
-                        showDetailPanel('bekleten', category);
-                    }
-                });
+                if (chartType === 'pie') {
+                    new DevExpress.viz.dxPieChart(document.getElementById('pieChartBekleten'), {
+                        dataSource: grouped,
+                        series: [{ argumentField: 'category', valueField: 'value', label: { visible: true, connector: { visible: true } } }],
+                        tooltip: { enabled: true, contentTemplate: d => `${d.argumentText}: ${d.value}` },
+                        legend: { visible: grouped.length <= 7 },
+                        onPointClick: function(e) {
+                            const category = e.target.originalArgument;
+                            filterState.bekletenKisi = category;
+                            applyFilters();
+                        }
+                    });
+                } else {
+                    new DevExpress.viz.dxChart(document.getElementById('pieChartBekleten'), {
+                        dataSource: grouped,
+                        series: [{
+                            argumentField: 'category',
+                            valueField: 'value',
+                            type: chartType,
+                            color: '#ff9800',
+                            label: { visible: true, font: { color: '#fff', size: 14 }, backgroundColor: 'rgba(0,0,0,0.7)', customizeText: function(arg) { return arg.valueText; } }
+                        }],
+                        argumentAxis: { label: { font: { color: '#fff', size: 13 } }, color: '#444' },
+                        valueAxis: { label: { font: { color: '#fff', size: 13 } }, color: '#444' },
+                        tooltip: { enabled: true, customizeTooltip: function(arg) { return { text: `${arg.argumentText}: ${arg.valueText}` }; } },
+                        palette: ['#ff9800', '#ffb300', '#ff6f00', '#c43e00'],
+                        legend: { visible: false },
+                    });
+                }
             } catch (e) {
                 console.warn('Bekleten pie chart error', e);
             }
         }
         
-        // Yeni: Bekleyen gün histogram / dağılımı. Tarih verileri yoksa da dağılım anlamlı gösterir.
-                // Kişilere göre dolduran chart
-                function renderPersonChartDolduran(data) {
-                    try {
-                        const grouped = data
-                            .reduce((acc, d) => {
-                                const key = d.FormuDolduran || 'Bilinmiyor';
-                                const existing = acc.find(x => x.category === key);
-                                if (existing) existing.value++;
-                                else acc.push({ category: key, value: 1 });
-                                return acc;
-                            }, [])
-                            .sort((a, b) => b.value - a.value)
-                            .slice(0, 15);
-                        new DevExpress.viz.dxChart(document.getElementById('personChartDolduran'), {
-                            dataSource: grouped,
-                            rotated: true,
-                            animation: { enabled: true, duration: 800, easing: 'easeOutCubic' },
-                            series: [{
-                                argumentField: 'category',
-                                valueField: 'value',
-                                type: 'bar',
-                                color: '#00eaff',
-                                label: {
-                                    visible: true,
-                                    font: { color: '#fff', size: 14 },
-                                    backgroundColor: 'rgba(0,0,0,0.7)',
-                                    customizeText: function(arg) { return arg.valueText; }
-                                }
-                            }],
-                            argumentAxis: {
-                                label: { font: { color: '#fff', size: 13 } },
-                                color: '#444',
-                            },
-                            valueAxis: {
-                                label: { font: { color: '#fff', size: 13 } },
-                                color: '#444',
-                            },
-                            tooltip: {
-                                enabled: true,
-                                customizeTooltip: function(arg) {
-                                    return { text: `${arg.argumentText}: ${arg.valueText}` };
-                                }
-                            },
-                            palette: ['#00eaff', '#00bfae', '#0081a7', '#005f73'],
-                            legend: { visible: false },
-                        });
-                    } catch (e) {
-                        console.warn('Kişilere göre dolduran chart error', e);
+        // Kişilere göre dolduran chart
+        function renderPersonChartDolduran(data, chartType) {
+        try {
+            const chartElem = document.getElementById('personChartDolduran');
+            if (chartElem) chartElem.innerHTML = "";
+            if (!data || data.length === 0) {
+                return;
+            }
+            const grouped = data
+                .reduce((acc, d) => {
+                    const key = d.FormuDolduran || 'Bilinmiyor';
+                    const existing = acc.find(x => x.category === key);
+                    if (existing) existing.value++;
+                    else acc.push({ category: key, value: 1 });
+                    return acc;
+                }, [])
+                .sort((a, b) => b.value - a.value)
+                .slice(0, 15);
+            if (chartType === 'pie') {
+                new DevExpress.viz.dxPieChart(chartElem, {
+                    dataSource: grouped,
+                    series: [{ argumentField: 'category', valueField: 'value', label: { visible: true, connector: { visible: true } } }],
+                    tooltip: { enabled: true, contentTemplate: d => `${d.argumentText}: ${d.value}` },
+                    legend: { visible: grouped.length <= 7 },
+                    onPointClick: function(e) {
+                        const category = e.target.originalArgument;
+                        filterState.dolduranKisi = category;
+                        applyFilters();
                     }
-                }
-
-                // Kişilere göre bekleten chart
-                function renderPersonChartBekleten(data) {
-                    try {
-                        const grouped = data
-                            .reduce((acc, d) => {
-                                const key = d.FormuBekleten || 'Bilinmiyor';
-                                const existing = acc.find(x => x.category === key);
-                                if (existing) existing.value++;
-                                else acc.push({ category: key, value: 1 });
-                                return acc;
-                            }, [])
-                            .sort((a, b) => b.value - a.value)
-                            .slice(0, 15);
-                        new DevExpress.viz.dxChart(document.getElementById('personChartBekleten'), {
-                            dataSource: grouped,
-                            rotated: true,
-                            animation: { enabled: true, duration: 800, easing: 'easeOutCubic' },
-                            series: [{
-                                argumentField: 'category',
-                                valueField: 'value',
-                                type: 'bar',
-                                color: '#ff9800',
-                                label: {
-                                    visible: true,
-                                    font: { color: '#fff', size: 14 },
-                                    backgroundColor: 'rgba(0,0,0,0.7)',
-                                    customizeText: function(arg) { return arg.valueText; }
-                                }
-                            }],
-                            argumentAxis: {
-                                label: { font: { color: '#fff', size: 13 } },
-                                color: '#444',
-                            },
-                            valueAxis: {
-                                label: { font: { color: '#fff', size: 13 } },
-                                color: '#444',
-                            },
-                            tooltip: {
-                                enabled: true,
-                                customizeTooltip: function(arg) {
-                                    return { text: `${arg.argumentText}: ${arg.valueText}` };
-                                }
-                            },
-                            palette: ['#ff9800', '#ffb300', '#ff6f00', '#c43e00'],
-                            legend: { visible: false },
-                        });
-                    } catch (e) {
-                        console.warn('Kişilere göre bekleten chart error', e);
-                    }
-                }
-        function renderLineChart(data) {
-            try {
-                const buckets = [
-                    { key: '0-7', min: 0, max: 7 },
-                    { key: '16-30', min: 16, max: 30 },
-                    { key: '31-60', min: 31, max: 60 },
-                    { key: '61-180', min: 61, max: 180 },
-                    { key: '>180', min: 181, max: Infinity }
-                ];
-
-
-                // Bucket'lara göre dağıtım
-                const grouped = buckets.map(b => ({ bucket: b.key, count: 0, min: b.min, max: b.max }));
-                (data || []).forEach(d => {
-                    const gun = Number(d.BekleyenGun) || 0;
-                    const bucket = grouped.find(b => gun >= b.min && gun <= b.max);
-                    if (bucket) bucket.count++;
                 });
-
-                const chartData = grouped.map(g => ({ label: g.bucket, value: g.count }));
-
-                new DevExpress.viz.dxChart(document.getElementById('lineChart'), {
-                    dataSource: chartData,
+            } else {
+                new DevExpress.viz.dxChart(chartElem, {
+                    dataSource: grouped,
                     rotated: true,
                     animation: { enabled: true, duration: 800, easing: 'easeOutCubic' },
                     series: [{
-                        argumentField: 'label',
+                        argumentField: 'category',
                         valueField: 'value',
-                        type: 'bar',
-                        color: '#ff4081',
+                        type: chartType,
+                        color: '#00eaff',
                         label: {
                             visible: true,
                             font: { color: '#fff', size: 14 },
@@ -812,14 +814,280 @@
                             return { text: `${arg.argumentText}: ${arg.valueText}` };
                         }
                     },
-                    palette: ['#ff4081', '#ff79b0', '#c60055', '#ffb3de'],
+                    palette: ['#00eaff', '#00bfae', '#0081a7', '#005f73'],
                     legend: { visible: false },
+                    onPointClick: function(e) {
+                        const category = e.target.originalArgument;
+                        filterState.dolduranKisi = category;
+                        applyFilters();
+                    }
                 });
+            }
+        } catch (e) {
+            console.warn('Kişilere göre dolduran chart error', e);
+        }
+    }
+        
+        // Kişilere göre bekleten chart
+        function renderPersonChartBekleten(data, chartType) {
+        try {
+            const chartElem = document.getElementById('personChartBekleten');
+            if (chartElem) chartElem.innerHTML = "";
+            if (!data || data.length === 0) {
+                return;
+            }
+            const grouped = data
+                .reduce((acc, d) => {
+                    const key = d.FormuBekleten || 'Bilinmiyor';
+                    const existing = acc.find(x => x.category === key);
+                    if (existing) existing.value++;
+                    else acc.push({ category: key, value: 1 });
+                    return acc;
+                }, [])
+                .sort((a, b) => b.value - a.value)
+                .slice(0, 15);
+            if (chartType === 'pie') {
+                new DevExpress.viz.dxPieChart(chartElem, {
+                    dataSource: grouped,
+                    series: [{ argumentField: 'category', valueField: 'value', label: { visible: true, connector: { visible: true } } }],
+                    tooltip: { enabled: true, contentTemplate: d => `${d.argumentText}: ${d.value}` },
+                    legend: { visible: grouped.length <= 7 },
+                    onPointClick: function(e) {
+                        const category = e.target.originalArgument;
+                        filterState.bekletenKisi = category;
+                        applyFilters();
+                    }
+                });
+            } else {
+                new DevExpress.viz.dxChart(chartElem, {
+                    dataSource: grouped,
+                    rotated: true,
+                    animation: { enabled: true, duration: 800, easing: 'easeOutCubic' },
+                    series: [{
+                        argumentField: 'category',
+                        valueField: 'value',
+                        type: chartType,
+                        color: '#ff9800',
+                        label: {
+                            visible: true,
+                            font: { color: '#fff', size: 14 },
+                            backgroundColor: 'rgba(0,0,0,0.7)',
+                            customizeText: function(arg) { return arg.valueText; }
+                        }
+                    }],
+                    argumentAxis: {
+                        label: { font: { color: '#fff', size: 13 } },
+                        color: '#444',
+                    },
+                    valueAxis: {
+                        label: { font: { color: '#fff', size: 13 } },
+                        color: '#444',
+                    },
+                    tooltip: {
+                        enabled: true,
+                        customizeTooltip: function(arg) {
+                            return { text: `${arg.argumentText}: ${arg.valueText}` };
+                        }
+                    },
+                    palette: ['#ff9800', '#ffb300', '#ff6f00', '#c43e00'],
+                    legend: { visible: false },
+                    onPointClick: function(e) {
+                        const category = e.target.originalArgument;
+                        filterState.bekletenKisi = category;
+                        applyFilters();
+                    }
+                });
+            }
+        } catch (e) {
+            console.warn('Kişilere göre bekleten chart error', e);
+        }
+    }
+        // Yeni: Bekleyen gün histogram / dağılımı. Tarih verileri yoksa da dağılım anlamlı gösterir.
+        function renderLineChart(data, chartType) {
+            try {
+                const buckets = [
+                    { key: '0-7', min: 0, max: 7 },
+                    { key: '16-30', min: 16, max: 30 },
+                    { key: '31-60', min: 31, max: 60 },
+                    { key: '61-180', min: 61, max: 180 },
+                    { key: '>180', min: 181, max: Infinity }
+                ];
+
+                // Bucket'lara göre dağıtım
+                const grouped = buckets.map(b => ({ bucket: b.key, count: 0, min: b.min, max: b.max }));
+                (data || []).forEach(d => {
+                    const gun = Number(d.BekleyenGun) || 0;
+                    const bucket = grouped.find(b => gun >= b.min && gun <= b.max);
+                    if (bucket) bucket.count++;
+                });
+
+                const chartData = grouped.map(g => ({ label: g.bucket, value: g.count }));
+
+                if (chartType === 'pie') {
+                    new DevExpress.viz.dxPieChart(document.getElementById('lineChart'), {
+                        dataSource: chartData,
+                        series: [{ argumentField: 'label', valueField: 'value', label: { visible: true, connector: { visible: true } } }],
+                        tooltip: { enabled: true, contentTemplate: d => `${d.argumentText}: ${d.value}` },
+                        onPointClick: function(e) {
+                            const bucketKey = e.target.originalArgument;
+                            filterState.bucket = bucketKey;
+                            applyFilters();
+                        }
+                    });
+                } else {
+                    new DevExpress.viz.dxChart(document.getElementById('lineChart'), {
+                        dataSource: chartData,
+                        rotated: true,
+                        animation: { enabled: true, duration: 800, easing: 'easeOutCubic' },
+                        series: [{
+                            argumentField: 'label',
+                            valueField: 'value',
+                            type: chartType,
+                            color: '#ff4081',
+                            label: {
+                                visible: true,
+                                font: { color: '#fff', size: 14 },
+                                backgroundColor: 'rgba(0,0,0,0.7)',
+                                customizeText: function(arg) { return arg.valueText; }
+                            }
+                        }],
+                        argumentAxis: {
+                            label: { font: { color: '#fff', size: 13 } },
+                            color: '#444',
+                        },
+                        valueAxis: {
+                            label: { font: { color: '#fff', size: 13 } },
+                            color: '#444',
+                        },
+                        tooltip: {
+                            enabled: true,
+                            customizeTooltip: function(arg) {
+                                return { text: `${arg.argumentText}: ${arg.valueText}` };
+                            }
+                        },
+                        palette: ['#ff4081', '#ff79b0', '#c60055', '#ffb3de'],
+                        legend: { visible: false },
+                        onPointClick: function(e) {
+                            const bucketKey = e.target.originalArgument;
+                            filterState.bucket = bucketKey;
+                            applyFilters();
+                        }
+                    });
+                }
             } catch (e) {
                 console.warn('Histogram chart error', e);
             }
         }
 
+        //Müdürlüklere göre dağılım chart
+        function renderMudurlukChart(data, chartType) {
+        const chartElem = document.getElementById('mudurlukChart');
+        if (chartElem) chartElem.innerHTML = "";
+        if (!data || data.length === 0) return;
+        const grouped = data.reduce((acc, d) => {
+            const key = d.MudurlukAdi || 'Bilinmiyor';
+            const existing = acc.find(x => x.category === key);
+            if (existing) existing.value++;
+            else acc.push({ category: key, value: 1 });
+            return acc;
+        }, []).sort((a, b) => b.value - a.value).slice(0, 15);
+            if (chartType === 'pie') {
+                new DevExpress.viz.dxPieChart(chartElem, {
+                    dataSource: grouped,
+                    series: [{ argumentField: 'category', valueField: 'value', label: { visible: true, connector: { visible: true } } }],
+                    tooltip: { enabled: true, contentTemplate: d => `${d.argumentText}: ${d.value}` },
+                    legend: { visible: grouped.length <= 7 },
+                    onPointClick: function(e) {
+                        const category = e.target.originalArgument;
+                        filterState.mudurluk = category;
+                        applyFilters();
+                    }
+                });
+            } else {
+            new DevExpress.viz.dxChart(chartElem, {
+                dataSource: grouped,
+                rotated: true,
+                animation: { enabled: true, duration: 800, easing: 'easeOutCubic' },
+                series: [{
+                    argumentField: 'category',
+                    valueField: 'value',
+                    type: chartType,
+                    color: '#2196f3',
+                    label: {
+                        visible: true,
+                        font: { color: '#fff', size: 14 },
+                        backgroundColor: 'rgba(0,0,0,0.7)',
+                        customizeText: function(arg) { return arg.valueText; }
+                    }
+                }],
+                argumentAxis: { label: { font: { color: '#fff', size: 13 } }, color: '#444' },
+                valueAxis: { label: { font: { color: '#fff', size: 13 } }, color: '#444' },
+                tooltip: { enabled: true, customizeTooltip: function(arg) { return { text: `${arg.argumentText}: ${arg.valueText}` }; } },
+                palette: ['#2196f3', '#e91e63', '#ff9800', '#4caf50'],
+                legend: { visible: false },
+                onPointClick: function(e) {
+                    const category = e.target.originalArgument;
+                    filterState.mudurluk = category;
+                    applyFilters();
+                }
+            });
+        }
+    }
+        
+        //Formlara göre dağılım chart
+        function renderFormChart(data, chartType) {
+            const chartElem = document.getElementById('formChart');
+            if (chartElem) chartElem.innerHTML = "";
+            if (!data || data.length === 0) return;
+            const grouped = data.reduce((acc, d) => {
+                const key = d.FormAdi || 'Bilinmiyor';
+                const existing = acc.find(x => x.category === key);
+                if (existing) existing.value++;
+                else acc.push({ category: key, value: 1 });
+                return acc;
+            }, []).sort((a, b) => b.value - a.value).slice(0, 15);
+            if (chartType === 'pie') {
+                new DevExpress.viz.dxPieChart(chartElem, {
+                    dataSource: grouped,
+                    series: [{ argumentField: 'category', valueField: 'value', label: { visible: true, connector: { visible: true } } }],
+                    tooltip: { enabled: true, contentTemplate: d => `${d.argumentText}: ${d.value}` },
+                    legend: { visible: grouped.length <= 7 },
+                    onPointClick: function(e) {
+                        const category = e.target.originalArgument;
+                        filterState.form = category;
+                        applyFilters();
+                    }
+                });
+            } else {
+                new DevExpress.viz.dxChart(chartElem, {
+                    dataSource: grouped,
+                    rotated: true,
+                    animation: { enabled: true, duration: 800, easing: 'easeOutCubic' },
+                    series: [{
+                        argumentField: 'category',
+                        valueField: 'value',
+                        type: chartType,
+                        color: '#9c27b0',
+                        label: {
+                            visible: true,
+                            font: { color: '#fff', size: 14 },
+                            backgroundColor: 'rgba(0,0,0,0.7)',
+                            customizeText: function(arg) { return arg.valueText; }
+                        }
+                    }],
+                    argumentAxis: { label: { font: { color: '#fff', size: 13 } }, color: '#444' },
+                    valueAxis: { label: { font: { color: '#fff', size: 13 } }, color: '#444' },
+                    tooltip: { enabled: true, customizeTooltip: function(arg) { return { text: `${arg.argumentText}: ${arg.valueText}` }; } },
+                    palette: ['#9c27b0', '#00bcd4', '#ffc107', '#8bc34a'],
+                    legend: { visible: false },
+                    onPointClick: function(e) {
+                        const category = e.target.originalArgument;
+                        filterState.form = category;
+                        applyFilters();
+                    }
+                });
+            }
+        }
         // Bir histogram bucket'ına tıklanınca tabloyu filtreler
         function applyBucketFilter(bucketKey) {
             filterState.bucket = bucketKey;
@@ -833,165 +1101,11 @@
             document.getElementById('filterRol').value = '';
             document.getElementById('filterTarihBaslangic').value = '';
             document.getElementById('filterTarihBitis').value = '';
-            filterState = { dolduranKisi: null, bekletenKisi: null, bucket: null };
+            let filterState = { dolduranKisi: null, bekletenKisi: null, bucket: null, mudurluk: null, form: null };
             applyFilters();
         }
 
-        // Detay Paneli ve Alt Grafikler (Müdürlük ve Form)
-        function showDetailPanel(type, key) {
-                                                // Detay panelini görünür yap
-                                                document.getElementById('detailPanelCard').style.display = '';
-                                    const pieColors = [
-                                        '#2196f3', '#e91e63', '#ff9800', '#4caf50', '#9c27b0', '#00bcd4', '#ffc107', '#8bc34a', '#f44336', '#607d8b',
-                                        '#3f51b5', '#009688', '#cddc39', '#ff5722', '#795548', '#673ab7', '#bdbdbd', '#607d8b', '#e65100', '#43a047'
-                                    ];
-                        let filtered = allData;
-                        if (type === 'dolduran') {
-                            filtered = allData.filter(d => {
-                                const dolduranKey = d.FormuDolduranSirketi || d.FormuDolduranSicil;
-                                return dolduranKey === key;
-                            });
-                        } else if (type === 'bekleten') {
-                            filtered = allData.filter(d => {
-                                const bekletenKey = d.FormuBekletenSirketi || d.FormuBekletenSicil;
-                                return bekletenKey === key;
-                            });
-                        }
-            // Ortak responsive container
-            const chartsFlexRow = document.getElementById('chartsFlexRow');
-            chartsFlexRow.innerHTML = '';
-
-            // Müdürlük Dağılımı - Kart
-            const mudCard = document.createElement('div');
-            mudCard.style.display = 'flex';
-            mudCard.style.flexDirection = 'column';
-            mudCard.style.alignItems = 'center';
-            mudCard.style.background = '#000';
-            mudCard.style.border = '1px solid #222';
-            mudCard.style.borderRadius = '12px';
-            mudCard.style.boxShadow = '0 2px 16px rgba(0,0,0,0.5)';
-            mudCard.style.padding = '18px 18px 10px 18px';
-            mudCard.style.margin = '0 12px 0 0';
-            mudCard.style.width = '540px';
-            mudCard.style.minWidth = '340px';
-            mudCard.style.boxSizing = 'border-box';
-            mudCard.style.flex = '1 1 400px';
-
-            const mudTitle = document.createElement('div');
-            mudTitle.innerHTML = `<h4 style='margin-bottom:10px;margin-top:0;color:#e0e0e0;background:#000'>Müdürlüklere Göre Dağılım</h4>`;
-            mudCard.appendChild(mudTitle);
-
-            const mudDiv = document.createElement('div');
-            mudDiv.style.height = '400px';
-            mudDiv.style.width = '400px';
-            mudCard.appendChild(mudDiv);
-            const mudurlukData = groupByCount(filtered, 'MudurlukAdi');
-            if (mudurlukData.length > 0) {
-                new DevExpress.viz.dxPieChart(mudDiv, {
-                    dataSource: mudurlukData.map((x, idx) => ({ category: x.MudurlukAdi, value: x.count })),
-                    palette: pieColors,
-                    size: { height: 400, width: 400 },
-                    series: [{ argumentField: 'category', valueField: 'value', label: { visible: true, connector: { visible: true } } }],
-                    legend: { visible: false },
-                    tooltip: { enabled: true, contentTemplate: d => `${d.argumentText}: ${d.value}` }
-                });
-                /*
-                // Küçük legend - grid, satır arası boşluk minimum
-                const legendDiv = document.createElement('div');
-                legendDiv.className = 'legend-container';
-                legendDiv.style.display = 'grid';
-                legendDiv.style.gridTemplateColumns = 'repeat(3, minmax(0, 1fr))';
-                legendDiv.style.gap = '2px 14px';
-                legendDiv.style.marginTop = '10px';
-                legendDiv.style.marginLeft = '0px';
-                legendDiv.style.justifyContent = 'flex-start';
-                legendDiv.style.alignItems = 'flex-start';
-                legendDiv.style.width = '100%';
-                mudurlukData.slice(0, pieColors.length).forEach((item, idx) => {
-                    const row = document.createElement('div');
-                    row.style.display = 'flex';
-                    row.style.alignItems = 'center';
-                    row.innerHTML = `<span style='display:inline-block;width:12px;height:12px;margin-right:6px;border-radius:50%;background:${pieColors[idx]}'></span><span style='font-size:12px'>${item.category || item.MudurlukAdi} <b>(${item.count || item.value})</b></span>`;
-                    legendDiv.appendChild(row);
-                });
-                mudCard.appendChild(legendDiv);
-                */
-		} else {
-			mudDiv.innerHTML = '<div class="no-data">Müdürlük verisi bulunamadı</div>';
-		}
-
-            // Form Dağılımı - Kart
-            const formCard = document.createElement('div');
-            formCard.style.display = 'flex';
-            formCard.style.flexDirection = 'column';
-            formCard.style.alignItems = 'center';
-            formCard.style.background = '#000';
-            formCard.style.border = '1px solid #222';
-            formCard.style.borderRadius = '12px';
-            formCard.style.boxShadow = '0 2px 16px rgba(0,0,0,0.5)';
-            formCard.style.padding = '18px 18px 10px 18px';
-            formCard.style.margin = '0 0 0 12px';
-            formCard.style.width = '540px';
-            formCard.style.minWidth = '340px';
-            formCard.style.boxSizing = 'border-box';
-            formCard.style.flex = '1 1 400px';
-
-            const formTitle = document.createElement('div');
-            formTitle.innerHTML = `<h4 style='margin-bottom:10px;margin-top:0;color:#e0e0e0;background:#000'>Süreç Formlarının Dağılımı</h4>`;
-            formCard.appendChild(formTitle);
-
-            const formDiv = document.createElement('div');
-            formDiv.style.height = '400px';
-            formDiv.style.width = '400px';
-            formCard.appendChild(formDiv);
-            const formData = groupByCount(filtered, 'FormAdi');
-            if (formData.length > 0) {
-                new DevExpress.viz.dxPieChart(formDiv, {
-                    dataSource: formData.map((x, idx) => ({ category: x.FormAdi, value: x.count })),
-                    palette: pieColors,
-                    size: { height: 400, width: 400 },
-                    series: [{ argumentField: 'category', valueField: 'value', label: { visible: true, connector: { visible: true } } }],
-                    legend: { visible: false },
-                    tooltip: { enabled: true, contentTemplate: d => `${d.argumentText}: ${d.value}` }
-                });
-                /*
-                // Küçük legend - grid, satır arası boşluk minimum
-                const legendDiv = document.createElement('div');
-                legendDiv.className = 'legend-container';
-                legendDiv.style.display = 'grid';
-                legendDiv.style.gridTemplateColumns = 'repeat(3, minmax(0, 1fr))';
-                legendDiv.style.gap = '2px 14px';
-                legendDiv.style.marginTop = '10px';
-                legendDiv.style.marginLeft = '0px';
-                legendDiv.style.justifyContent = 'flex-start';
-                legendDiv.style.alignItems = 'flex-start';
-                legendDiv.style.width = '100%';
-                formData.slice(0, pieColors.length).forEach((item, idx) => {
-                    const row = document.createElement('div');
-                    row.style.display = 'flex';
-                    row.style.alignItems = 'center';
-                    row.innerHTML = `<span style='display:inline-block;width:12px;height:12px;margin-right:6px;border-radius:50%;background:${pieColors[idx]}'></span><span style='font-size:12px'>${item.category || item.FormAdi} <b>(${item.count || item.value})</b></span>`;
-                    legendDiv.appendChild(row);
-                });
-                formCard.appendChild(legendDiv);
-                */
-            } else {
-                formDiv.innerHTML = '<div class="no-data">Form verisi bulunamadı</div>';
-            }
-            // Kartları yan yana ekle (kartlar yukarıda tanımlandıktan sonra eklenmeli)
-            if (typeof mudCard !== 'undefined') chartsFlexRow.appendChild(mudCard);
-            if (typeof formCard !== 'undefined') chartsFlexRow.appendChild(formCard);
-            // Yardımcı: Alan bazında gruplayıp adet döndürür
-            function groupByCount(arr, field) {
-                const map = {};
-                arr.forEach(d => {
-                    const key = d[field] || 'Bilinmiyor';
-                    map[key] = (map[key] || 0) + 1;
-                });
-                return Object.entries(map).map(([k, v]) => ({ [field]: k, count: v }));
-            }
-        }
-        </script>
+    </script>
     </body>
     </html>
 
