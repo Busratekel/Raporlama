@@ -117,7 +117,6 @@ public class ETLService
                 {
                     var baslangic = surec.SurecBaslangicTarihi;
                     var gelis = surec.SurecBekleteneGelisTarihi;
-                    _logger.LogInformation($"[ETL] SurecNo: {surec.SurecNo}, SurecBaslangicTarihi: {baslangic}, SurecBekleteneGelisTarihi: {gelis}");
                 }
 
                 await hedefConn.ExecuteAsync(@"
@@ -137,7 +136,7 @@ public class ETLService
                     )
                 ", batch.Select((surec, idx) => new
                 {
-                    SurecNo = (surec.SurecNo as string) ?? ($"{(surec.FormAdi as string ?? "FORM")}_{i + idx + 1}"),
+                    SurecNo = surec.SurecNo as int?,
                     FormAdi = surec.FormAdi as string,
                     FormuDolduranSicil = surec.FormuDolduranSicil as string,
                     FormuDolduran = surec.FormuDolduran as string,

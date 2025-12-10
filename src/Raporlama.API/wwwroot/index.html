@@ -257,6 +257,12 @@
     </style>
 </head>
 <body>
+    <script>
+        // Sayfa yenilenmeden hemen önce scroll'u en başa al
+        window.onbeforeunload = function() {
+            window.scrollTo(0, 0);
+        };
+    </script>
     <div class="header">
         <h1>🎯 Bellona Raporlama Sistemi — EBA Bekleyen Süreçler</h1>
     </div>
@@ -334,67 +340,208 @@
                 <div class="charts-grid">
                     <div class="chart-container">
                         <h4>DOLDURAN İŞLETMELER</h4>
-                        <select id="chartTypeDolduran" onchange="loadCharts(allData)">
+                        <select id="chartTypeDolduran" onchange="loadCharts(filteredData)">
                             <option value="pie">Pasta</option>
                             <option value="bar">Çubuk</option>
                             <option value="line">Çizgi</option>
                         </select>
+                        <div style="position:relative;height:0;">
+                            <div style="position:absolute;top:-50px;right:8px;display:flex;gap:8px;z-index:2;">
+                                <span style="cursor:pointer;font-size:20px;" onclick="enlargeChart('pieChart', 'DOLDURAN İŞLETMELER')" title="Büyüt">🔍</span>
+                                <span style="cursor:pointer;font-size:20px;" onclick="downloadSVG('pieChart', 'DOLDURAN İŞLETMELER')" title="İndir">⬇️</span>
+                            </div>
+                        </div>
                         <div id="pieChart" style="height:300px"></div>
                     </div>
                     <div class="chart-container">
                         <h4>BEKLETEN İŞLETMELER</h4>
-                        <select id="chartTypeBekleten" onchange="loadCharts(allData)">
+                        <select id="chartTypeBekleten" onchange="loadCharts(filteredData)">
                             <option value="pie">Pasta</option>
                             <option value="bar">Çubuk</option>
                             <option value="line">Çizgi</option>
                         </select>
+                        <div style="position:relative;height:0;">
+                            <div style="position:absolute;top:-50px;right:8px;display:flex;gap:8px;z-index:2;">
+                                <span style="cursor:pointer;font-size:20px;" onclick="enlargeChart('pieChartBekleten', 'BEKLETEN İŞLETMELER')" title="Büyüt">🔍</span>
+                                <span style="cursor:pointer;font-size:20px;" onclick="downloadSVG('pieChartBekleten', 'BEKLETEN İŞLETMELER')" title="İndir">⬇️</span>
+                            </div>
+                        </div>
                         <div id="pieChartBekleten" style="height:300px"></div>
                     </div>
                     <div class="chart-container">
                         <h4>Bekleme Süresi Dağılımı (Gün)</h4>
-                        <select id="chartTypeBekleme" onchange="loadCharts(allData)">
+                        <select id="chartTypeBekleme" onchange="loadCharts(filteredData)">
                             <option value="bar">Çubuk</option>
                             <option value="pie">Pasta</option>
                             <option value="line">Çizgi</option>
                         </select>
                         <p style="margin:6px 0 10px 0;color:#7f8c8d;font-size:13px">Bekleyen gün sayısının dağılımını gösterir. Bir çubuğa tıklayarak tabloyu ilgili aralığa filtreleyebilirsiniz.</p>
+                        <div style="position:relative;height:0;">
+                            <div style="position:absolute;top:-100px;right:8px;display:flex;gap:8px;z-index:2;">
+                                <span style="cursor:pointer;font-size:20px;" onclick="enlargeChart('lineChart', 'Bekleme Süresi Dağılımı (Gün)')" title="Büyüt">🔍</span>
+                                <span style="cursor:pointer;font-size:20px;" onclick="downloadSVG('lineChart', 'Bekleme Süresi Dağılımı (Gün)')" title="İndir">⬇️</span>
+                            </div>
+                        </div>
                         <div id="lineChart" style="height:320px"></div>
                     </div>
                     <div class="chart-container">
                         <h4>Kişilere Göre Dolduran</h4>
-                        <select id="chartTypePersonDolduran" onchange="loadCharts(allData)">
+                        <select id="chartTypePersonDolduran" onchange="loadCharts(filteredData)">
                             <option value="bar">Çubuk</option>
                             <option value="pie">Pasta</option>
                             <option value="line">Çizgi</option>
                         </select>
+                        <div style="position:relative;height:0;">
+                            <div style="position:absolute;top:-50px;right:8px;display:flex;gap:8px;z-index:2;">
+                                <span style="cursor:pointer;font-size:20px;" onclick="enlargeChart('personChartDolduran', 'Kişilere Göre Dolduran')" title="Büyüt">🔍</span>
+                                <span style="cursor:pointer;font-size:20px;" onclick="downloadSVG('personChartDolduran', 'Kişilere Göre Dolduran')" title="İndir">⬇️</span>
+                            </div>
+                        </div>
                         <div id="personChartDolduran" style="height:300px"></div>
                     </div>
                     <div class="chart-container">
                         <h4>Kişilere Göre Bekleten</h4>
-                        <select id="chartTypePersonBekleten" onchange="loadCharts(allData)">
+                        <select id="chartTypePersonBekleten" onchange="loadCharts(filteredData)">
                             <option value="bar">Çubuk</option>
                             <option value="pie">Pasta</option>
                             <option value="line">Çizgi</option>
                         </select>
+                        <div style="position:relative;height:0;">
+                            <div style="position:absolute;top:-50px;right:8px;display:flex;gap:8px;z-index:2;">
+                                <span style="cursor:pointer;font-size:20px;" onclick="enlargeChart('personChartBekleten', 'Kişilere Göre Bekleten')" title="Büyüt">🔍</span>
+                                <span style="cursor:pointer;font-size:20px;" onclick="downloadSVG('personChartBekleten', 'Kişilere Göre Bekleten')" title="İndir">⬇️</span>
+                            </div>
+                        </div>
                         <div id="personChartBekleten" style="height:300px"></div>
                     </div>
                     <div class="chart-container">
                         <h4>MÜDÜRLÜKLERE GÖRE DAĞILIM</h4>
-                        <select id="chartTypeMudurluk" onchange="loadCharts(allData)">
+                        <select id="chartTypeMudurluk" onchange="loadCharts(filteredData)">
                             <option value="pie">Pasta</option>
                             <option value="bar">Çubuk</option>
                             <option value="line">Çizgi</option>
                         </select>
+                        <div style="position:relative;height:0;">
+                            <div style="position:absolute;top:-50px;right:8px;display:flex;gap:8px;z-index:2;">
+                                <span style="cursor:pointer;font-size:20px;" onclick="enlargeChart('mudurlukChart', 'MÜDÜRLÜKLERE GÖRE DAĞILIM')" title="Büyüt">🔍</span>
+                                <span style="cursor:pointer;font-size:20px;" onclick="downloadSVG('mudurlukChart', 'MÜDÜRLÜKLERE GÖRE DAĞILIM')" title="İndir">⬇️</span>
+                            </div>
+                        </div>
                         <div id="mudurlukChart" style="height:300px"></div>
                     </div>
                     <div class="chart-container">
                         <h4>FORMLARA GÖRE DAĞILIM</h4>
-                        <select id="chartTypeForm" onchange="loadCharts(allData)">
+                        <select id="chartTypeForm" onchange="loadCharts(filteredData)">
                             <option value="pie">Pasta</option>
                             <option value="bar">Çubuk</option>
                             <option value="line">Çizgi</option>
                         </select>
+                        <div style="position:relative;height:0;">
+                            <div style="position:absolute;top:-50px;right:8px;display:flex;gap:8px;z-index:2;">
+                                <span style="cursor:pointer;font-size:20px;" onclick="enlargeChart('formChart', 'FORMLARA GÖRE DAĞILIM')" title="Büyüt">🔍</span>
+                                <span style="cursor:pointer;font-size:20px;" onclick="downloadSVG('formChart', 'FORMLARA GÖRE DAĞILIM')" title="İndir">⬇️</span>
+                            </div>
+                        </div>
                         <div id="formChart" style="height:300px"></div>
+    <script>
+    // Modal enlarge logic
+    function enlargeChart(chartId, title) {
+        // Remove any existing modal
+        const oldModal = document.getElementById('chartEnlargeModal');
+        if (oldModal) oldModal.remove();
+        const chartElem = document.getElementById(chartId);
+        if (!chartElem) return;
+        const modal = document.createElement('div');
+        modal.id = 'chartEnlargeModal';
+        modal.style.position = 'fixed';
+        modal.style.top = '0';
+        modal.style.left = '0';
+        modal.style.width = '100vw';
+        modal.style.height = '100vh';
+        modal.style.background = 'rgba(0,0,0,0.8)';
+        modal.style.zIndex = '9999';
+        modal.style.display = 'flex';
+        modal.style.alignItems = 'center';
+        modal.style.justifyContent = 'center';
+        modal.innerHTML = `<div style='background:#23242a;padding:32px;border-radius:12px;max-width:90vw;max-height:90vh;overflow:auto;position:relative;'>
+            <h2 style='color:#00eaff;text-align:center;margin-bottom:18px;'>${title}</h2>
+            <div id='modalChartContent' style='text-align:center;'></div>
+            <button onclick='document.body.removeChild(this.parentNode.parentNode)' style='position:absolute;top:12px;right:12px;background:#e74c3c;color:#fff;padding:8px 16px;border:none;border-radius:6px;cursor:pointer;'>Kapat</button>
+        </div>`;
+        document.body.appendChild(modal);
+        // Clone chart SVG/Canvas
+        const chartContent = chartElem.querySelector('svg') ? chartElem.querySelector('svg').cloneNode(true) : chartElem.querySelector('canvas') ? chartElem.querySelector('canvas').cloneNode(true) : null;
+        if (chartContent) {
+            chartContent.style.width = '800px';
+            chartContent.style.height = '500px';
+            document.getElementById('modalChartContent').appendChild(chartContent);
+        } else {
+            document.getElementById('modalChartContent').innerHTML = '<div style="color:#fff;text-align:center;">Grafik bulunamadı</div>';
+        }
+    }
+
+    // Download SVG logic
+    function downloadSVG(chartId, title) {
+        const chartElem = document.getElementById(chartId);
+        if (!chartElem) return;
+        const svgElem = chartElem.querySelector('svg');
+        if (!svgElem) { alert('SVG bulunamadı!'); return; }
+        let svgString = new XMLSerializer().serializeToString(svgElem);
+        // Parse SVG and inject title
+        const parser = new DOMParser();
+        const doc = parser.parseFromString(svgString, 'image/svg+xml');
+        const svg = doc.documentElement;
+        let width = svg.getAttribute('width') || '800';
+        let height = svg.getAttribute('height') || '500';
+        width = parseInt(width);
+        height = parseInt(height);
+        // Title and spacing settings
+        const titleFontSize = 28;
+        const titleMargin = 24;
+        const extraSpace = 32; // extra space between title and chart
+        const newHeight = height + titleFontSize + titleMargin + extraSpace;
+        svg.setAttribute('height', newHeight);
+        if (svg.hasAttribute('viewBox')) {
+            const vb = svg.getAttribute('viewBox').split(' ');
+            if (vb.length === 4) {
+                vb[3] = String(parseInt(vb[3]) + titleFontSize + titleMargin + extraSpace);
+                svg.setAttribute('viewBox', vb.join(' '));
+            }
+        }
+        // Create <text> for title
+        const titleText = doc.createElementNS('http://www.w3.org/2000/svg', 'text');
+        titleText.setAttribute('x', width/2);
+        titleText.setAttribute('y', titleFontSize + titleMargin/2);
+        titleText.setAttribute('text-anchor', 'middle');
+        titleText.setAttribute('font-size', titleFontSize);
+        titleText.setAttribute('font-weight', 'bold');
+        titleText.setAttribute('fill', '#00eaff');
+        titleText.setAttribute('font-family', 'Segoe UI, Arial, sans-serif');
+        titleText.textContent = title;
+        // Style SVG background and centering
+        svg.setAttribute('style', 'background:#23242a;display:block;margin:auto;');
+        // Move all existing children down for spacing
+        Array.from(svg.children).forEach(child => {
+            if (child.tagName !== 'text') {
+                // If already has a transform, concatenate
+                let prev = child.getAttribute('transform') || '';
+                let translate = `translate(0,${titleFontSize + titleMargin + extraSpace})`;
+                child.setAttribute('transform', prev ? `${prev} ${translate}` : translate);
+            }
+        });
+        svg.insertBefore(titleText, svg.firstChild);
+        svgString = new XMLSerializer().serializeToString(svg);
+        const blob = new Blob([svgString], { type: 'image/svg+xml' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `${title.replace(/ /g,'_')}.svg`;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+    }
+    </script>
                     </div>
                 </div>
             </div>
@@ -420,11 +567,14 @@
     <script>
         let currentDataGrid = null;
         let allData = [];
-        let filterState = { dolduranKisi: null, bekletenKisi: null, bucket: null, mudurluk: null, form: null };
+        let filteredData = [];
+        let filterState = { dolduranSirket:null, bekletenSirket:null, dolduranKisi: null, bekletenKisi: null, bucket: null, mudurluk: null, form: null };
         const API_BASE = 'http://localhost:5000/api';
         
         // Sayfa yüklendiğinde
         window.onload = function() {
+            window.scrollTo(0, 0);
+            clearFilters();
             loadAllData();
         };
         
@@ -475,32 +625,56 @@
             const tarihBas = document.getElementById('filterTarihBaslangic').value;
             const tarihBit = document.getElementById('filterTarihBitis').value;
             
-            let filtered = allData.filter(d => {
+            filteredData = allData.filter(d => {
                 let match = true;
                 
                 if (mudurluk && d.MudurlukAdi !== mudurluk) match = false;
                 if (direktorluk && d.DirektorlukAdi !== direktorluk) match = false;
                 
                 if (tarihBas || tarihBit) {
-                    // Tarihleri Date nesnesi ile karşılaştır
-                    const dEklenmeTarihi = d.EklenmeTarihi ? new Date(d.EklenmeTarihi.substring(0,10)) : null;
                     const basDate = tarihBas ? new Date(tarihBas) : null;
                     const bitDate = tarihBit ? new Date(tarihBit) : null;
-                    if (basDate && dEklenmeTarihi && dEklenmeTarihi < basDate) match = false;
-                    if (bitDate && dEklenmeTarihi && dEklenmeTarihi > bitDate) match = false;
+                    if (basDate) basDate.setHours(0,0,0,0);
+                    if (bitDate) bitDate.setHours(0,0,0,0);
+                    const recBas = d.SurecBaslangicTarihi ? new Date(d.SurecBaslangicTarihi.substring(0,10)) : null;
+                    const recBit = d.SurecBekleteneGelisTarihi ? new Date(d.SurecBekleteneGelisTarihi.substring(0,10)) : null;
+                    if (recBas) recBas.setHours(0,0,0,0);
+                    if (recBit) recBit.setHours(0,0,0,0);
+                    // Hiçbiri yoksa gösterme
+                    if (!recBas && !recBit) match = false;
+                    // İkisi de varsa overlap kontrolü
+                    else if (recBas && recBit) {
+                        if ((basDate && basDate > recBit) || (bitDate && bitDate < recBas)) match = false;
+                    }
+                    // Sadece başlangıç varsa
+                    else if (recBas) {
+                        if ((basDate && basDate > recBas) || (bitDate && bitDate < recBas)) match = false;
+                    }
+                    // Sadece bitiş varsa
+                    else if (recBit) {
+                        if ((basDate && basDate > recBit) || (bitDate && bitDate < recBit)) match = false;
+                    }
                 }
                 
                 // Drill-down filtreleri: seçili kişilere göre filtrele
                 if (filterState.dolduranKisi) {
-                    const dolduranKey = d.FormuDolduranSirketi || d.FormuDolduranSicil;
-                    if (dolduranKey !== filterState.dolduranKisi) match = false;
+                    if (d.FormuDolduran !== filterState.dolduranKisi) match = false;
                 }
                 
                 if (filterState.bekletenKisi) {
-                    const bekletenKey = d.FormuBekletenSirketi || d.FormuBekletenSicil;
-                    if (bekletenKey !== filterState.bekletenKisi) match = false;
+                    if (d.FormuBekleten !== filterState.bekletenKisi) match = false;
                 }
-                
+                if(filterState.dolduranSirket) {
+                    if(d.FormuDolduranSirketi !== filterState.dolduranSirket && d.FormuDolduranSicil !== filterState.dolduranSirket) match = false;
+                }
+                if(filterState.bekletenSirket) {
+                    if(d.FormuBekletenSirketi !== filterState.bekletenSirket && d.FormuBekletenSicil !== filterState.bekletenSirket) match = false;
+                }
+                const bekletenKey = d.FormuBekletenSirketi || d.FormuBekletenSicil;
+                if (filterState.mudurluk) {
+                    if (d.MudurlukAdi !== filterState.mudurluk) match = false;
+                }
+                const dolduranKey = d.FormuDolduranSirketi || d.FormuDolduranSicil;
                 if (filterState.mudurluk) {
                     if (d.MudurlukAdi !== filterState.mudurluk) match = false;
                 }
@@ -522,9 +696,9 @@
             });
             
             // Veriyi göster
-            updateStats(filtered);
-            renderDataGrid(filtered);
-            loadCharts(filtered);
+            updateStats(filteredData);
+            renderDataGrid(filteredData);
+            loadCharts(filteredData);
         }
         
         // İstatistikleri güncelle
@@ -556,85 +730,33 @@
             if (currentDataGrid) {
                 currentDataGrid.dispose();
             }
-            
-            const dashboardElement = document.getElementById('dashboard');
-            dashboardElement.innerHTML = '';
-            
-            if (data.length === 0) {
-                dashboardElement.innerHTML = '<div class="no-data">Seçili filtreler için veri bulunamadı</div>';
+            $("#dashboard").empty();
+            if (!data || data.length === 0) {
+                $("#dashboard").html('<div class="no-data">Veri yok</div>');
                 return;
             }
-            
-            currentDataGrid = new DevExpress.ui.dxDataGrid(dashboardElement, {
+            currentDataGrid = $("#dashboard").dxDataGrid({
                 dataSource: data,
                 showBorders: true,
-                showRowLines: true,
-                showColumnLines: true,
-                rowAlternationEnabled: true,
-                columnAutoWidth: false,
-                allowColumnReordering: true,
+                columnAutoWidth: true,
                 allowColumnResizing: true,
-                height: 600,
-                scrolling: { mode: 'standard' },
-                wordWrapEnabled: false,
-                columns: [
-                    { dataField: 'ID', caption: 'ID', width: 70 },
-                    { dataField: 'SurecNo', caption: 'Süreç No', width: 110, cellTemplate: function(container, options) {
-                        const v = options.value;
-                        const dv = document.createElement('div');
-                        dv.textContent = v || '-';
-                        // Support both DOM element and jQuery object
-                        if (container && container.appendChild) {
-                            container.appendChild(dv);
-                        } else if (window.jQuery && container && container[0] && container[0].appendChild) {
-                            container[0].appendChild(dv);
-                        }
-                    } },
-                    { dataField: 'FormAdi', caption: 'Form', width: 220 },
-                    { dataField: 'FormuDolduran', caption: 'Dolduran', width: 140 },
-                    { dataField: 'FormuDolduranSicil', caption: 'Dolduran (Sicil)', width: 110 },
-                    { dataField: 'FormuDolduranSirketi', caption: 'Dolduran (Şirket)', width: 150 },
-                    { dataField: 'FormuBekleten', caption: 'Bekleten', width: 140 },
-                    { dataField: 'FormuBekletenSicil', caption: 'Bekleten (Sicil)', width: 110 },
-                    { dataField: 'FormuBekletenSirketi', caption: 'Bekleten (Şirket)', width: 150 },
-                                        { dataField: 'BekleyenGun', caption: 'Bekleyen Gün', width: 100, dataType: 'number',
-                                            cellTemplate: function(container, options) {
-                                                    const value = options.value || 0;
-                                                    const color = value > 30 ? '#e74c3c' : value > 15 ? '#f39c12' : '#27ae60';
-                                                    const dv = document.createElement('div');
-                                                    dv.style.color = color;
-                                                    dv.style.fontWeight = 'bold';
-                                                    dv.textContent = value;
-                                                    if (container && container.appendChild) {
-                                                            container.appendChild(dv);
-                                                    } else if (window.jQuery && container && container[0] && container[0].appendChild) {
-                                                            container[0].appendChild(dv);
-                                                    }
-                                            }
-                                        },
-                    { dataField: 'MudurlukAdi', caption: 'Müdürlük', width: 160 },
-                    { dataField: 'DirektorlukAdi', caption: 'Direktörlük', width: 160 },
-                    { dataField: 'FormuGonderenBolum', caption: 'Gönderen Bölüm', width: 200 },
-                    { dataField: 'UserName', caption: 'UserName', width: 140 },
-                    { dataField: 'SurecBaslangicTarihi', caption: 'Süreç Başlangıç', width: 140, dataType: 'date' },
-                    { dataField: 'SurecBekleteneGelisTarihi', caption: 'Bekletene Geliş', width: 140, dataType: 'date' },
-                ],
-                paging: { pageSize: 15 },
-                pager: { showPageSizeSelector: true, allowedPageSizes: [10, 15, 25, 50], showInfo: true },
                 filterRow: { visible: true },
-                headerFilter: { visible: true },
-                searchPanel: { visible: true, width: 240, placeholder: 'Ara...' },
-                groupPanel: { visible: true },
-                export: { enabled: true, fileName: 'Bekleyen_Surecler' },
-                columnChooser: { enabled: true, mode: 'select' },
-                loadPanel: { enabled: true },
-                summary: {
-                    totalItems: [
-                        { column: 'SurecNo', summaryType: 'count', displayFormat: 'Toplam: {0}' },
-                        { column: 'BekleyenGun', summaryType: 'avg', valueFormat: 'fixedPoint', displayFormat: 'Ortalama: {0} gün' }
-                    ]
-                }
-            });
+                searchPanel: { visible: true, width: 240, placeholder: "Ara..." },
+                paging: { pageSize: 20 },
+                pager: { showPageSizeSelector: true, allowedPageSizes: [10, 20, 50, 100], showInfo: true },
+                columns: [
+                    { dataField: "SurecNo", caption: "Süreç No" },
+                    { dataField: "FormuDolduran", caption: "Formu Dolduran Kişi" },
+                    { dataField: "FormuBekleten", caption: "Formu Bekleten Kişi" },
+                    { dataField: "FormuGonderenBolum", caption: "Formu Dolduran Bölüm" },
+                    { dataField: "FormuBekletenBolum", caption: "Formu Bekleten Bölüm" },
+                    { dataField: "FormuDolduranSirketi", caption: "Formu Dolduran Şirket" },
+                    { dataField: "FormuBekletenSirketi", caption: "Formu Bekleten Şirket" },
+                    { dataField: "MudurlukAdi", caption: "Müdürlük Adı" },
+                    { dataField: "SurecBaslangicTarihi", caption: "Süreç Başlangıç Tarihi", dataType: "date", format: "yyyy-MM-dd" },
+                    { dataField: "SurecBekleteneGelisTarihi", caption: "Süreç Bekletene Geliş Tarihi", dataType: "date", format: "yyyy-MM-dd" }
+                ]
+            }).dxDataGrid("instance");
         }
         
         // Grafikleri yükle ve render
@@ -647,13 +769,13 @@
                 const typeBekleme = document.getElementById('chartTypeBekleme')?.value || 'bar';
                 const typePersonDolduran = document.getElementById('chartTypePersonDolduran')?.value || 'bar';
                 const typePersonBekleten = document.getElementById('chartTypePersonBekleten')?.value || 'bar';
-                renderPieChart(data, typeDolduran);
-                renderBarChart(data, typeBekleten);
-                renderMudurlukChart(data, typeMudurluk);
-                renderFormChart(data, typeForm);
-                renderLineChart(data, typeBekleme);
-                renderPersonChartDolduran(data, typePersonDolduran);
-                renderPersonChartBekleten(data, typePersonBekleten);
+                renderPieChart(filteredData, typeDolduran);
+                renderBarChart(filteredData, typeBekleten);
+                renderMudurlukChart(filteredData, typeMudurluk);
+                renderFormChart(filteredData, typeForm);
+                renderLineChart(filteredData, typeBekleme);
+                renderPersonChartDolduran(filteredData, typePersonDolduran);
+                renderPersonChartBekleten(filteredData, typePersonBekleten);
             } catch (err) {
                 console.warn('Grafik render hatası', err);
             }
@@ -680,7 +802,7 @@
                         legend: { visible: grouped.length <= 7 },
                         onPointClick: function(e) {
                             const category = e.target.originalArgument;
-                            filterState.dolduranKisi = category;
+                            filterState.dolduranSirket = category;
                             applyFilters();
                         }
                     });
@@ -727,7 +849,7 @@
                         legend: { visible: grouped.length <= 7 },
                         onPointClick: function(e) {
                             const category = e.target.originalArgument;
-                            filterState.bekletenKisi = category;
+                            filterState.bekletenSirket = category;
                             applyFilters();
                         }
                     });
