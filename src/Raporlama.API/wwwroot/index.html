@@ -285,23 +285,14 @@
                     <option value="">Tümü</option>
                 </select>
             </div>
-            
+
             <div class="filter-group">
-                <label class="filter-label">Çalışan Rolü</label>
-                <select id="filterRol">
-                    <option value="">Tümü</option>
-                    <option value="dolduran">Formu Dolduran</option>
-                    <option value="bekleten">Formu Bekleten</option>
-                </select>
-            </div>
-            
-            <div class="filter-group">
-                <label class="filter-label">Başlangıç Tarihi</label>
+                <label class="filter-label">Süreç Başlangıç Tarihi</label>
                 <input type="date" id="filterTarihBaslangic">
             </div>
             
             <div class="filter-group">
-                <label class="filter-label">Bitiş Tarihi</label>
+                <label class="filter-label">Süreç Bekletene Geliş Tarihi</label>
                 <input type="date" id="filterTarihBitis">
             </div>
             
@@ -621,46 +612,38 @@
         function applyFilters() {
             const mudurluk = document.getElementById('filterMudurluk').value;
             const direktorluk = document.getElementById('filterDirektorluk').value;
-            const rol = document.getElementById('filterRol').value;
             const tarihBas = document.getElementById('filterTarihBaslangic').value;
             const tarihBit = document.getElementById('filterTarihBitis').value;
-            
+            //SÜREÇ BAŞLANGIÇ TARİHİ: Formu dolduran kişinin süreci başlattığı tarih
+            //SÜREÇ BEKLETENE GELİŞ TARİHİ: Formu bekleten kişinin sürece dahil olduğu tarih,en son onaylayacak kişiye geldiği tarih 
             filteredData = allData.filter(d => {
                 let match = true;
-                
-                if (mudurluk && d.MudurlukAdi !== mudurluk) match = false;
-                if (direktorluk && d.DirektorlukAdi !== direktorluk) match = false;
-                
                 if (tarihBas || tarihBit) {
-                    const basDate = tarihBas ? new Date(tarihBas) : null;
-                    const bitDate = tarihBit ? new Date(tarihBit) : null;
-                    if (basDate) basDate.setHours(0,0,0,0);
-                    if (bitDate) bitDate.setHours(0,0,0,0);
-                    const recBas = d.SurecBaslangicTarihi ? new Date(d.SurecBaslangicTarihi.substring(0,10)) : null;
-                    const recBit = d.SurecBekleteneGelisTarihi ? new Date(d.SurecBekleteneGelisTarihi.substring(0,10)) : null;
-                    if (recBas) recBas.setHours(0,0,0,0);
-                    if (recBit) recBit.setHours(0,0,0,0);
-                    // Hiçbiri yoksa gösterme
-                    if (!recBas && !recBit) match = false;
-                    // İkisi de varsa overlap kontrolü
-                    else if (recBas && recBit) {
-                        if ((basDate && basDate > recBit) || (bitDate && bitDate < recBas)) match = false;
-                    }
-                    // Sadece başlangıç varsa
-                    else if (recBas) {
-                        if ((basDate && basDate > recBas) || (bitDate && bitDate < recBas)) match = false;
-                    }
-                    // Sadece bitiş varsa
-                    else if (recBit) {
-                        if ((basDate && basDate > recBit) || (bitDate && bitDate < recBit)) match = false;
+                    const basDate = tarihBas ? new Date(tarihBas + 'T00:00:00') : null;
+                    const bitDate = tarihBit ? new Date(tarihBit + 'T00:00:00') : null;
+                    const recBas = d.SurecBaslangicTarihi ? new Date(d.SurecBaslangicTarihi.substring(0,10) + 'T00:00:00') : null;
+                    const recBit = d.SurecBekleteneGelisTarihi ? new Date(d.SurecBekleteneGelisTarihi.substring(0,10) + 'T00:00:00') : null;
+                    // Tarih alanı olmayan kaydı filtreye dahil etme
+                    if (!recBas || !recBit) {
+                        match = false;
+                    } else {
+                        // Filtre aralığı süreç başlangıç ve bitiş tarihini tam kapsıyorsa kayıt gelsin
+                        if (basDate && bitDate) {
+                            if (!(recBas >= basDate && recBit <= bitDate)) match = false;
+                        } else if (basDate) {
+                            if (!(recBas >= basDate)) match = false;
+                        } else if (bitDate) {
+                            if (!(recBit <= bitDate)) match = false;
+                        }
                     }
                 }
-                
-                // Drill-down filtreleri: seçili kişilere göre filtrele
+                if (mudurluk && d.MudurlukAdi !== mudurluk) match = false;
+
+                if (direktorluk && d.DirektorlukAdi !== direktorluk) match = false;
+
                 if (filterState.dolduranKisi) {
                     if (d.FormuDolduran !== filterState.dolduranKisi) match = false;
                 }
-                
                 if (filterState.bekletenKisi) {
                     if (d.FormuBekleten !== filterState.bekletenKisi) match = false;
                 }
@@ -691,7 +674,6 @@
                         if (!(v >= range[0] && v <= range[1])) match = false;
                     }
                 }
-                
                 return match;
             });
             
@@ -746,6 +728,7 @@
                 pager: { showPageSizeSelector: true, allowedPageSizes: [10, 20, 50, 100], showInfo: true },
                 columns: [
                     { dataField: "SurecNo", caption: "Süreç No" },
+                    { dataField: "FormAdi", caption: "Form Adı" },
                     { dataField: "FormuDolduran", caption: "Formu Dolduran Kişi" },
                     { dataField: "FormuBekleten", caption: "Formu Bekleten Kişi" },
                     { dataField: "FormuGonderenBolum", caption: "Formu Dolduran Bölüm" },
@@ -1220,7 +1203,6 @@
         function clearFilters() {
             document.getElementById('filterMudurluk').value = '';
             document.getElementById('filterDirektorluk').value = '';
-            document.getElementById('filterRol').value = '';
             document.getElementById('filterTarihBaslangic').value = '';
             document.getElementById('filterTarihBitis').value = '';
             let filterState = { dolduranKisi: null, bekletenKisi: null, bucket: null, mudurluk: null, form: null };
