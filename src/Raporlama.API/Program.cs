@@ -1,7 +1,6 @@
 using Raporlama.API.Services;
 using Raporlama.API.Data;
 using DevExpress.AspNetCore;
-using DevExpress.DashboardWeb;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -9,17 +8,33 @@ builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 
+// Active Directory (Windows) Authentication
+builder.Services.AddAuthentication("Negotiate")
+    .AddNegotiate();
+
+// Authorization policy - tüm authenticated kullanıcılar erişebilir
+builder.Services.AddAuthorization(options =>
+{
+    options.FallbackPolicy = options.DefaultPolicy;
+});
+
 builder.Services.AddCors(options =>
 {
     options.AddPolicy("AllowAll", policy =>
     {
-        policy.AllowAnyOrigin().AllowAnyMethod().AllowAnyHeader();
+        // Windows Authentication için credentials gerekli
+        policy.WithOrigins("http://localhost:5000", "http://localhost:3000", "http://localhost:8080")
+              .AllowAnyMethod()
+              .AllowAnyHeader()
+              .AllowCredentials(); // Windows Authentication için gerekli
     });
 });
 
 builder.Services.AddMemoryCache();
+builder.Services.AddHttpContextAccessor();
 builder.Services.AddScoped<IDatabaseService, DatabaseService>();
 builder.Services.AddScoped<IReportService, ReportService>();
+builder.Services.AddScoped<ICustomAuthorizationService, AuthorizationService>();
 builder.Services.AddScoped<IDataSourceService, DataSourceService>();
 
 // DevExpress Dashboard
@@ -43,6 +58,7 @@ app.UseStaticFiles();
 app.MapGet("/", () => Results.Redirect("/index.html"));
 
 app.UseCors("AllowAll");
+app.UseAuthentication();
 app.UseAuthorization();
 app.MapControllers();
 

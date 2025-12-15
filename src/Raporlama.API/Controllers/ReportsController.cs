@@ -1,16 +1,20 @@
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Authorization;
 using Raporlama.API.Services;
 using Raporlama.API.Data;
 using System.Data;
+using System.Security.Principal;
 
 namespace Raporlama.API.Controllers
 {
     [ApiController]
     [Route("api/[controller]")]
+    [Authorize]
     public class ReportsController : ControllerBase
     {
         private readonly IReportService _reportService;
         private readonly IDataSourceService _dataSourceService;
+        private readonly Services.ICustomAuthorizationService _authorizationService;
         private readonly IDatabaseService _databaseService;
         private readonly ILogger<ReportsController> _logger;
 
@@ -18,12 +22,38 @@ namespace Raporlama.API.Controllers
             IReportService reportService,
             IDataSourceService dataSourceService,
             IDatabaseService databaseService,
-            ILogger<ReportsController> logger)
+            ILogger<ReportsController> logger,
+            Services.ICustomAuthorizationService authorizationService)
         {
             _reportService = reportService;
             _dataSourceService = dataSourceService;
             _databaseService = databaseService;
             _logger = logger;
+            _authorizationService = authorizationService;
+        }
+
+        private string GetCurrentUserName()
+        {
+            try
+            {
+                if (User?.Identity == null)
+                {
+                    _logger.LogWarning("User.Identity is null in ReportsController");
+                    return "Unknown";
+                }
+
+                if (User.Identity is WindowsIdentity identity)
+                {
+                    return identity.Name ?? "Unknown";
+                }
+                
+                return User.Identity.Name ?? "Unknown";
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error getting current user name");
+                return "Unknown";
+            }
         }
 
         [HttpGet]
@@ -31,8 +61,26 @@ namespace Raporlama.API.Controllers
         {
             try
             {
-                var reports = await _reportService.GetAllReportsAsync();
-                return Ok(reports);
+                var userName = GetCurrentUserName();
+                
+                if (userName == "Unknown")
+                {
+                    _logger.LogWarning("Unknown user trying to access reports");
+                    return Unauthorized(new { error = "Kullanıcı kimliği alınamadı. Lütfen Windows Authentication ile giriş yapın." });
+                }
+
+                var allReports = await _reportService.GetAllReportsAsync();
+                
+                // Kullanıcının erişebileceği rapor ID'lerini al
+                var accessibleReportIds = await _authorizationService.GetUserAccessibleReportIdsAsync(userName);
+                var accessibleIdsSet = accessibleReportIds.ToHashSet();
+
+                // Sadece yetkili raporları filtrele
+                var accessibleReports = allReports.Where(r => accessibleIdsSet.Contains(r.ReportID)).ToList();
+
+                _logger.LogInformation("User {UserName} has access to {Count} reports", userName, accessibleReports.Count);
+
+                return Ok(accessibleReports);
             }
             catch (Exception ex)
             {
@@ -46,6 +94,15 @@ namespace Raporlama.API.Controllers
         {
             try
             {
+                var userName = GetCurrentUserName();
+                
+                // Kullanıcının bu rapora erişim yetkisi var mı?
+                var hasAccess = await _authorizationService.HasReportAccessAsync(reportId, userName);
+                if (!hasAccess)
+                {
+                    return Forbid($"User {userName} does not have access to report {reportId}");
+                }
+
                 var report = await _reportService.GetReportAsync(reportId);
                 if (report == null)
                     return NotFound(new { error = $"Report {reportId} not found" });
@@ -64,8 +121,22 @@ namespace Raporlama.API.Controllers
         {
             try
             {
-                var data = await _dataSourceService.GetReportDataAsync(reportId, null);
+                var userName = GetCurrentUserName();
+                
+                // Kullanıcının bu rapora erişim yetkisi var mı?
+                var hasAccess = await _authorizationService.HasReportAccessAsync(reportId, userName);
+                if (!hasAccess)
+                {
+                    return Forbid($"User {userName} does not have access to report {reportId}");
+                }
+
+                var data = await _dataSourceService.GetReportDataAsync(reportId, userName, null);
                 return Ok(ConvertDataTableToJson(data));
+            }
+            catch (UnauthorizedAccessException ex)
+            {
+                _logger.LogWarning(ex, "Unauthorized access attempt for report {ReportId}", reportId);
+                return Forbid(ex.Message);
             }
             catch (Exception ex)
             {

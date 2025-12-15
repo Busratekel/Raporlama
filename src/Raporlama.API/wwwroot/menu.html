@@ -1,0 +1,207 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Rapor Seçimi</title>
+    <link rel="stylesheet" href="style.css" />
+    <style>
+        body {
+            background: #181A20;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            margin: 0;
+            padding: 20px;
+        }
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+        }
+        .user-info {
+            background: #23242a;
+            padding: 20px;
+            border-radius: 12px;
+            margin-bottom: 20px;
+            color: #e0e0e0;
+        }
+        .user-info h3 {
+            color: #00eaff;
+            margin-top: 0;
+        }
+        .user-info p {
+            margin: 8px 0;
+        }
+        .reports-container {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 20px;
+        }
+        .report-button {
+            padding: 32px 20px;
+            background: #23242a;
+            color: #00eaff;
+            font-size: 1.2rem;
+            font-weight: 600;
+            border: 3px solid #00eaff;
+            border-radius: 12px;
+            cursor: pointer;
+            transition: all 0.3s;
+            text-align: center;
+        }
+        .report-button:hover {
+            background: #00eaff;
+            color: #181A20;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(0, 234, 255, 0.3);
+        }
+        .report-button.disabled {
+            background: #1a1a1a;
+            color: #666;
+            border-color: #333;
+            cursor: not-allowed;
+            opacity: 0.5;
+        }
+        .report-button.disabled:hover {
+            transform: none;
+            box-shadow: none;
+        }
+        .loading {
+            text-align: center;
+            color: #00eaff;
+            padding: 40px;
+        }
+        .error {
+            background: #e74c3c;
+            color: white;
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+        }
+        h2 {
+            color: #00eaff;
+            text-align: center;
+            margin-bottom: 20px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h2>📊 Rapor Seçimi</h2>
+        
+        <div class="user-info" id="userInfo">
+            <div class="loading">Kullanıcı bilgileri yükleniyor...</div>
+        </div>
+
+        <div id="reportsContainer" class="reports-container">
+            <div class="loading">Raporlar yükleniyor...</div>
+        </div>
+    </div>
+
+    <script>
+        const API_BASE = window.location.origin + '/api';
+
+        window.onload = async function() {
+            await loadUserInfo();
+            await loadReports();
+        };
+        async function loadUserInfo() {
+            try {
+                const authStatusResponse = await fetch(`${API_BASE}/authtest/status`, { credentials: 'include' });
+                const authStatus = await authStatusResponse.json();
+                if (!authStatus.isAuthenticated) {
+                    document.getElementById('userInfo').innerHTML = `
+                        <div class="error">
+                            <h3>⚠️ Giriş Yapılmamış</h3>
+                            <p>Windows Authentication çalışmıyor. Lütfen:</p>
+                            <ul style="text-align: left; margin: 10px 0;">
+                                <li>Tarayıcıyı kapatıp tekrar açın</li>
+                                <li>Internet Explorer veya Edge kullanmayı deneyin</li>
+                                <li>Windows Authentication'ın aktif olduğundan emin olun</li>
+                            </ul>
+                            <p><strong>Detay:</strong> ${escapeHtml(JSON.stringify(authStatus, null, 2))}</p>
+                        </div>
+                    `;
+                    return;
+                }
+                const response = await fetch(`${API_BASE}/authorization/current-user`, { credentials: 'include' });
+                if (!response.ok) {
+                    if (response.status === 401) throw new Error('Yetkilendirme hatası. Lütfen tekrar giriş yapın.');
+                    const errorText = await response.text();
+                    throw new Error(`HTTP ${response.status}: ${errorText}`);
+                }
+                const userInfo = await response.json();
+                document.getElementById('userInfo').innerHTML = `
+                    <h3>👤 Kullanıcı Bilgileri</h3>
+                    <p><strong>Kullanıcı Adı:</strong> ${escapeHtml(userInfo.userName || 'Bilinmiyor')}</p>
+                `;
+            } catch (error) {
+                document.getElementById('userInfo').innerHTML = `
+                    <div class="error">
+                        <h3>❌ Hata</h3>
+                        <p>Kullanıcı bilgileri yüklenemedi: ${escapeHtml(error.message)}</p>
+                    </div>
+                `;
+            }
+        }
+        async function loadReports() {
+            try {
+                const response = await fetch(`${API_BASE}/reports`, { credentials: 'include' });
+                if (!response.ok) {
+                    if (response.status === 401 || response.status === 403) throw new Error('Yetkilendirme hatası. Lütfen tekrar giriş yapın.');
+                    throw new Error('Raporlar yüklenemedi');
+                }
+                const reports = await response.json();
+                if (!reports || reports.length === 0) {
+                    document.getElementById('reportsContainer').innerHTML = `
+                        <div style="grid-column: 1/-1; text-align: center; color: #888; padding: 40px;">
+                            Henüz erişebileceğiniz rapor bulunmamaktadır.
+                        </div>
+                    `;
+                    return;
+                }
+                const reportsHtml = reports
+                    .filter(report => report.url && report.url.length > 0)
+                    .map(report => {
+                        let url = report.url;
+                        if (!url.startsWith('raporlar/')) {
+                            url = 'raporlar/' + url.replace(/^\/+/, '');
+                        }
+                        if (!url.endsWith('.html')) {
+                            url += '.html';
+                        }
+                        return `
+                            <button class="report-button" onclick="checkReportAccess('${report.reportID}', '${url}')">
+                                ${escapeHtml(report.reportName || 'Rapor')}
+                            </button>
+                        `;
+                    }).join('');
+                document.getElementById('reportsContainer').innerHTML = reportsHtml;
+            } catch (error) {
+                document.getElementById('reportsContainer').innerHTML = `
+                    <div class="error" style="grid-column: 1/-1;">
+                        Raporlar yüklenemedi: ${error.message}
+                    </div>
+                `;
+            }
+        }
+        async function checkReportAccess(reportId, url) {
+            try {
+                const response = await fetch(`${API_BASE}/authorization/has-access?reportId=${reportId}`, { credentials: 'include' });
+                if (!response.ok) throw new Error('Yetki kontrolü başarısız.');
+                const result = await response.json();
+                if (result.hasAccess) {
+                    window.location.href = url;
+                } else {
+                    alert('Bu rapora erişiminiz bulunmamaktadır. Yetki için IT Departmanına başvurunuz.');
+                }
+            } catch (error) {
+                alert('Yetki kontrolü sırasında hata oluştu: ' + error.message);
+            }
+        }
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+    </script>
+</body>
+</html>

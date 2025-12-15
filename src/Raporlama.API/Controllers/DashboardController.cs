@@ -1,4 +1,5 @@
 using Microsoft.AspNetCore.Mvc;
+using Raporlama.API.Models;
 using Raporlama.API.Services;
 using System.Data;
 using System.Linq;
@@ -11,13 +12,16 @@ namespace Raporlama.API.Controllers
     {
         private readonly IDataSourceService _dataSourceService;
         private readonly ILogger<DashboardController> _logger;
+        private readonly IReportService _reportService;
 
         public DashboardController(
             IDataSourceService dataSourceService,
-            ILogger<DashboardController> logger)
+            ILogger<DashboardController> logger,
+            IReportService reportService)
         {
             _dataSourceService = dataSourceService;
             _logger = logger;
+            _reportService = reportService;
         }
 
         /// <summary>
@@ -42,12 +46,18 @@ namespace Raporlama.API.Controllers
         /// <summary>
         /// Bekleyen süreçler verisi
         /// </summary>
+
         [HttpGet("data/bekleyen-surecler")]
         public async Task<IActionResult> GetBekleyenSureclerData()
         {
             try
             {
-                var data = await _dataSourceService.GetReportDataAsync(2, null);
+                // ReportCode ile dinamik olarak reportId bul
+                var report = (await _reportService.GetAllReportsAsync()).FirstOrDefault(r => r.ReportCode == "RPT_BEKLEYEN");
+                if (report == null)
+                    return NotFound(new { error = "Bekleyen Süreçler raporu bulunamadı." });
+                var userName = User?.Identity?.Name ?? "Unknown";
+                var data = await _dataSourceService.GetReportDataAsync(report.ReportID, userName);
                 return Ok(ConvertDataTableToDevExpressFormat(data));
             }
             catch (Exception ex)
@@ -62,7 +72,11 @@ namespace Raporlama.API.Controllers
         {
             try
             {
-                var dt = await _dataSourceService.GetReportDataAsync(2, null);
+                var report = (await _reportService.GetAllReportsAsync()).FirstOrDefault(r => r.ReportCode == "RPT_BEKLEYEN");
+                if (report == null)
+                    return NotFound(new { error = "Bekleyen Süreçler raporu bulunamadı." });
+                var userName = User?.Identity?.Name ?? "Unknown";
+                var dt = await _dataSourceService.GetReportDataAsync(report.ReportID, userName);
 
                 var pie = ConvertToPieChart(dt, new[] { "FormuDolduranSicil" });
                 var bar = ConvertToBarChart(dt, new[] { "FormuBekletenSicil" });

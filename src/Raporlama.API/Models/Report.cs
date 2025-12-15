@@ -18,6 +18,7 @@ namespace Raporlama.API.Models
         public int? CacheDuration { get; set; }
         public bool IsActive { get; set; } = true;
         public string? Description { get; set; }
+        public string? Url { get; set; }
     }
 }
 

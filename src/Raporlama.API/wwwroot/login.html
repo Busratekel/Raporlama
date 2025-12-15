@@ -1,0 +1,31 @@
+<!-- <!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Kullanıcı Girişi</title>
+    <link rel="stylesheet" href="style.css" />
+</head>
+<body style="background:#181A20;display:flex;align-items:center;justify-content:center;height:100vh;">
+    <form id="loginForm" style="background:#23242a;padding:40px 32px;border-radius:12px;box-shadow:0 2px 16px #0003;min-width:320px;display:flex;flex-direction:column;gap:18px;">
+        <h2 style="color:#00eaff;text-align:center;margin-bottom:12px;">Kullanıcı Girişi</h2>
+        <input type="text" id="username" placeholder="Kullanıcı Adı" style="padding:10px;border-radius:6px;border:1px solid #ccc;font-size:16px;">
+        <input type="password" id="password" placeholder="Şifre" style="padding:10px;border-radius:6px;border:1px solid #ccc;font-size:16px;">
+        <button type="submit" style="background:#00eaff;color:#181A20;font-weight:600;padding:10px;border:none;border-radius:6px;cursor:pointer;font-size:16px;">Giriş Yap</button>
+        <div id="loginError" style="color:#e74c3c;text-align:center;display:none;">Kullanıcı adı veya şifre hatalı!</div>
+    </form>
+    <script>
+    document.getElementById('loginForm').onsubmit = function(e) {
+        e.preventDefault();
+        var username = document.getElementById('username').value.trim();
+        var password = document.getElementById('password').value.trim();
+        if (username === 'admin' && password === 'admin') {
+            localStorage.setItem('isLoggedIn', '1');
+            window.location.href = 'menu.html';
+        } else {
+            document.getElementById('loginError').style.display = 'block';
+        }
+    };
+    </script>
+</body>
+</html> -->

@@ -1,12 +1,38 @@
 <!DOCTYPE html>
 <html lang="tr">
 <head>
+    <script>
+        // Kullanıcı için varsayılan rapor varsa otomatik olarak o rapora yönlendir
+        (async function() {
+            const API_BASE = window.location.origin + '/api';
+            try {
+                const resp = await fetch(`${API_BASE}/authorization/default-report`, { credentials: 'include' });
+                if (resp.ok) {
+                    const data = await resp.json();
+                    if (data && data.reportKey) {
+                        // Rapor detayını alıp url'yi bul
+                        const reportResp = await fetch(`${API_BASE}/reports/${data.reportKey}`, { credentials: 'include' });
+                        if (reportResp.ok) {
+                            const report = await reportResp.json();
+                            let url = report.url || '';
+                            if (!url.startsWith('raporlar/')) url = 'raporlar/' + url.replace(/^\/+/, '');
+                            if (!url.endsWith('.html')) url += '.html';
+                            window.location.replace(url);
+                            return;
+                        }
+                    }
+                }
+            } catch (e) {}
+            // Varsayılan rapor yoksa menüye yönlendir
+            window.location.replace('menu.html');
+        })();
+    </script>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Bellona Raporlama Sistemi</title>
     
-    <!-- DevExpress CSS -->
-    <link rel="stylesheet" href="https://cdn3.devexpress.com/jslib/24.2.3/css/dx.light.css" />
+     <!--DevExpress CSS -->
+    <!--<link rel="stylesheet" href="https://cdn3.devexpress.com/jslib/24.2.3/css/dx.light.css" />
     
     <style>
                                 /* DataGrid pager (sayfa numaraları) için beyaz tema */
@@ -268,7 +294,7 @@
     </div>
     
     <div class="main-layout">
-        <!-- SOL PANEL: FİLTRELER -->
+       SOL PANEL: FİLTRELER 
         <div class="sidebar">
             <h3>🔍 Filtreler</h3>
             
@@ -300,9 +326,9 @@
             <button class="clear-filters" onclick="clearFilters()">⊘ Temizle</button>
         </div>
         
-        <!-- SAĞ PANEL: VERİ VE GRAFİKLER -->
+        SAĞ PANEL: VERİ VE GRAFİKLER
         <div class="content">
-            <!-- İstatistikler -->
+             İstatistikler 
             <div class="card">
                 <h2>📊 İstatistikler</h2>
                 <div class="stats">
@@ -325,7 +351,7 @@
                 </div>
             </div>
             
-            <!-- Grafikler -->
+             Grafikler 
             <div class="card">
                 <h2>📈 Grafikler</h2>
                 <div class="charts-grid">
@@ -537,12 +563,12 @@
                 </div>
             </div>
             
-            <!-- Drill-down Detay Paneli -->
+             Drill-down Detay Paneli
             <div class="card" id="detailPanelCard" style="display:none">
                 <h2 id="detailPanelTitle">🔎 Detay Paneli</h2>
                 <div id="chartsFlexRow" style="display:flex;flex-wrap:wrap;gap:48px;justify-content:center;align-items:flex-start;width:100%;max-width:100%;"></div>
             </div>
-            <!-- Tablo -->
+             Tablo
             <div class="card">
                 <h2>📋 Detaylı Liste</h2>
                 <div id="dashboard"></div>
@@ -1213,4 +1239,4 @@
     </body>
     </html>
 
-
+ -->

@@ -80,9 +80,9 @@ public class ETLService
             {
                 // Sorgu yoksa SorguTanimi tablosundan dinamik sorgu çek
                 var sorguKaydi = await hedefConn.QueryFirstOrDefaultAsync<dynamic>(
-                    "SELECT TOP 1 SorguMetni FROM SorguTanimi WHERE SorguAdi = @adi AND Aktif = 1 ORDER BY Id DESC",
+                    "SELECT TOP 1 Query FROM Report WHERE ReportName = @adi AND Aktif = 1 ORDER BY ReportKey DESC",
                     new { adi = "BekleyenSurecler" });
-                bekleyenQuery = (string)sorguKaydi?.SorguMetni;
+                bekleyenQuery = (string)sorguKaydi?.Query;
                 if (string.IsNullOrWhiteSpace(bekleyenQuery))
                 {
                     throw new Exception("ETL: appsettings veya SorguTanimi tablosunda aktif BekleyenSurecler sorgusu bulunamadı!");

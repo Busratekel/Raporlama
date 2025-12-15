@@ -1,4 +1,5 @@
 using Raporlama.API.Models;
+using Raporlama.API.Data;
 
 namespace Raporlama.API.Services
 {
@@ -6,45 +7,69 @@ namespace Raporlama.API.Services
     {
         Task<IEnumerable<Report>> GetAllReportsAsync();
         Task<Report?> GetReportAsync(int reportId);
-        Task<Report> CreateReportAsync(Report report);
     }
 
     public class ReportService : IReportService
     {
-        private readonly List<Report> _reports = new();
+        private readonly IDatabaseService _databaseService;
+        private readonly ILogger<ReportService> _logger;
+        // Hardcoded raporlar kaldırıldı, tüm raporlar veritabanından gelecek
 
-        public ReportService()
+        public ReportService(IDatabaseService databaseService, ILogger<ReportService> logger)
         {
-            _reports.Add(new Report
+            _databaseService = databaseService;
+            _logger = logger;
+        }
+
+        public async Task<IEnumerable<Report>> GetAllReportsAsync()
+        {
+            // Tüm raporlar veritabanından gelecek
+            var dbReports = await _databaseService.QueryAsync<dynamic>(
+                "BellonaRapor",
+                "SELECT ReportKey, ReportCode, ReportName, Aktif, Url, Query FROM [Report] WHERE Aktif = 1"
+            );
+
+            var reports = dbReports.Select(r => new Report
             {
-                ReportID = 2,
-                ReportName = "Bekleyen Süreçler",
-                ReportCode = "RPT_BEKLEYEN",
+                ReportID = r.ReportKey,
+                ReportCode = r.ReportCode ?? "",
+                ReportName = r.ReportName ?? "",
+                IsActive = r.Aktif == true,
+                Url = r.Url,
                 SourceDatabase = "BellonaRapor",
-                Query = "SELECT * FROM Fact_BekleyenSurecler ORDER BY BekleyenGun DESC",
-                DataSourceType = null,
-                CacheDuration = 5,
-                IsActive = true,
-                Description = "VIEW'dan Fact tablosuna kopyalanmış bekleyen süreçler (3656 kayıt)"
-            });
+                Query = r.Query ?? "",
+                CacheDuration = 5
+            }).ToList();
+
+            return reports;
         }
 
-        public Task<IEnumerable<Report>> GetAllReportsAsync()
+        public async Task<Report?> GetReportAsync(int reportId)
         {
-            return Task.FromResult(_reports.AsEnumerable());
-        }
+            // Tüm raporlar veritabanından gelecek
+            var dbReport = await _databaseService.QueryAsync<dynamic>(
+                "BellonaRapor",
+                "SELECT ReportKey, ReportCode, ReportName, Aktif, Url, Query FROM [Report] WHERE ReportKey = @ReportKey AND Aktif = 1",
+                new { ReportKey = reportId }
+            );
 
-        public Task<Report?> GetReportAsync(int reportId)
-        {
-            var report = _reports.FirstOrDefault(r => r.ReportID == reportId);
-            return Task.FromResult(report);
-        }
+            if (dbReport.Any())
+            {
+                var r = dbReport.First();
+                return new Report
+                {
+                    ReportID = r.ReportKey,
+                    ReportCode = r.ReportCode ?? "",
+                    ReportName = r.ReportName ?? "",
+                    IsActive = r.Aktif == true,
+                    Url = r.Url,
+                    SourceDatabase = "BellonaRapor",
+                    Query = r.Query ?? "",
+                    CacheDuration = 5
+                };
+            }
 
-        public Task<Report> CreateReportAsync(Report report)
-        {
-            report.ReportID = _reports.Count + 1;
-            _reports.Add(report);
-            return Task.FromResult(report);
+            return null;
         }
     }
 }
