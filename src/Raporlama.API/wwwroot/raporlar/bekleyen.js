@@ -26,6 +26,14 @@ window.onload = async function() {
                 if (filters.direktorluk) document.getElementById('filterDirektorluk').value = filters.direktorluk;
                 if (filters.tarihBas) document.getElementById('filterTarihBaslangic').value = filters.tarihBas;
                 if (filters.tarihBit) document.getElementById('filterTarihBitis').value = filters.tarihBit;
+                // Grafik tiplerini uygula
+                if (filters.chartTypeDolduran) document.getElementById('chartTypeDolduran').value = filters.chartTypeDolduran;
+                if (filters.chartTypeBekleten) document.getElementById('chartTypeBekleten').value = filters.chartTypeBekleten;
+                if (filters.chartTypeMudurluk) document.getElementById('chartTypeMudurluk').value = filters.chartTypeMudurluk;
+                if (filters.chartTypeForm) document.getElementById('chartTypeForm').value = filters.chartTypeForm;
+                if (filters.chartTypeBekleme) document.getElementById('chartTypeBekleme').value = filters.chartTypeBekleme;
+                if (filters.chartTypePersonDolduran) document.getElementById('chartTypePersonDolduran').value = filters.chartTypePersonDolduran;
+                if (filters.chartTypePersonBekleten) document.getElementById('chartTypePersonBekleten').value = filters.chartTypePersonBekleten;
                 Object.assign(filterState, filters);
             }
         }
@@ -683,6 +691,14 @@ async function saveDefaultReport() {
     filterState.direktorluk = document.getElementById('filterDirektorluk').value;
     filterState.tarihBas = document.getElementById('filterTarihBaslangic').value;
     filterState.tarihBit = document.getElementById('filterTarihBitis').value;
+    // Grafik tiplerini de kaydet
+    filterState.chartTypeDolduran = document.getElementById('chartTypeDolduran')?.value;
+    filterState.chartTypeBekleten = document.getElementById('chartTypeBekleten')?.value;
+    filterState.chartTypeMudurluk = document.getElementById('chartTypeMudurluk')?.value;
+    filterState.chartTypeForm = document.getElementById('chartTypeForm')?.value;
+    filterState.chartTypeBekleme = document.getElementById('chartTypeBekleme')?.value;
+    filterState.chartTypePersonDolduran = document.getElementById('chartTypePersonDolduran')?.value;
+    filterState.chartTypePersonBekleten = document.getElementById('chartTypePersonBekleten')?.value;
     try {
         await fetch('http://localhost:5000/api/authorization/default-report', {
             method: 'POST',
