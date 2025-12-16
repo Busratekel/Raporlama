@@ -22,8 +22,6 @@ public class ETLWorker : BackgroundService
         if (!enableScheduling)
         {
             _logger.LogInformation("Zamanlama devre dışı. Manuel çalıştırma için API kullanın.");
-            
-            // İlk çalıştırma (test için)
             _logger.LogInformation("İlk ETL işlemi başlatılıyor...");
             await _etlService.RunETLAsync();
             

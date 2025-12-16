@@ -176,6 +176,5 @@ public class ETLService
         }
     }
 
-    // Çalışanlar yükleme artık proje kapsamında değil; ilgili method kaldırıldı.
 }
 

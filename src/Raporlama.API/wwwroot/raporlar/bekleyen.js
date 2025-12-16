@@ -298,7 +298,6 @@ function downloadSVG(chartId, title) {
     URL.revokeObjectURL(url);
 }
 
-// ...DevExpress chart rendering and filtering logic should be appended here (from previous inline JS)
 // Grafikleri yükle ve render
 async function loadCharts(data) {
     try {
