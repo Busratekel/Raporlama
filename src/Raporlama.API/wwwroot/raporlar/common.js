@@ -1,0 +1,2 @@
+// DevExpress lisans anahtarınızı buraya ekleyin
+DevExpress.config({ licenseKey: "ewogICJmb3JtYXQiOiAxLAogICJjdXN0b21lcklkIjogIjVjNTQwMGU1LWIwMDctNDYyNC1hMDNkLTU3YTdhYTU2NDUwNSIsCiAgIm1heFZlcnNpb25BbGxvd2VkIjogMjUxCn0=.AfxUr8UGoK2MmHUfRrHy5sekbLYE5PwEbf7JGrAw0mdVh1Xjce8ek3Lul5tFWugP+3eIdmf8OkrwP5LcD7wQctOG508v4h40PE+wno2amYgnemSDF5PKLuxq5NFNrFUPwLGpzQ==" });

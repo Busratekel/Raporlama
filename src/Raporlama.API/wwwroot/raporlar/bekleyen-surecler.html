@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Bellona Raporlama Sistemi</title>
     
-    <link rel="stylesheet" href="https://cdn3.devexpress.com/jslib/24.2.3/css/dx.light.css" />
+    <link rel="stylesheet" href="/lib/css/dx.light.css" />
     <link rel="stylesheet" href="bekleyen.css" />
 </head>
 <body>
@@ -188,13 +188,17 @@
             </div>
             <div class="card">
                 <h2>📋 Detaylı Liste</h2>
+                <button class="excelExportBtn" id="excelExportBtn">Excel'e Aktar</button>
                 <div id="dashboard"></div>
             </div>
         </div>
     </div>
     <script src="https://code.jquery.com/jquery-3.6.0.min.js" integrity="sha256-/xUj+3OJU5yExlq6GSYGSHk7tPXikynS7ogEvDej/m4=" crossorigin="anonymous"></script>
     <!-- DevExpress JS -->
-    <script src="https://cdn3.devexpress.com/jslib/24.2.3/js/dx.all.js"></script>
+    <script src="/lib/js/dx.all.js"></script>
+    <script src="/lib/js/FileSaver.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/exceljs/4.3.0/exceljs.min.js"></script>
+    <script src="common.js"></script>
     <script src="toast.js"></script>
     <script src="bekleyen.js"></script>
     

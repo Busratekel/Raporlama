@@ -75,6 +75,6 @@ src/Raporlama.ETL/logs/
 # Ignore decision document
 KARAR_DOKUMANI.md
 
+lib
 
-
-
+node_modules

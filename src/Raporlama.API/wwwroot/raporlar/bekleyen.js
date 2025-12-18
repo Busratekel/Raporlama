@@ -204,10 +204,51 @@ function renderDataGrid(data) {
             { dataField: "MudurlukAdi", caption: "Müdürlük Adı" },
             { dataField: "SurecBaslangicTarihi", caption: "Süreç Başlangıç Tarihi", dataType: "date", format: "yyyy-MM-dd" },
             { dataField: "SurecBekleteneGelisTarihi", caption: "Süreç Bekletene Geliş Tarihi", dataType: "date", format: "yyyy-MM-dd" }
-        ]
+        ],
+        // export: {
+        //     enabled: true,
+        //     fileName: "BekleyenSurecler"
+        // },
+        // onExporting: function(e) {
+        //     var workbook = new ExcelJS.Workbook();
+        //     var worksheet = workbook.addWorksheet("Bekleyen Süreçler");
+        //     DevExpress.excelExporter.exportDataGrid({
+        //         component: e.component,
+        //         worksheet: worksheet,
+        //         autoFilterEnabled: true
+        //     }).then(function() {
+        //         workbook.xlsx.writeBuffer().then(function(buffer) {
+        //             saveAs(new Blob([buffer], { type: "application/octet-stream" }), "BekleyenSurecler.xlsx");
+        //         });
+        //     });
+        //     e.cancel = true; // DevExtreme’in kendi exportunu iptal et
+        // },
+        toolbar: 
+        {
+          items: [
+            "searchPanel",
+            //"exportButton"
+            ]      
+        }
     }).dxDataGrid("instance");
 }
 
+// Excel'e Aktar butonu ile manuel export
+$(document).on("click", "#excelExportBtn", function() {
+    if (currentDataGrid) {
+        var workbook = new ExcelJS.Workbook();
+        var worksheet = workbook.addWorksheet("Bekleyen Süreçler");
+        DevExpress.excelExporter.exportDataGrid({
+            component: currentDataGrid,
+            worksheet: worksheet,
+            autoFilterEnabled: true
+        }).then(function() {
+            workbook.xlsx.writeBuffer().then(function(buffer) {
+                saveAs(new Blob([buffer], { type: "application/octet-stream" }), "BekleyenSurecler.xlsx");
+            });
+        });
+    }
+});
 // Modal enlarge logic
 function enlargeChart(chartId, title) {
     const oldModal = document.getElementById('chartEnlargeModal');
