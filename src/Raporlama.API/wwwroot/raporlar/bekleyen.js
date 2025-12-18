@@ -1,3 +1,88 @@
+// Özet tablo  için örnek veri ve grid
+function renderSummaryTable() {
+    if (!allData || allData.length === 0) {
+        $("#summaryTable").dxPivotGrid({ dataSource: [] });
+        return;
+    }
+    // PivotGrid için veri hazırlama
+    const pivotData = allData.map(d => {
+        let dt = d.SurecBaslangicTarihi ? new Date(d.SurecBaslangicTarihi) : null;
+        let year = dt ? dt.getFullYear() : null;
+        let jan1 = dt ? new Date(year, 0, 1) : null;
+        let days = dt ? Math.floor((dt - jan1) / 86400000) : null;
+        let week = dt ? Math.ceil((days + jan1.getDay() + 1) / 7) : null;
+        return {
+            Mudurluk: d.MudurlukAdi || '-',
+            UretimYeri: d.UretimYeri || d.UretimYeriAdi || '-',
+            Yil: year,
+            Hafta: week,
+            Adet: 1
+        };
+    });
+    $("#summaryTable").dxPivotGrid({
+        dataSource: {
+            fields: [
+                { dataField: "Mudurluk", area: "row", caption: "Müdürlük" },
+                { dataField: "UretimYeri", area: "row", caption: "Üretim Yeri" },
+                { dataField: "Yil", area: "column", caption: "Yıl" },
+                { dataField: "Hafta", area: "column", caption: "Hafta" },
+                { dataField: "Adet", area: "data", summaryType: "sum", caption: "Toplam" }
+            ],
+            store: pivotData
+        },
+        allowSortingBySummary: true,
+        allowFiltering: true,
+        showBorders: true,
+        showColumnGrandTotals: true,
+        showColumnTotals: true,
+        showRowGrandTotals: true,
+        showRowTotals: true,
+        texts: {
+            grandTotal: 'Toplam',
+            total: 'Toplam'
+        },
+        onCellPrepared: function(e) {
+            if (e.area === 'data' && typeof e.cell.value === 'number' && e.cell.value > 7) {
+                e.cellElement.css({ background: '#e57373', color: '#fff', fontWeight: 'bold' });
+            }
+        },
+        height: 500,
+        scrolling: { mode: 'both', useNative: true },
+        fieldChooser: { enabled: true },
+        export: { enabled: true, fileName: 'OzetTablo' },
+        onExporting: function(e) {
+            const workbook = new ExcelJS.Workbook();
+            const worksheet = workbook.addWorksheet('OzetTablo');
+            DevExpress.excelExporter.exportPivotGrid({
+                component: e.component,
+                worksheet: worksheet
+            }).then(function() {
+                workbook.xlsx.writeBuffer().then(function(buffer) {
+                    saveAs(new Blob([buffer], { type: 'application/octet-stream' }), 'OzetTablo.xlsx');
+                });
+            });
+            e.cancel = true;
+        }
+    });
+}
+// Bekleyen gün  7 günden fazla ise kırmızı, az ise yeşil
+function heatmapCell(cellElement, cellInfo) {
+    var value = cellInfo.value;
+    if (typeof value === "number") {
+        if (value > 7) {
+            cellElement.css({ background: "#e57373", color: "#fff", fontWeight: "bold" });
+        } else {
+            cellElement.css({ background: "#81c784", color: "#181A20", fontWeight: "bold" });
+        }
+        cellElement.text(value);
+    }
+}
+
+// Sayfa yüklendiğinde özet tabloyu da render et
+window.onload = async function() {
+    window.scrollTo(0, 0);
+    loadAllData();
+};
 window.onbeforeunload = function() {
     window.scrollTo(0, 0);
 };
@@ -50,6 +135,8 @@ async function loadAllData() {
         populateFilters();
         // Verileri göster
         applyFilters();
+        // Özet tabloyu veri geldikten sonra güncelle
+        renderSummaryTable();
     } catch (error) {
         console.error('Veri yükleme hatası:', error);
         alert('Veri yüklenirken hata oluştu! API çalışıyor mu kontrol edin.');
@@ -233,7 +320,7 @@ function renderDataGrid(data) {
     }).dxDataGrid("instance");
 }
 
-// Excel'e Aktar butonu ile manuel export
+// Excel'e Aktar butonu
 $(document).on("click", "#excelExportBtn", function() {
     if (currentDataGrid) {
         var workbook = new ExcelJS.Workbook();
@@ -249,7 +336,7 @@ $(document).on("click", "#excelExportBtn", function() {
         });
     }
 });
-// Modal enlarge logic
+
 function enlargeChart(chartId, title) {
     const oldModal = document.getElementById('chartEnlargeModal');
     if (oldModal) oldModal.remove();
@@ -283,7 +370,7 @@ function enlargeChart(chartId, title) {
     }
 }
 
-// Download SVG logic
+// Download SVG 
 function downloadSVG(chartId, title) {
     const chartElem = document.getElementById(chartId);
     if (!chartElem) return;

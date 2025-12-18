@@ -55,7 +55,7 @@ app.UseDevExpressControls();
 app.UseStaticFiles();
 
 // Default page
-app.MapGet("/", () => Results.Redirect("/index.html"));
+app.MapGet("/", () => Results.Redirect("/menu.html"));
 
 app.UseCors("AllowAll");
 app.UseAuthentication();
