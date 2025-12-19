@@ -23,10 +23,6 @@ namespace Raporlama.API.Controllers
             _logger = logger;
             _reportService = reportService;
         }
-
-        /// <summary>
-        /// Dashboard için veri kaynağı listesi
-        /// </summary>
         [HttpGet("datasources")]
         public IActionResult GetDataSources()
         {
@@ -42,10 +38,6 @@ namespace Raporlama.API.Controllers
 
             return Ok(dataSources);
         }
-
-        /// <summary>
-        /// Bekleyen süreçler verisi
-        /// </summary>
 
         [HttpGet("data/bekleyen-surecler")]
         public async Task<IActionResult> GetBekleyenSureclerData()
