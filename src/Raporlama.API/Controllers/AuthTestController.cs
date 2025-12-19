@@ -14,10 +14,6 @@ namespace Raporlama.API.Controllers
         {
             _logger = logger;
         }
-
-        /// <summary>
-        /// Authentication durumunu test eder (herkes erişebilir)
-        /// </summary>
         [HttpGet("status")]
         public IActionResult GetAuthStatus()
         {
@@ -37,9 +33,6 @@ namespace Raporlama.API.Controllers
             return Ok(result);
         }
 
-        /// <summary>
-        /// Sadece authenticated kullanıcılar erişebilir
-        /// </summary>
         [HttpGet("protected")]
         [Authorize]
         public IActionResult GetProtectedInfo()
