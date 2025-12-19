@@ -61,7 +61,27 @@ function renderSummaryTable() {
             const worksheet = workbook.addWorksheet('OzetTablo');
             DevExpress.excelExporter.exportPivotGrid({
                 component: e.component,
-                worksheet: worksheet
+                worksheet: worksheet,
+                customizeCell: function(options) {
+                    // PivotGrid export'unda değer options.pivotCell.value'da olabilir
+                    // Kırmızı hücreler
+                    if (options && options.pivotCell && typeof options.pivotCell.value === 'number' && options.pivotCell.value > 7) {
+                        options.excelCell.fill = {
+                            type: 'pattern',
+                            pattern: 'solid',
+                            fgColor: { argb: 'FFE57373' }
+                        };
+                        options.excelCell.font = { color: { argb: 'FFFFFFFF' } };
+                    }
+                    // Yıl gruplarını ayıran sütunlara beyaz sol border ekle (her yılın ilk hafta sütunu)
+                    if (options && options.pivotCell && options.pivotCell.columnPath && Array.isArray(options.pivotCell.columnPath)) {
+                        // columnPath: [Yıl, Hafta] gibi. Hafta 1 ise yılın ilk haftasıdır.
+                        if (options.pivotCell.columnPath.length > 1 && (options.pivotCell.columnPath[1] === 1 || options.pivotCell.columnPath[1] === '1')) {
+                            options.excelCell.border = options.excelCell.border || {};
+                            options.excelCell.border.left = { style: 'thick', color: { argb: 'FFFFFFFF' } };
+                        }
+                    }
+                }
             }).then(function() {
                 workbook.xlsx.writeBuffer().then(function(buffer) {
                     saveAs(new Blob([buffer], { type: 'application/octet-stream' }), 'OzetTablo.xlsx');
@@ -75,64 +95,19 @@ function renderSummaryTable() {
             setTimeout(function() {
                 var $toolbar = $(e.element).find('.dx-pivotgrid-toolbar');
                 if ($toolbar.length) {
-                    // Remove any toolbar from its current parent
                     $toolbar.detach();
                     $toolbar.find('> *').css('margin-left', '5px');
-                    // Place toolbar in the custom header container (right side)
                     $('#summaryTableToolbarContainer').css({ 'justify-content': 'flex-end', 'width': '100%' }).empty().append($toolbar);
                 }
-                // Add 'Geliş Yılı' to the dx-area-description-cell (top-left cell)
                 var $descCells = $(e.element).find('.dx-area-description-cell');
+
                 if ($descCells.length) {
-                    // Remove all children and event handlers to prevent context menu and icons
                     $descCells.eq(0)
                         .off()
                         .empty()
                         .append('<span style="pointer-events:none;user-select:none;">Geliş Yılı</span>')
                         .css({ 'pointer-events': 'none', 'user-select': 'none' });
-                    // Her yıl başlığı için, ilgili hafta başlık grubunun üstüne "Hafta" label'ı ekle
-                    var $headerRows = $(e.element).find('.dx-pivotgrid-horizontal-headers .dx-row');
-                    if ($descCells.length) {
-                        // Remove all children and event handlers to prevent context menu and icons
-                        $descCells.eq(0)
-                            .off()
-                            .empty()
-                            .append('<span style="font-weight:bold;pointer-events:none;user-select:none;">Geliş Yılı</span>')
-                            .css({ 'pointer-events': 'none', 'user-select': 'none' });
-
-                        // --- YIL ALTINDA HAFTA BAŞLIĞI ---
-                        var $headerRows = $(e.element).find('.dx-pivotgrid-horizontal-headers .dx-row');
-                        if ($headerRows.length > 1) {
-                            var $yearHeaders = $headerRows.eq(0).find('.dx-column-header');
-                            // Sadece bir defa eklenmesini sağla
-                            if ($headerRows.eq(0).prev('.custom-week-label-row').length === 0) {
-                                var $weekLabelRow = $('<div class="dx-row custom-week-label-row"></div>');
-                                $yearHeaders.each(function(i, yearHeader) {
-                                    var colspan = parseInt($(yearHeader).attr('colspan') || '1', 10);
-                                    var $cell = $('<div class="dx-column-header" style="text-align:center;font-weight:bold;pointer-events:none;user-select:none;"></div>');
-                                    $cell.text('Hafta');
-                                    if (colspan > 1) $cell.attr('colspan', colspan);
-                                    $weekLabelRow.append($cell);
-                                });
-                                $headerRows.eq(0).before($weekLabelRow);
-                            }
-                        } else if ($descCells.length > 1) {
-                            $descCells.eq(1)
-                                .off()
-                                .empty()
-                                .append('<span style="font-weight:bold;pointer-events:none;user-select:none;">Hafta</span>')
-                                .css({ 'pointer-events': 'none', 'user-select': 'none' });
-                        } else {
-                            var $weekHeader = $(e.element).find('.dx-pivotgrid-horizontal-headers .dx-row').eq(1).find('.dx-column-header').first();
-                            if ($weekHeader.length) {
-                                $weekHeader
-                                    .off()
-                                    .empty()
-                                    .append('<span style="font-weight:bold;pointer-events:none;user-select:none;">Hafta</span>')
-                                    .css({ 'pointer-events': 'none', 'user-select': 'none' });
-                            }
-                        }
-                    }
+                    
                 }  
             }, 0);      
             if (typeof value === "number") {
