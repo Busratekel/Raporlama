@@ -71,7 +71,7 @@ namespace Raporlama.API.Services
             // Kolon yetkisi varsa, sadece izinli kolonları seç
             string selectColumns = columns.Count > 0 ? string.Join(",", columns) : "*";
 
-            // Satır yetkisi varsa, WHERE/AND ekle (ORDER BY, GROUP BY, HAVING'den önce)
+            // Satır yetkisi varsa, WHERE/AND ekle ORDER BY, GROUP BY, HAVING'den önce
             string query = report.Query;
             if (selectColumns != "*")
             {

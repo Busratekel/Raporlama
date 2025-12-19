@@ -1,3 +1,4 @@
+
 // Özet tablo  için örnek veri ve grid
 function renderSummaryTable() {
     if (!allData || allData.length === 0) {
@@ -19,6 +20,13 @@ function renderSummaryTable() {
             Adet: 1
         };
     });
+    $("#summaryTableHeaderRow").remove();
+    const headerRow = $('<div id="summaryTableHeaderRow" style="display:flex;justify-content:space-between;align-items:center;margin-bottom:22px;">'
+        + '<span id="summaryTableToolbarContainer" style="display:flex;gap:24px;margin-left:16px;"></span>'
+        + '</div>');
+    $("#summaryTable").before(headerRow);
+
+    // Render PivotGrid
     $("#summaryTable").dxPivotGrid({
         dataSource: {
             fields: [
@@ -38,8 +46,8 @@ function renderSummaryTable() {
         showRowGrandTotals: true,
         showRowTotals: true,
         texts: {
-            grandTotal: 'Toplam',
-            total: 'Toplam'
+            grandTotal: 'Tüm Yılların Toplamı',
+            total: 'O Yıla Ait Alt Toplam'
         },
         onCellPrepared: function(e) {
             if (e.area === 'data' && typeof e.cell.value === 'number' && e.cell.value > 7) {
@@ -48,8 +56,6 @@ function renderSummaryTable() {
         },
         height: 500,
         scrolling: { mode: 'both', useNative: true },
-        fieldChooser: { enabled: true },
-        export: { enabled: true, fileName: 'OzetTablo' },
         onExporting: function(e) {
             const workbook = new ExcelJS.Workbook();
             const worksheet = workbook.addWorksheet('OzetTablo');
@@ -62,21 +68,85 @@ function renderSummaryTable() {
                 });
             });
             e.cancel = true;
-        }
+        },
+        fieldChooser: { enabled: true },
+        export: { enabled: true, fileName: 'OzetTablo' },
+        onInitialized: function(e) {
+            setTimeout(function() {
+                var $toolbar = $(e.element).find('.dx-pivotgrid-toolbar');
+                if ($toolbar.length) {
+                    // Remove any toolbar from its current parent
+                    $toolbar.detach();
+                    $toolbar.find('> *').css('margin-left', '5px');
+                    // Place toolbar in the custom header container (right side)
+                    $('#summaryTableToolbarContainer').css({ 'justify-content': 'flex-end', 'width': '100%' }).empty().append($toolbar);
+                }
+                // Add 'Geliş Yılı' to the dx-area-description-cell (top-left cell)
+                var $descCells = $(e.element).find('.dx-area-description-cell');
+                if ($descCells.length) {
+                    // Remove all children and event handlers to prevent context menu and icons
+                    $descCells.eq(0)
+                        .off()
+                        .empty()
+                        .append('<span style="pointer-events:none;user-select:none;">Geliş Yılı</span>')
+                        .css({ 'pointer-events': 'none', 'user-select': 'none' });
+                    // Her yıl başlığı için, ilgili hafta başlık grubunun üstüne "Hafta" label'ı ekle
+                    var $headerRows = $(e.element).find('.dx-pivotgrid-horizontal-headers .dx-row');
+                    if ($descCells.length) {
+                        // Remove all children and event handlers to prevent context menu and icons
+                        $descCells.eq(0)
+                            .off()
+                            .empty()
+                            .append('<span style="font-weight:bold;pointer-events:none;user-select:none;">Geliş Yılı</span>')
+                            .css({ 'pointer-events': 'none', 'user-select': 'none' });
+
+                        // --- YIL ALTINDA HAFTA BAŞLIĞI ---
+                        var $headerRows = $(e.element).find('.dx-pivotgrid-horizontal-headers .dx-row');
+                        if ($headerRows.length > 1) {
+                            var $yearHeaders = $headerRows.eq(0).find('.dx-column-header');
+                            // Sadece bir defa eklenmesini sağla
+                            if ($headerRows.eq(0).prev('.custom-week-label-row').length === 0) {
+                                var $weekLabelRow = $('<div class="dx-row custom-week-label-row"></div>');
+                                $yearHeaders.each(function(i, yearHeader) {
+                                    var colspan = parseInt($(yearHeader).attr('colspan') || '1', 10);
+                                    var $cell = $('<div class="dx-column-header" style="text-align:center;font-weight:bold;pointer-events:none;user-select:none;"></div>');
+                                    $cell.text('Hafta');
+                                    if (colspan > 1) $cell.attr('colspan', colspan);
+                                    $weekLabelRow.append($cell);
+                                });
+                                $headerRows.eq(0).before($weekLabelRow);
+                            }
+                        } else if ($descCells.length > 1) {
+                            $descCells.eq(1)
+                                .off()
+                                .empty()
+                                .append('<span style="font-weight:bold;pointer-events:none;user-select:none;">Hafta</span>')
+                                .css({ 'pointer-events': 'none', 'user-select': 'none' });
+                        } else {
+                            var $weekHeader = $(e.element).find('.dx-pivotgrid-horizontal-headers .dx-row').eq(1).find('.dx-column-header').first();
+                            if ($weekHeader.length) {
+                                $weekHeader
+                                    .off()
+                                    .empty()
+                                    .append('<span style="font-weight:bold;pointer-events:none;user-select:none;">Hafta</span>')
+                                    .css({ 'pointer-events': 'none', 'user-select': 'none' });
+                            }
+                        }
+                    }
+                }  
+            }, 0);      
+            if (typeof value === "number") {
+                if (value > 7) {
+                    cellElement.css({ background: "#e57373", color: "#fff", fontWeight: "bold" });
+                } else {
+                    cellElement.css({ background: "#81c784", color: "#181A20", fontWeight: "bold" });
+                }
+                cellElement.text(value);
+            }
+        }    
     });
 }
-// Bekleyen gün  7 günden fazla ise kırmızı, az ise yeşil
-function heatmapCell(cellElement, cellInfo) {
-    var value = cellInfo.value;
-    if (typeof value === "number") {
-        if (value > 7) {
-            cellElement.css({ background: "#e57373", color: "#fff", fontWeight: "bold" });
-        } else {
-            cellElement.css({ background: "#81c784", color: "#181A20", fontWeight: "bold" });
-        }
-        cellElement.text(value);
-    }
-}
+
 
 // Sayfa yüklendiğinde özet tabloyu da render et
 window.onload = async function() {
@@ -292,51 +362,47 @@ function renderDataGrid(data) {
             { dataField: "SurecBaslangicTarihi", caption: "Süreç Başlangıç Tarihi", dataType: "date", format: "yyyy-MM-dd" },
             { dataField: "SurecBekleteneGelisTarihi", caption: "Süreç Bekletene Geliş Tarihi", dataType: "date", format: "yyyy-MM-dd" }
         ],
-        // export: {
-        //     enabled: true,
-        //     fileName: "BekleyenSurecler"
-        // },
-        // onExporting: function(e) {
-        //     var workbook = new ExcelJS.Workbook();
-        //     var worksheet = workbook.addWorksheet("Bekleyen Süreçler");
-        //     DevExpress.excelExporter.exportDataGrid({
-        //         component: e.component,
-        //         worksheet: worksheet,
-        //         autoFilterEnabled: true
-        //     }).then(function() {
-        //         workbook.xlsx.writeBuffer().then(function(buffer) {
-        //             saveAs(new Blob([buffer], { type: "application/octet-stream" }), "BekleyenSurecler.xlsx");
-        //         });
-        //     });
-        //     e.cancel = true; // DevExtreme’in kendi exportunu iptal et
-        // },
-        toolbar: 
-        {
-          items: [
-            "searchPanel",
-            //"exportButton"
-            ]      
+        export: {
+            enabled: true,
+            fileName: "BekleyenSurecler"
+        },
+        onExporting: function(e) {
+            try {
+                const workbook = new ExcelJS.Workbook();
+                const worksheet = workbook.addWorksheet('BekleyenSurecler');
+                DevExpress.excelExporter.exportDataGrid({
+                    component: e.component,
+                    worksheet: worksheet
+                }).then(function() {
+                    workbook.xlsx.writeBuffer().then(function(buffer) {
+                        saveAs(new Blob([buffer], { type: 'application/octet-stream' }), 'BekleyenSurecler.xlsx');
+                    });
+                });
+                e.cancel = true;
+            } catch (err) {
+                console.error('DataGrid export error:', err);
+                alert('Export sırasında hata oluştu: ' + err.message);
+            }
+        },
+        columnChooser: {
+            enabled: true,
+            mode: "select"
+        },
+        toolbar: {
+            items: [
+                {
+                    location: "before",
+                },
+                "searchPanel",
+                "exportButton",
+                "columnChooserButton",
+                "filterPanel"
+            ]
+            
         }
+        
     }).dxDataGrid("instance");
 }
-
-// Excel'e Aktar butonu
-$(document).on("click", "#excelExportBtn", function() {
-    if (currentDataGrid) {
-        var workbook = new ExcelJS.Workbook();
-        var worksheet = workbook.addWorksheet("Bekleyen Süreçler");
-        DevExpress.excelExporter.exportDataGrid({
-            component: currentDataGrid,
-            worksheet: worksheet,
-            autoFilterEnabled: true
-        }).then(function() {
-            workbook.xlsx.writeBuffer().then(function(buffer) {
-                saveAs(new Blob([buffer], { type: "application/octet-stream" }), "BekleyenSurecler.xlsx");
-            });
-        });
-    }
-});
-
 function enlargeChart(chartId, title) {
     const oldModal = document.getElementById('chartEnlargeModal');
     if (oldModal) oldModal.remove();

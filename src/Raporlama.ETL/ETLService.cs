@@ -26,7 +26,6 @@ public class ETLService
 
         try
         {
-            // Veritabanı bağlantılarını kontrol et
             if (!await TestConnectionsAsync())
             {
                 throw new Exception("Veritabanı bağlantıları başarısız!");
@@ -74,11 +73,9 @@ public class ETLService
 
         try
         {
-            // Önce appsettings.json'dan sorguyu oku
             var bekleyenQuery = _configuration["ETL:Queries:BekleyenSurecler"];
             if (string.IsNullOrWhiteSpace(bekleyenQuery))
             {
-                // Sorgu yoksa SorguTanimi tablosundan dinamik sorgu çek
                 var sorguKaydi = await hedefConn.QueryFirstOrDefaultAsync<dynamic>(
                     "SELECT TOP 1 Query FROM Report WHERE ReportName = @adi AND Aktif = 1 ORDER BY ReportKey DESC",
                     new { adi = "BekleyenSurecler" });
@@ -112,7 +109,6 @@ public class ETLService
             {
                 var batch = bekleyenSurecler.Skip(i).Take(batchSize).ToList();
 
-                // Log: Süreç Başlangıç ve Bekletene Geliş tarihleri
                 foreach (var surec in batch)
                 {
                     var baslangic = surec.SurecBaslangicTarihi;
@@ -154,7 +150,6 @@ public class ETLService
                     DirektorlukAdi = surec.DirektorlukAdi as string
                 }));
 
-                // Yardımcı fonksiyon: string'den DateTime'a  dönüştrme
                 DateTime? ParseDate(object value)
                 {
                     if (value == null) return null;

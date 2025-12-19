@@ -12,7 +12,7 @@ builder.Services.AddSwaggerGen();
 builder.Services.AddAuthentication("Negotiate")
     .AddNegotiate();
 
-// Authorization policy - tüm authenticated kullanıcılar erişebilir
+// tüm authenticated kullanıcılar erişebilir
 builder.Services.AddAuthorization(options =>
 {
     options.FallbackPolicy = options.DefaultPolicy;
@@ -22,11 +22,10 @@ builder.Services.AddCors(options =>
 {
     options.AddPolicy("AllowAll", policy =>
     {
-        // Windows Authentication için credentials gerekli
         policy.WithOrigins("http://localhost:5000", "http://localhost:3000", "http://localhost:8080")
               .AllowAnyMethod()
               .AllowAnyHeader()
-              .AllowCredentials(); // Windows Authentication için gerekli
+              .AllowCredentials();
     });
 });
 
@@ -37,7 +36,6 @@ builder.Services.AddScoped<IReportService, ReportService>();
 builder.Services.AddScoped<ICustomAuthorizationService, AuthorizationService>();
 builder.Services.AddScoped<IDataSourceService, DataSourceService>();
 
-// DevExpress Dashboard
 builder.Services.AddDevExpressControls();
 
 var app = builder.Build();
@@ -48,13 +46,10 @@ if (app.Environment.IsDevelopment())
     app.UseSwaggerUI();
 }
 
-// DevExpress
 app.UseDevExpressControls();
 
-// Static files (wwwroot)
 app.UseStaticFiles();
 
-// Default page
 app.MapGet("/", () => Results.Redirect("/menu.html"));
 
 app.UseCors("AllowAll");

@@ -1,4 +1,3 @@
-// Basit toast fonksiyonu, sağ üstte gösterir
 function showToast(message, type = 'info') {
     let bg = '#23242a';
     if(type==='success') bg = '#00bfae';

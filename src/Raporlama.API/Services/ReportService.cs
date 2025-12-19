@@ -13,7 +13,6 @@ namespace Raporlama.API.Services
     {
         private readonly IDatabaseService _databaseService;
         private readonly ILogger<ReportService> _logger;
-        // Hardcoded raporlar kaldırıldı, tüm raporlar veritabanından gelecek
 
         public ReportService(IDatabaseService databaseService, ILogger<ReportService> logger)
         {
@@ -23,7 +22,6 @@ namespace Raporlama.API.Services
 
         public async Task<IEnumerable<Report>> GetAllReportsAsync()
         {
-            // Tüm raporlar veritabanından gelecek
             var dbReports = await _databaseService.QueryAsync<dynamic>(
                 "BellonaRapor",
                 "SELECT ReportKey, ReportCode, ReportName, Aktif, Url, Query FROM [Report] WHERE Aktif = 1"
@@ -46,7 +44,6 @@ namespace Raporlama.API.Services
 
         public async Task<Report?> GetReportAsync(int reportId)
         {
-            // Tüm raporlar veritabanından gelecek
             var dbReport = await _databaseService.QueryAsync<dynamic>(
                 "BellonaRapor",
                 "SELECT ReportKey, ReportCode, ReportName, Aktif, Url, Query FROM [Report] WHERE ReportKey = @ReportKey AND Aktif = 1",
