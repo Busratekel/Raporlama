@@ -174,8 +174,11 @@ window.onload = async function() {
 // Tüm veriyi yükle
 async function loadAllData() {
     try {
-        const response = await fetch(`${API_BASE}/dashboard/data/bekleyen-surecler`);
-        allData = await response.json();
+        let reportId = document.getElementById('reportMeta')?.dataset?.reportId;
+        if (!reportId) throw new Error('Rapor ID bulunamadı!');
+        const response = await fetch(`${API_BASE}/reports/${reportId}/data`, { credentials: 'include' });
+        const result = await response.json();
+        allData = result.data || result || [];
         // Filtreleri doldur
         populateFilters();
         // Verileri göster
