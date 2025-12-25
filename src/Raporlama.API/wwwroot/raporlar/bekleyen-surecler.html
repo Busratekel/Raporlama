@@ -5,8 +5,8 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Bellona Raporlama Sistemi</title>
     
-    <link rel="stylesheet" href="/lib/css/dx.light.css" />
-    <link rel="stylesheet" href="bekleyen.css" />
+    <link rel="stylesheet" href="../lib/css/dx.dark.css" />
+    <link rel="stylesheet" href="rapor-ortak.css" />
 </head>
 <body>
     <div id="reportMeta" data-report-id="1"></div>
@@ -35,12 +35,12 @@
 
             <div class="filter-group">
                 <label class="filter-label">Süreç Başlangıç Tarihi</label>
-                <input style="max-width: 280px" type="date" id="filterTarihBaslangic">
+                <input type="date" id="filterTarihBaslangic">
             </div>
             
             <div class="filter-group">
                 <label class="filter-label">Süreç Bekletene Geliş Tarihi</label>
-                <input style="max-width: 280px"type="date" id="filterTarihBitis">
+                <input type="date" id="filterTarihBitis">
             </div>
             
             <button class="filter-btn" onclick="applyFilters()">🔄 Filtrele</button>
@@ -90,7 +90,7 @@
                                 <span style="cursor:pointer;font-size:20px;" onclick="downloadSVG('pieChart', 'DOLDURAN İŞLETMELER')" title="İndir">⬇️</span>
                             </div>
                         </div>
-                        <div id="pieChart" style="height:300px"></div>
+                        <div id="pieChart" style="height:340px;min-height:340px;max-height:340px;"></div>
                     </div>
                     <div class="chart-container">
                         <h4>BEKLETEN İŞLETMELER</h4>
@@ -105,7 +105,7 @@
                                 <span style="cursor:pointer;font-size:20px;" onclick="downloadSVG('pieChartBekleten', 'BEKLETEN İŞLETMELER')" title="İndir">⬇️</span>
                             </div>
                         </div>
-                        <div id="pieChartBekleten" style="height:300px"></div>
+                        <div id="pieChartBekleten" style="height:340px;min-height:340px;max-height:340px;"></div>
                     </div>
                     <div class="chart-container">
                         <h4>Bekleme Süresi Dağılımı (Gün)</h4>
@@ -114,14 +114,13 @@
                             <option value="pie">Pasta</option>
                             <option value="line">Çizgi</option>
                         </select>
-                        <p style="margin:6px 0 10px 0;color:#7f8c8d;font-size:13px">Bekleyen gün sayısının dağılımını gösterir. Bir çubuğa tıklayarak tabloyu ilgili aralığa filtreleyebilirsiniz.</p>
                         <div style="position:relative;height:0;">
-                            <div style="position:absolute;top:-100px;right:8px;display:flex;gap:8px;z-index:2;">
-                                <span style="cursor:pointer;font-size:20px;" onclick="enlargeChart('lineChart', 'Bekleme Süresi Dağılımı (Gün)')" title="Büyüt">🔍</span>
-                                <span style="cursor:pointer;font-size:20px;" onclick="downloadSVG('lineChart', 'Bekleme Süresi Dağılımı (Gün)')" title="İndir">⬇️</span>
+                            <div style="position:absolute;top:-50px;right:8px;display:flex;gap:8px;z-index:2;">
+                                <span style="cursor:pointer;font-size:20px;" onclick="enlargeChart('personChartDolduran', 'Kişilere Göre Dolduran')" title="Büyüt">🔍</span>
+                                <span style="cursor:pointer;font-size:20px;" onclick="downloadSVG('personChartDolduran', 'Kişilere Göre Dolduran')" title="İndir">⬇️</span>
                             </div>
                         </div>
-                        <div id="lineChart" style="height:320px"></div>
+                        <div id="lineChart" style="height:340px;min-height:340px;max-height:340px;"></div>
                     </div>
                     <div class="chart-container">
                         <h4>Kişilere Göre Dolduran</h4>
@@ -136,7 +135,7 @@
                                 <span style="cursor:pointer;font-size:20px;" onclick="downloadSVG('personChartDolduran', 'Kişilere Göre Dolduran')" title="İndir">⬇️</span>
                             </div>
                         </div>
-                        <div id="personChartDolduran" style="height:300px"></div>
+                        <div id="personChartDolduran" style="height:340px;min-height:340px;max-height:340px;"></div>
                     </div>
                     <div class="chart-container">
                         <h4>Kişilere Göre Bekleten</h4>
@@ -151,7 +150,7 @@
                                 <span style="cursor:pointer;font-size:20px;" onclick="downloadSVG('personChartBekleten', 'Kişilere Göre Bekleten')" title="İndir">⬇️</span>
                             </div>
                         </div>
-                        <div id="personChartBekleten" style="height:300px"></div>
+                        <div id="personChartBekleten" style="height:340px;min-height:340px;max-height:340px;"></div>
                     </div>
                     <div class="chart-container">
                         <h4>MÜDÜRLÜKLERE GÖRE DAĞILIM</h4>
@@ -166,7 +165,7 @@
                                 <span style="cursor:pointer;font-size:20px;" onclick="downloadSVG('mudurlukChart', 'MÜDÜRLÜKLERE GÖRE DAĞILIM')" title="İndir">⬇️</span>
                             </div>
                         </div>
-                        <div id="mudurlukChart" style="height:300px"></div>
+                        <div id="mudurlukChart" style="height:340px;min-height:340px;max-height:340px;"></div>
                     </div>
                     <div class="chart-container">
                         <h4>FORMLARA GÖRE DAĞILIM</h4>
@@ -181,7 +180,7 @@
                                 <span style="cursor:pointer;font-size:20px;" onclick="downloadSVG('formChart', 'FORMLARA GÖRE DAĞILIM')" title="İndir">⬇️</span>
                             </div>
                         </div>
-                        <div id="formChart" style="height:300px"></div>
+                        <div id="formChart" style="height:340px;min-height:340px;max-height:340px;"></div>
     
                     </div>
                 </div>

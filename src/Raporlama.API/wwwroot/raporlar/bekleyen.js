@@ -509,7 +509,22 @@ function renderPieChart(data, chartType) {
                 dataSource: grouped,
                 series: [{ argumentField: 'category', valueField: 'value', label: { visible: true, connector: { visible: true } } }],
                 tooltip: { enabled: true, contentTemplate: d => `${d.argumentText}: ${d.value}` },
-                legend: { visible: grouped.length <= 7 },
+                legend: {
+                    visible: true,
+                    orientation: 'horizontal',
+                    itemTextPosition: 'right',
+                    columnCount: 3,
+                    paddingLeftRight: 16,
+                    paddingTopBottom: 16,
+                    font: { size: 10 },
+                    margin: 32,
+                    verticalAlignment: 'bottom',
+                    horizontalAlignment: 'center',
+                    customizeItems: function(items) {
+                        return items.map(i => ({ ...i, text: i.text.length > 20 ? i.text.slice(0, 20) + '...' : i.text }));
+                    }
+                },
+                size: { width: 360, height: 360 },
                 onPointClick: function(e) {
                     const category = e.target.originalArgument;
                     filterState.dolduranSirket = category;
@@ -555,7 +570,22 @@ function renderBarChart(data, chartType) {
                 dataSource: grouped,
                 series: [{ argumentField: 'category', valueField: 'value', label: { visible: true, connector: { visible: true } } }],
                 tooltip: { enabled: true, contentTemplate: d => `${d.argumentText}: ${d.value}` },
-                legend: { visible: grouped.length <= 7 },
+                legend: {
+                    visible: true,
+                    orientation: 'horizontal',
+                    itemTextPosition: 'right',
+                    columnCount: 3,
+                    paddingLeftRight: 16,
+                    paddingTopBottom: 16,
+                    font: { size: 10 },
+                    margin: 32,
+                    verticalAlignment: 'bottom',
+                    horizontalAlignment: 'center',
+                    customizeItems: function(items) {
+                        return items.map(i => ({ ...i, text: i.text.length > 20 ? i.text.slice(0, 20) + '...' : i.text }));
+                    }
+                },
+                size: { width: 380, height: 380 },
                 onPointClick: function(e) {
                     const category = e.target.originalArgument;
                     filterState.bekletenSirket = category;
@@ -604,7 +634,19 @@ function renderPersonChartDolduran(data, chartType) {
                 dataSource: grouped,
                 series: [{ argumentField: 'category', valueField: 'value', label: { visible: true, connector: { visible: true } } }],
                 tooltip: { enabled: true, contentTemplate: d => `${d.argumentText}: ${d.value}` },
-                legend: { visible: grouped.length <= 7 },
+                legend: {
+                    visible: grouped.length <= 7,
+                    orientation: 'horizontal',
+                    itemTextPosition: 'right',
+                    columnCount: 3,
+                    paddingLeftRight: 8,
+                    paddingTopBottom: 8,
+                    font: { size: 13 },
+                    margin:40,
+                    verticalAlignment: 'bottom',
+                    horizontalAlignment: 'center'
+                },
+                size: { width: 320, height: 320 },
                 onPointClick: function(e) {
                     const category = e.target.originalArgument;
                     filterState.dolduranKisi = category;
@@ -660,7 +702,19 @@ function renderPersonChartBekleten(data, chartType) {
                 dataSource: grouped,
                 series: [{ argumentField: 'category', valueField: 'value', label: { visible: true, connector: { visible: true } } }],
                 tooltip: { enabled: true, contentTemplate: d => `${d.argumentText}: ${d.value}` },
-                legend: { visible: grouped.length <= 7 },
+                legend: {
+                    visible: grouped.length <= 7,
+                    orientation: 'horizontal',
+                    itemTextPosition: 'right',
+                    columnCount: 3,
+                    paddingLeftRight: 8,
+                    paddingTopBottom: 8,
+                    font: { size: 13 },
+                    margin:40,
+                    verticalAlignment: 'bottom',
+                    horizontalAlignment: 'center'
+                },
+                size: { width: 320, height: 320 },
                 onPointClick: function(e) {
                     const category = e.target.originalArgument;
                     filterState.bekletenKisi = category;
@@ -717,6 +771,19 @@ function renderLineChart(data, chartType) {
                 dataSource: chartData,
                 series: [{ argumentField: 'label', valueField: 'value', label: { visible: true, connector: { visible: true } } }],
                 tooltip: { enabled: true, contentTemplate: d => `${d.argumentText}: ${d.value}` },
+                legend: {
+                    visible: grouped.length <= 7,
+                    orientation: 'horizontal',
+                    itemTextPosition: 'right',
+                    columnCount: 3,
+                    paddingLeftRight: 8,
+                    paddingTopBottom: 8,
+                    font: { size: 13 },
+                    margin:40,
+                    verticalAlignment: 'bottom',
+                    horizontalAlignment: 'center'
+                },
+                size: { width: 320, height: 320 },
                 onPointClick: function(e) {
                     const bucketKey = e.target.originalArgument;
                     filterState.bucket = bucketKey;
@@ -739,7 +806,21 @@ function renderLineChart(data, chartType) {
                 valueAxis: { label: { font: { color: '#fff', size: 13 } }, color: '#444' },
                 tooltip: { enabled: true, customizeTooltip: function(arg) { return { text: `${arg.argumentText}: ${arg.valueText}` }; } },
                 palette: ['#ff4081', '#ff79b0', '#c60055', '#ffb3de'],
-                legend: { visible: false },
+                legend: {
+                    visible: true,
+                    orientation: 'horizontal',
+                    itemTextPosition: 'right',
+                    columnCount: 3,
+                    paddingLeftRight: 16,
+                    paddingTopBottom: 16,
+                    font: { size: 10 },
+                    margin: 32,
+                    verticalAlignment: 'bottom',
+                    horizontalAlignment: 'center',
+                    customizeItems: function(items) {
+                        return items.map(i => ({ ...i, text: i.text.length > 20 ? i.text.slice(0, 20) + '...' : i.text }));
+                    }
+                },
                 onPointClick: function(e) {
                     const bucketKey = e.target.originalArgument;
                     filterState.bucket = bucketKey;
@@ -768,7 +849,19 @@ function renderMudurlukChart(data, chartType) {
             dataSource: grouped,
             series: [{ argumentField: 'category', valueField: 'value', label: { visible: true, connector: { visible: true } } }],
             tooltip: { enabled: true, contentTemplate: d => `${d.argumentText}: ${d.value}` },
-            legend: { visible: grouped.length <= 7 },
+            legend: {
+                visible: grouped.length <= 7,
+                orientation: 'horizontal',
+                itemTextPosition: 'right',
+                columnCount: 3,
+                paddingLeftRight: 8,
+                paddingTopBottom: 8,
+                font: { size: 13 },
+                margin:40,
+                verticalAlignment: 'bottom',
+                horizontalAlignment: 'center'
+            },
+            size: { width: 320, height: 320 },
             onPointClick: function(e) {
                 const category = e.target.originalArgument;
                 filterState.mudurluk = category;
@@ -817,7 +910,19 @@ function renderFormChart(data, chartType) {
             dataSource: grouped,
             series: [{ argumentField: 'category', valueField: 'value', label: { visible: true, connector: { visible: true } } }],
             tooltip: { enabled: true, contentTemplate: d => `${d.argumentText}: ${d.value}` },
-            legend: { visible: grouped.length <= 7 },
+            legend: {
+                visible: grouped.length <= 7,
+                orientation: 'horizontal',
+                itemTextPosition: 'right',
+                columnCount: 4,
+                paddingLeftRight: 8,
+                paddingTopBottom: 8,
+                font: { size: 13 },
+                margin:40,
+                verticalAlignment: 'bottom',
+                horizontalAlignment: 'center'
+            },
+            size: { width: 320, height: 320 },
             onPointClick: function(e) {
                 const category = e.target.originalArgument;
                 filterState.form = category;

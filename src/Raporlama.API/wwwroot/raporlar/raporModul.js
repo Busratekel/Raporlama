@@ -94,6 +94,8 @@ class RaporModul {
         this.data = [];
         this.filtered = [];
         this.columns = [];
+        this.filteredWithCalculated = [];
+        this.pivotFields = [];
     }
 
     async init() {
@@ -205,6 +207,7 @@ class RaporModul {
             }
             return { ...row, GeciktiMi: gecikti, BeklemeGun: beklemeGun, GecikmeGun: GecikmeGun };
         });
+        this.filteredWithCalculated = gridData;
         if (!grid) {
             gridElem.dxDataGrid({
                 dataSource: gridData,
@@ -236,17 +239,18 @@ class RaporModul {
 
     renderSummaries() {
         // Şemadaki özetler (istatistik kutuları)
+        const data = this.filteredWithCalculated || this.filtered;
         (this.schema.summaries || []).forEach(summary => {
             let value = '-';
             if (summary.type === 'count') {
-                value = this.filtered.length;
+                value = data.length;
             } else if (summary.type === 'max') {
-                value = Math.max(...this.filtered.map(d => Number(d[summary.field]) || 0));
+                value = Math.max(...data.map(d => Number(d[summary.field]) || 0));
             } else if (summary.type === 'avg') {
-                const vals = this.filtered.map(d => Number(d[summary.field])).filter(x => !isNaN(x));
+                const vals = data.map(d => Number(d[summary.field])).filter(x => !isNaN(x));
                 value = vals.length ? (vals.reduce((a, b) => a + b, 0) / vals.length).toFixed(1) : '-';
             } else if (typeof summary.calc === 'function') {
-                value = summary.calc(this.filtered);
+                value = summary.calc(data);
             }
             $(summary.elementId).text(value);
         });
@@ -276,7 +280,7 @@ class RaporModul {
                     dataSource: chartData,
                     series: [{ argumentField: 'argument', valueField: 'value', label: { visible: true, connector: { visible: true }, customizeText: function(point) { return point.valueText; } } }],
                     tooltip: { enabled: true },
-                    legend: { visible: true },
+                    legend: { marginRight: 20, visible: grouped.length <= 7 },
                     onPointClick: function(e) {
                         const secilen = e.target.originalArgument;
                         if (chart.filterElementId) $(chart.filterElementId).val(secilen);
@@ -321,6 +325,134 @@ class RaporModul {
         if ($('#' + saveBtnId).length) {
             $('#' + saveBtnId).off('click').on('click', () => this.saveDefaultFilters());
         }
+
+        // Haftalık/Aylık dağılım tablosunu başlat
+        this.renderDistributionTable();
+    }
+
+    // Haftalık ve aylık dağılım tablosu
+    renderDistributionTable() {
+        // Tabloyu ekleyeceğimiz yeri belirle
+        let container = document.getElementById('distributionTableContainer');
+        if (!container) {
+            container = document.createElement('div');
+            container.id = 'distributionTableContainer';
+            container.style.marginTop = '32px';
+            const gridElem = document.getElementById('gridContainer') || document.querySelector('#gridContainer');
+            if (gridElem && gridElem.parentNode) {
+                gridElem.parentNode.appendChild(container);
+            } else {
+                document.body.appendChild(container);
+            }
+        } else {
+            container.innerHTML = '';
+        }
+
+        // Dağılımı hesapla
+        const data = this.filteredWithCalculated || this.filtered;
+        if (!data || !data.length) {
+            container.innerHTML = '<div style="color:#888">Veri yok</div>';
+            return;
+        }
+        // Data'yı PivotGrid formatına dönüştürme fonksiyonu şemadan alınabilir
+        let pivotData;
+        if (typeof this.schema.pivotDataTransform === 'function') {
+            pivotData = this.schema.pivotDataTransform(data);
+        } else {
+            const mappings = this.schema.pivotFieldMappings || {};
+            const getField = (d, keys) => {
+                if (!keys) return '';
+                for (let k of keys) {
+                    if (d[k]) return d[k];
+                }
+                return '';
+            };
+            const pivotFields = (this.schema.pivotFields || []).map(f => f.dataField);
+            pivotData = data.map(d => {
+                let dt = d.BaslamaTarihi ? new Date(d.BaslamaTarihi) : (d.SurecBaslangicTarihi ? new Date(d.SurecBaslangicTarihi) : null);
+                let year = dt ? dt.getFullYear() : null;
+                let jan1 = dt ? new Date(year, 0, 1) : null;
+                let days = dt ? Math.floor((dt - jan1) / 86400000) : null;
+                let week = dt ? Math.ceil((days + jan1.getDay() + 1) / 7) : null;
+                const result = { ...d };
+                pivotFields.forEach(field => {
+                    if (field === 'Yil') result.Yil = year;
+                    else if (field === 'Hafta') result.Hafta = week;
+                    else if (field === 'Adet') result.Adet = 1;
+                    else result[field] = getField(d, mappings[field]) || d[field] || '';
+                });
+                return result;
+            });
+        }
+
+        // PivotGrid'i oluştur
+        // DevExpress PivotGrid'i başlat
+        if (window.$ && window.$.fn && window.$.fn.dxPivotGrid) {
+            const pivotFields = this.schema.pivotFields;
+            $('#pivotGridContainer').dxPivotGrid({
+                dataSource: {
+                    fields: pivotFields,
+                    store: pivotData
+                },
+                allowSortingBySummary: true,
+                allowFiltering: true,
+                showBorders: true,
+                showColumnGrandTotals: true,
+                showColumnTotals: true,
+                showRowGrandTotals: true,
+                showRowTotals: true,
+                texts: {
+                    grandTotal: 'Tüm Yılların Toplamı',
+                    total: 'Toplam',
+                    allFields: 'Müdürlük'
+                },
+                height: 500,
+                scrolling: { mode: 'both', useNative: true },
+                export: { enabled: true, fileName: 'DetayTablo' },
+                fieldChooser: { enabled: true },
+                onCellPrepared: function(e) {
+                    // '-' yerine boş string göster
+                    if (e.cell && typeof e.cell.value !== 'undefined' && e.cell.value === '-') {
+                        e.cellElement.text('Veri yok');
+                    }
+                    if (e.area === 'data' && typeof e.cell.value === 'number' && e.cell.value > 7) {
+                        e.cellElement.css({ background: '#e57373', color: '#fff', fontWeight: 'bold' });
+                    }
+                },
+                    onExporting: function(e) {
+                        const workbook = new ExcelJS.Workbook();
+                        const worksheet = workbook.addWorksheet('DetayTablo');
+                        DevExpress.excelExporter.exportPivotGrid({
+                            component: e.component,
+                            worksheet: worksheet,
+                            customizeCell: function(options) {
+                                const { excelCell, pivotCell } = options;
+                                // Kırmızı hücreler (değeri 7'den büyük olanlar)
+                                if (pivotCell && typeof pivotCell.value === 'number' && pivotCell.value > 7) {
+                                    excelCell.fill = {
+                                        type: 'pattern',
+                                        pattern: 'solid',
+                                        fgColor: { argb: 'FFE57373' }
+                                    };
+                                    excelCell.font = { color: { argb: 'FFFFFFFF' }, bold: true };
+                                }
+                            }
+                        }).then(function() {
+                            workbook.xlsx.writeBuffer().then(function(buffer) {
+                                saveAs(new Blob([buffer], { type: 'application/octet-stream' }), 'DetayTablo.xlsx');
+                            });
+                        });
+                        e.cancel = true;
+                    },
+                onHeaderCellPrepared: function(e) {
+                    if (e.area === 'row' && e.cell && e.cell.columnIndex === 0 && e.cell.rowIndex === 0) {
+                        e.cellElement.text('Müdürlük');
+                    }
+                }
+            });
+        } else {
+            document.getElementById('pivotGridContainer').innerHTML = '<div style="color:#c00">DevExpress PivotGrid yüklü değil!</div>';
+        }
     }
 }
 
@@ -357,7 +489,21 @@ const raporSchema = {
     charts: [
         { field: 'Durum', elementId: '#durumChart', typeSelector: '#chartTypeDurum', filterElementId: '#filterDurum', defaultType: 'pie' },
         { field: 'Mudurluk', elementId: '#sorumluChart', typeSelector: '#chartTypeMudurluk', filterElementId: '#filterMudurluk', defaultType: 'pie' }
-    ]
+    ],
+        // PivotGrid için alanları dinamik belirle (örnek: Müdürlük, Üretim Yeri, Yıl, Hafta)
+        // Şemadan veya config'ten alınabilir, yoksa defaultlar kullanılır
+    pivotFields: [
+        { dataField: 'MudurlukAdi', area: 'row', caption: 'Müdürlük' },
+        { dataField: 'Yil', area: 'column', caption: 'Yıl' },
+        { dataField: 'UretimYeri', area: 'column', caption: 'Üretim Yeri' },
+        { dataField: 'Hafta', area: 'column', caption: 'Hafta' },
+        { dataField: 'Adet', area: 'data', summaryType: 'sum', caption: 'Toplam' }
+    ],
+    // PivotGrid alanlarını maplemek için dinamik eşleştirme
+    pivotFieldMappings: {
+        MudurlukAdi: ['MudurlukAdi', 'Departman'],
+        UretimYeri: ['UretimYeri', 'BekletenSirket']
+    },
 };
 
 window.rapor = new RaporModul(raporSchema);

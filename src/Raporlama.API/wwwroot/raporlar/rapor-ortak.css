@@ -1,0 +1,201 @@
+/* Ortak rapor filtre paneli ve grid stilleri */
+
+.sidebar {
+    min-width: 220px;
+    max-width: 320px;
+    width: 260px;
+    background: #23242a;
+    color: #e0e0e0;
+    border-radius: 16px;
+    box-shadow: 0 4px 24px rgba(0,0,0,0.12);
+    padding: 24px 16px 18px 12px;
+    margin-right: 24px;
+    margin-top: 20px;
+    display: flex;
+    flex-direction: column;
+    align-self: flex-start;
+    box-sizing: border-box;
+    overflow: visible;
+    z-index: 2;
+}
+
+.filter-group {
+    max-width: 100%;
+    box-sizing: border-box;
+    margin-bottom: 16px;
+    background: #181A20;
+    border-radius: 8px;
+    padding: 16px 14px 10px 14px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+    display: block;
+}
+
+.filter-label {
+    display: block;
+    font-size: 16px;
+    font-weight: 600;
+    margin-bottom: 10px;
+    color: #00eaff;
+    letter-spacing: 0.5px;
+}
+
+.sidebar select, .sidebar input[type="date"] {
+    width: 100%;
+    min-width: 0;
+    max-width: 100%;
+    box-sizing: border-box;
+    padding: 10px 12px;
+    border: 1.5px solid #2c3e50;
+    border-radius: 6px;
+    background: #23242a;
+    color: #e0e0e0;
+    font-size: 15px;
+    margin-bottom: 8px;
+    transition: border 0.2s, box-shadow 0.2s;
+    appearance: none;
+    outline: none;
+    box-shadow: none;
+}
+
+.sidebar select:focus, .sidebar input[type="date"]:focus {
+    border-color: #00eaff;
+    box-shadow: 0 0 0 2px rgba(0,234,255,0.10);
+}
+
+.sidebar select:hover, .sidebar input[type="date"]:hover {
+    border-color: #00eaff;
+}
+
+.sidebar select {
+    background-image: url('data:image/svg+xml;utf8,<svg fill="%2300eaff" height="20" viewBox="0 0 24 24" width="20" xmlns="http://www.w3.org/2000/svg"><path d="M7 10l5 5 5-5z"/></svg>');
+    background-repeat: no-repeat;
+    background-position: right 10px center;
+    background-size: 18px 18px;
+    padding-right: 36px;
+    cursor: pointer;
+}
+
+.sidebar select option {
+    background: #23242a;
+    color: #e0e0e0;
+}
+
+.sidebar .filter-btn {
+    width: 100%;
+    padding: 7px 0;
+    background: linear-gradient(135deg, #00eaff 0%, #2196f3 100%);
+    color: #181A20;
+    border: none;
+    border-radius: 5px;
+    cursor: pointer;
+    font-size: 14px;
+    font-weight: bold;
+    margin-top: 8px;
+    margin-bottom: 5px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.10);
+    transition: background 0.2s, color 0.2s, transform 0.2s;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 7px;
+    letter-spacing: 0.3px;
+}
+
+.sidebar .filter-btn:hover {
+    background: linear-gradient(135deg, #2196f3 0%, #00eaff 100%);
+    color: #fff;
+    transform: translateY(-2px) scale(1.03);
+    box-shadow: 0 4px 16px rgba(0,234,255,0.12);
+}
+
+.sidebar .clear-filters {
+    width: 100%;
+    padding: 7px 0;
+    background: linear-gradient(135deg, #e74c3c 0%, #c0392b 100%);
+    color: #fff;
+    border: none;
+    border-radius: 5px;
+    cursor: pointer;
+    font-size: 13px;
+    font-weight: 600;
+    margin-top: 4px;
+    margin-bottom: 2px;
+    transition: background 0.2s, color 0.2s, transform 0.2s;
+    letter-spacing: 0.2px;
+}
+
+.sidebar .clear-filters:hover {
+    background: linear-gradient(135deg, #c0392b 0%, #e74c3c 100%);
+    color: #fff;
+    transform: translateY(-1px) scale(1.01);
+}
+
+/* Grid ve kartlar için ortak stiller */
+.card {
+    background: #23242a;
+    color: #e0e0e0;
+    border-radius: 12px;
+    padding: 24px;
+    margin-bottom: 24px;
+    box-shadow: 0 2px 12px rgba(0,0,0,0.10);
+}
+
+.stats {
+    display: flex;
+    gap: 24px;
+}
+
+.stat-card {
+    background: #181A20;
+    border-radius: 12px;
+    padding: 22px 28px;
+    min-width: 160px;
+    text-align: center;
+    box-shadow: 0 1px 4px rgba(0,0,0,0.10);
+}
+
+.stat-card-blue {
+    color: #fff;
+    font-weight: 700;
+    text-shadow: 0 1px 2px #00b3d6, 0 0 2px #00eaff99;
+}
+.stat-card-green { color: #00e676; }
+.stat-card-red { color: #ff5252; }
+.stat-card-yellow {
+    color: #fff;
+    font-weight: 700;
+    text-shadow: 0 1px 2px #ffd600, 0 0 2px #ffe08299;
+}
+
+.charts-grid {
+    display: flex;
+    gap: 24px;
+    flex-wrap: wrap;
+}
+
+.chart-container {
+    background: #181A20;
+    border-radius: 12px;
+    padding: 22px;
+    flex: 1;
+    min-width: 320px;
+}
+
+body {
+    background: #181A20;
+    color: #e0e0e0;
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+}
+
+.main-layout {
+    display: flex;
+    gap: 24px;
+    max-width: 1600px;
+    margin: 40px auto;
+}
+
+.content {
+    flex: 1;
+    padding: 20px;
+    overflow-y: auto;
+}
