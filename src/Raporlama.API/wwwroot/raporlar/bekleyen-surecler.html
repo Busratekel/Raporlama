@@ -43,9 +43,9 @@
                 <input type="date" id="filterTarihBitis">
             </div>
             
-            <button class="filter-btn" onclick="applyFilters()">🔄 Filtrele</button>
-            <button class="clear-filters" onclick="clearFilters()">⊘ Temizle</button>
-            <button class="filter-btn" style="margin-top:12px;background:#00eaff;color:#181A20;font-weight:bold;" onclick="saveDefaultReport()">⭐ Varsayılan olarak kaydet</button>
+            <!-- Filtrele butonu kaldırıldı, filtreler otomatik çalışıyor -->
+            <button class="clear-filters">⊘ Temizle</button>
+            <button id="saveDefaultReport_bekleyen" class="filter-btn" style="margin-top:12px;background:orange;color:#181A20;font-weight:bold;">⭐ Varsayılan olarak kaydet</button>
         </div>
         
         <!-- SAĞ PANEL: VERİ VE GRAFİKLER -->
@@ -79,7 +79,7 @@
                 <div class="charts-grid">
                     <div class="chart-container">
                         <h4>DOLDURAN İŞLETMELER</h4>
-                        <select id="chartTypeDolduran" onchange="loadCharts(filteredData)">
+                        <select id="chartTypeDolduran">
                             <option value="pie">Pasta</option>
                             <option value="bar">Çubuk</option>
                             <option value="line">Çizgi</option>
@@ -94,7 +94,7 @@
                     </div>
                     <div class="chart-container">
                         <h4>BEKLETEN İŞLETMELER</h4>
-                        <select id="chartTypeBekleten" onchange="loadCharts(filteredData)">
+                        <select id="chartTypeBekleten">
                             <option value="pie">Pasta</option>
                             <option value="bar">Çubuk</option>
                             <option value="line">Çizgi</option>
@@ -109,7 +109,7 @@
                     </div>
                     <div class="chart-container">
                         <h4>Bekleme Süresi Dağılımı (Gün)</h4>
-                        <select id="chartTypeBekleme" onchange="loadCharts(filteredData)">
+                        <select id="chartTypeBekleme">
                             <option value="bar">Çubuk</option>
                             <option value="pie">Pasta</option>
                             <option value="line">Çizgi</option>
@@ -124,7 +124,7 @@
                     </div>
                     <div class="chart-container">
                         <h4>Kişilere Göre Dolduran</h4>
-                        <select id="chartTypePersonDolduran" onchange="loadCharts(filteredData)">
+                        <select id="chartTypePersonDolduran">
                             <option value="bar">Çubuk</option>
                             <option value="pie">Pasta</option>
                             <option value="line">Çizgi</option>
@@ -139,7 +139,7 @@
                     </div>
                     <div class="chart-container">
                         <h4>Kişilere Göre Bekleten</h4>
-                        <select id="chartTypePersonBekleten" onchange="loadCharts(filteredData)">
+                        <select id="chartTypePersonBekleten">
                             <option value="bar">Çubuk</option>
                             <option value="pie">Pasta</option>
                             <option value="line">Çizgi</option>
@@ -154,7 +154,7 @@
                     </div>
                     <div class="chart-container">
                         <h4>MÜDÜRLÜKLERE GÖRE DAĞILIM</h4>
-                        <select id="chartTypeMudurluk" onchange="loadCharts(filteredData)">
+                        <select id="chartTypeMudurluk">
                             <option value="pie">Pasta</option>
                             <option value="bar">Çubuk</option>
                             <option value="line">Çizgi</option>
@@ -169,7 +169,7 @@
                     </div>
                     <div class="chart-container">
                         <h4>FORMLARA GÖRE DAĞILIM</h4>
-                        <select id="chartTypeForm" onchange="loadCharts(filteredData)">
+                        <select id="chartTypeForm">
                             <option value="pie">Pasta</option>
                             <option value="bar">Çubuk</option>
                             <option value="line">Çizgi</option>
@@ -189,14 +189,14 @@
                 <div style="display: flex; align-items: center; justify-content: space-between;">
                     <h2 style="margin: 0;">📋 Detaylı Liste</h2>
                 </div>
-                <div id="dashboard"></div>
+                <div id="gridContainer"></div>
             </div>
             <div class="card wide-card">
                 <div style="display: flex; flex-direction: column; align-items: flex-start;">
                     <h2 style="margin: 0;">📊 Detay Tablo (Haftalık/Yıllık Dağılım)</h2>
                     <span style="display:block;width:120px;height:3px;background:#00eaff;border-radius:2px;margin:6px 0 12px 0;"></span>
                 </div>
-                <div id="summaryTable"></div>
+                <div id="pivotGridContainer"></div>
             </div>
         </div>
     </div>
@@ -207,8 +207,11 @@
     <script src="/lib/js/exceljs.min.js"></script>
     <script src="common.js"></script>
     <script src="toast.js"></script>
-    <script src="bekleyen.js"></script>
-    
+    <script src="raporModul.js"></script>
+    <script src="bekleyen-schema.js"></script>
+    <script>
+        window.API_BASE = '/api';
+    </script>
     </body>
     </html>
 

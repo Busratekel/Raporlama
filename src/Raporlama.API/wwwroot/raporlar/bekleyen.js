@@ -765,12 +765,13 @@ function renderLineChart(data, chartType) {
             const bucket = grouped.find(b => gun >= b.min && gun <= b.max);
             if (bucket) bucket.count++;
         });
-        const chartData = grouped.map(g => ({ label: g.bucket, value: g.count }));
+        // Etiketlere 'gün' ekle
+        const chartData = grouped.map(g => ({ label: `${g.bucket} gün`, value: g.count }));
         if (chartType === 'pie') {
             new DevExpress.viz.dxPieChart(document.getElementById('lineChart'), {
                 dataSource: chartData,
-                series: [{ argumentField: 'label', valueField: 'value', label: { visible: true, connector: { visible: true } } }],
-                tooltip: { enabled: true, contentTemplate: d => `${d.argumentText}: ${d.value}` },
+                series: [{ argumentField: 'label', valueField: 'value', name: 'Bekleyen Kayıt', label: { visible: true, connector: { visible: true } } }],
+                tooltip: { enabled: true, contentTemplate: d => `${d.argumentText}: ${d.value} kayıt` },
                 legend: {
                     visible: grouped.length <= 7,
                     orientation: 'horizontal',
@@ -781,11 +782,14 @@ function renderLineChart(data, chartType) {
                     font: { size: 13 },
                     margin:40,
                     verticalAlignment: 'bottom',
-                    horizontalAlignment: 'center'
+                    horizontalAlignment: 'center',
+                    customizeItems: function(items) {
+                        return items.map(i => ({ ...i, text: i.text.replace('gün', 'gün') }));
+                    }
                 },
                 size: { width: 320, height: 320 },
                 onPointClick: function(e) {
-                    const bucketKey = e.target.originalArgument;
+                    const bucketKey = e.target.originalArgument.replace(' gün', '');
                     filterState.bucket = bucketKey;
                     applyFilters();
                 }
@@ -798,13 +802,14 @@ function renderLineChart(data, chartType) {
                 series: [{
                     argumentField: 'label',
                     valueField: 'value',
+                    name: 'Bekleyen Kayıt',
                     type: chartType,
                     color: '#ff4081',
                     label: { visible: true, font: { color: '#fff', size: 14 }, backgroundColor: 'rgba(0,0,0,0.7)', customizeText: function(arg) { return arg.valueText; } }
                 }],
-                argumentAxis: { label: { font: { color: '#fff', size: 13 } }, color: '#444' },
-                valueAxis: { label: { font: { color: '#fff', size: 13 } }, color: '#444' },
-                tooltip: { enabled: true, customizeTooltip: function(arg) { return { text: `${arg.argumentText}: ${arg.valueText}` }; } },
+                argumentAxis: { label: { font: { color: '#fff', size: 13 } }, color: '#444', title: { text: 'Bekleme Süresi (gün)' } },
+                valueAxis: { label: { font: { color: '#fff', size: 13 } }, color: '#444', title: { text: 'Bekleyen Kayıt' } },
+                tooltip: { enabled: true, customizeTooltip: function(arg) { return { text: `${arg.argumentText}: ${arg.valueText} kayıt` }; } },
                 palette: ['#ff4081', '#ff79b0', '#c60055', '#ffb3de'],
                 legend: {
                     visible: true,
@@ -818,11 +823,11 @@ function renderLineChart(data, chartType) {
                     verticalAlignment: 'bottom',
                     horizontalAlignment: 'center',
                     customizeItems: function(items) {
-                        return items.map(i => ({ ...i, text: i.text.length > 20 ? i.text.slice(0, 20) + '...' : i.text }));
+                        return items.map(i => ({ ...i, text: i.text.replace('gün', 'gün') }));
                     }
                 },
                 onPointClick: function(e) {
-                    const bucketKey = e.target.originalArgument;
+                    const bucketKey = e.target.originalArgument.replace(' gün', '');
                     filterState.bucket = bucketKey;
                     applyFilters();
                 }

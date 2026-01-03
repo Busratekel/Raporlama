@@ -2,19 +2,112 @@ window.API_BASE = window.API_BASE || (window.location.origin + '/api');
 
 // Ultra-dinamik rapor modülü: Şema ve alanlar API'den veya JSON'dan alınır
 class RaporModul {
+        // Ortak grafik büyütme fonksiyonu
+        static enlargeChart(chartId, title) {
+            const oldModal = document.getElementById('chartEnlargeModal');
+            if (oldModal) oldModal.remove();
+            const chartElem = document.getElementById(chartId);
+            if (!chartElem) return;
+            const modal = document.createElement('div');
+            modal.id = 'chartEnlargeModal';
+            modal.style.position = 'fixed';
+            modal.style.top = '0';
+            modal.style.left = '0';
+            modal.style.width = '100vw';
+            modal.style.height = '100vh';
+            modal.style.background = 'rgba(0,0,0,0.8)';
+            modal.style.zIndex = '9999';
+            modal.style.display = 'flex';
+            modal.style.alignItems = 'center';
+            modal.style.justifyContent = 'center';
+            modal.innerHTML = `<div style='background:#23242a;padding:32px;border-radius:12px;max-width:90vw;max-height:90vh;overflow:auto;position:relative;'>
+                <h2 style='color:#00eaff;text-align:center;margin-bottom:18px;'>${title}</h2>
+                <div id='modalChartContent' style='text-align:center;'></div>
+                <button onclick='document.body.removeChild(this.parentNode.parentNode)' style='position:absolute;top:12px;right:12px;background:#e74c3c;color:#fff;padding:8px 16px;border:none;border-radius:6px;cursor:pointer;'>Kapat</button>
+            </div>`;
+            document.body.appendChild(modal);
+            const chartContent = chartElem.querySelector('svg') ? chartElem.querySelector('svg').cloneNode(true) : chartElem.querySelector('canvas') ? chartElem.querySelector('canvas').cloneNode(true) : null;
+            if (chartContent) {
+                chartContent.style.width = '800px';
+                chartContent.style.height = '500px';
+                document.getElementById('modalChartContent').appendChild(chartContent);
+            } else {
+                document.getElementById('modalChartContent').innerHTML = '<div style="color:#fff;text-align:center;">Grafik bulunamadı</div>';
+            }
+        }
+
+        // Ortak SVG indirme fonksiyonu
+        static downloadSVG(chartId, title) {
+            const chartElem = document.getElementById(chartId);
+            if (!chartElem) return;
+            const svgElem = chartElem.querySelector('svg');
+            if (!svgElem) { alert('SVG bulunamadı!'); return; }
+            let svgString = new XMLSerializer().serializeToString(svgElem);
+            const parser = new DOMParser();
+            const doc = parser.parseFromString(svgString, 'image/svg+xml');
+            const svg = doc.documentElement;
+            let width = svg.getAttribute('width') || '800';
+            let height = svg.getAttribute('height') || '500';
+            width = parseInt(width);
+            height = parseInt(height);
+            const titleFontSize = 28;
+            const titleMargin = 24;
+            const extraSpace = 32;
+            const newHeight = height + titleFontSize + titleMargin + extraSpace;
+            svg.setAttribute('height', newHeight);
+            if (svg.hasAttribute('viewBox')) {
+                const vb = svg.getAttribute('viewBox').split(' ');
+                if (vb.length === 4) {
+                    vb[3] = String(parseInt(vb[3]) + titleFontSize + titleMargin + extraSpace);
+                    svg.setAttribute('viewBox', vb.join(' '));
+                }
+            }
+            const titleText = doc.createElementNS('http://www.w3.org/2000/svg', 'text');
+            titleText.setAttribute('x', width/2);
+            titleText.setAttribute('y', titleFontSize + titleMargin/2);
+            titleText.setAttribute('text-anchor', 'middle');
+            titleText.setAttribute('font-size', titleFontSize);
+            titleText.setAttribute('font-weight', 'bold');
+            titleText.setAttribute('fill', '#00eaff');
+            titleText.setAttribute('font-family', 'Segoe UI, Arial, sans-serif');
+            titleText.textContent = title;
+            svg.setAttribute('style', 'background:#23242a;display:block;margin:auto;');
+            Array.from(svg.children).forEach(child => {
+                if (child.tagName !== 'text') {
+                    let prev = child.getAttribute('transform') || '';
+                    let translate = `translate(0,${titleFontSize + titleMargin + extraSpace})`;
+                    child.setAttribute('transform', prev ? `${prev} ${translate}` : translate);
+                }
+            });
+            svg.insertBefore(titleText, svg.firstChild);
+            svgString = new XMLSerializer().serializeToString(svg);
+            const blob = new Blob([svgString], { type: 'image/svg+xml' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `${title.replace(/ /g,'_')}.svg`;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+        }
+    // filterState: tüm filtrelerin merkezi kaynağı
+    filterState = {};
+
         getStorageKey() {
             // Her rapor için benzersiz anahtar
             return 'raporModul_defaultFilters_' + (this.schema.reportKey || 'default');
         }
 
         async saveDefaultFilters() {
-            
-            const filters = {};
+            // filterState'i kopyala
+            const filters = { ...this.filterState };
+            // Tüm input/select değerini de ekle (gizli kalanlar dahil)
             (this.schema.filters || []).forEach(f => {
                 const elem = document.getElementById(f.elementId);
                 if (elem) filters[f.field] = elem.value;
             });
-            // Grafik tipleri de şemadan alınabilir
+            // Tüm grafik tipi seçimlerini de ekle
             if (this.schema.charts) {
                 this.schema.charts.forEach(chart => {
                     if (chart.typeSelector) {
@@ -24,13 +117,14 @@ class RaporModul {
                 });
             }
             try {
-                    let reportId = document.getElementById('reportMeta')?.dataset?.reportId;
-                    if (reportId) reportId = parseInt(reportId, 10);
-                    if (!reportId || isNaN(reportId) || reportId <= 0) {
-                        if (typeof toastr === 'function') toastr('Rapor ID bulunamadı, kayıt yapılamaz!', 'error');
-                        else alert('Rapor ID bulunamadı, kayıt yapılamaz!');
-                        return;
-            }       await fetch(window.API_BASE + '/authorization/default-report', {
+                let reportId = document.getElementById('reportMeta')?.dataset?.reportId;
+                if (reportId) reportId = parseInt(reportId, 10);
+                if (!reportId || isNaN(reportId) || reportId <= 0) {
+                    if (typeof toastr === 'function') toastr('Rapor ID bulunamadı, kayıt yapılamaz!', 'error');
+                    else alert('Rapor ID bulunamadı, kayıt yapılamaz!');
+                    return;
+                }
+                await fetch(window.API_BASE + '/authorization/default-report', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     credentials: 'include',
@@ -42,7 +136,7 @@ class RaporModul {
                 showToast('Varsayılan filtreler kaydedildi!', 'success');
             } catch (e) {
                 localStorage.setItem(this.getStorageKey(), JSON.stringify(filters));
-                showToast('Varsayılan filtreler localStorage ile kaydedildi!','warning"');
+                showToast('Varsayılan filtreler localStorage ile kaydedildi!','warning');
             }
         }
 
@@ -72,23 +166,36 @@ class RaporModul {
                 }
             }
             if (!filters) return;
-            // Filtre inputlarını doldur
+            // filterState'i güncelle
+            this.filterState = { ...filters };
+            // Tüm input/select ve grafik tipi değerlerini DOM'a uygula
             (this.schema.filters || []).forEach(f => {
                 const elem = document.getElementById(f.elementId);
                 if (elem && filters[f.field] !== undefined) elem.value = filters[f.field];
+                // Dinamik date filtreleri için de uygula
+                if (f.type === 'date') {
+                    const dateVal = filters[f.field];
+                    if (elem && dateVal) elem.value = dateVal;
+                }
             });
-            // Grafik tiplerini de uygula
             if (this.schema.charts) {
                 this.schema.charts.forEach(chart => {
                     if (chart.typeSelector) {
                         const el = document.querySelector(chart.typeSelector);
                         const key = chart.typeSelector.replace('#','');
-                        if (el && filters[key] !== undefined) el.value = filters[key];
+                        if (el) {
+                            if (filters[key] !== undefined && filters[key] !== null && filters[key] !== "") {
+                                el.value = filters[key];
+                            } else if (chart.defaultType) {
+                                el.value = chart.defaultType;
+                            }
+                        }
                     }
                 });
             }
             if (typeof this.updateAll === 'function') this.updateAll();
         }
+
     constructor(schema) {
         this.schema = schema; // Şema: filtreler, özetler, grafikler, kolonlar
         this.data = [];
@@ -101,8 +208,7 @@ class RaporModul {
     async init() {
         await this.fetchSchemaAndData();
         this.populateFilters();
-        this.loadDefaultFilters();
-        this.updateAll();
+        await this.loadDefaultFilters();
         this.bindEvents();
     }
 
@@ -155,16 +261,84 @@ class RaporModul {
                 opt.text = val;
                 select.appendChild(opt);
             });
+            // filterState'e ilk değerleri ata
+            this.filterState[f.field] = '';
+        });
+        // Grafik tipi select'lerinde defaultType varsa, sadece value ata, option ekleme
+        (this.schema.charts || []).forEach(chart => {
+            if (chart.typeSelector && chart.defaultType) {
+                const el = document.querySelector(chart.typeSelector);
+                if (el) {
+                    el.value = chart.defaultType;
+                    this.filterState[chart.typeSelector.replace('#','')] = chart.defaultType;
+                }
+            }
+        });
+        // Dinamik tarih filtreleri için filterState başlat
+        (this.schema.filters || []).forEach(f => {
+            if (f.type === 'date') {
+                if (document.getElementById(f.elementId + '_min')) this.filterState[f.field + '_min'] = '';
+                if (document.getElementById(f.elementId + '_max')) this.filterState[f.field + '_max'] = '';
+            }
         });
     }
 
     getFilteredData() {
+        // filterState'e göre filtreleme
         return this.data.filter(d => {
             let match = true;
-            (this.schema.filters || []).forEach(f => {
-                const val = document.getElementById(f.elementId)?.value;
-                if (val && String(d[f.field] || '').toLowerCase() !== String(val).toLowerCase()) match = false;
-            });
+            // 1. Tüm aktif filterState alanlarını gez
+            for (const key in this.filterState) {
+                if (!this.filterState.hasOwnProperty(key)) continue;
+                const val = this.filterState[key];
+                if (val === undefined || val === null || val === '') continue;
+                // Tarih filtreleri
+                const filterDef = (this.schema.filters || []).find(f => f.field === key);
+                if (filterDef && filterDef.type === 'date') {
+                    const recValStr = d[key] ? String(d[key]).substring(0,10) : null;
+                    const inputValStr = String(val).substring(0,10);
+                    if (!recValStr) continue;
+                    const recVal = new Date(recValStr);
+                    const inputDate = new Date(inputValStr);
+                    if (isNaN(recVal) || isNaN(inputDate)) continue;
+                    let compare = filterDef.compare;
+                    if (!compare) {
+                        const id = (filterDef.elementId || '').toLowerCase();
+                        const field = (filterDef.field || '').toLowerCase();
+                        if (id.includes('min') || id.includes('start') || id.includes('begin') || field.includes('min') || field.includes('start') || field.includes('begin')) {
+                            compare = '>=';
+                        } else if (id.includes('max') || id.includes('end') || id.includes('finish') || field.includes('max') || field.includes('end') || field.includes('finish')) {
+                            compare = '<=';
+                        } else {
+                            compare = '=';
+                        }
+                    }
+                    if (compare === '>=') {
+                        if (recVal < inputDate) match = false;
+                    } else if (compare === '<=') {
+                        if (recVal > inputDate) match = false;
+                    } else if (compare === '=') {
+                        if (recVal.getTime() !== inputDate.getTime()) match = false;
+                    }
+                } else if (key === 'BekleyenGun') {
+                    // Bekleyen gün için bucket desteği
+                    const bucketVal = this.filterState['BekleyenGun'];
+                    if (bucketVal) {
+                        const ranges = {
+                            '0-7': [0,7], '8-15': [8,15], '16-30': [16,30], '31-60': [31,60], '61-180': [61,180], '>180': [181, Number.MAX_SAFE_INTEGER]
+                        };
+                        const range = ranges[bucketVal];
+                        if (range) {
+                            const v = Number(d.BekleyenGun) || 0;
+                            if (!(v >= range[0] && v <= range[1])) match = false;
+                        }
+                    }
+                } else {
+                    // Diğer tüm alanlar için trim ve null-safe karşılaştırma
+                    if (String(d[key] || '').trim().toLowerCase() !== String(val).trim().toLowerCase()) match = false;
+                }
+                if (!match) break;
+            }
             return match;
         });
     }
@@ -258,13 +432,31 @@ class RaporModul {
 
     renderCharts() {
         (this.schema.charts || []).forEach(chart => {
-            const grouped = {};
-            this.filtered.forEach(d => {
-                const key = d[chart.field];
-                if (!key) return;
-                grouped[key] = (grouped[key] || 0) + 1;
-            });
-            const chartData = Object.entries(grouped).map(([argument, value]) => ({ argument, value }));
+            let chartData = [];
+            // BekleyenGun (bekleme süresi) için bucket'ları şemadan al
+            if (chart.field === 'BekleyenGun' && Array.isArray(this.schema.beklemeSuresiBuckets)) {
+                const buckets = this.schema.beklemeSuresiBuckets;
+                const grouped = buckets.map(b => ({ bucket: b.key, count: 0, min: b.min, max: b.max }));
+                (this.filtered || []).forEach(d => {
+                    const gun = Number(d.BekleyenGun) || 0;
+                    const bucket = grouped.find(b => gun >= b.min && gun <= b.max);
+                    if (bucket) bucket.count++;
+                });
+                chartData = grouped.map(g => ({ argument: g.bucket + ' gün', value: g.count }));
+            } else {
+                const grouped = {};
+                this.filtered.forEach(d => {
+                    const key = d[chart.field];
+                    if (!key) return;
+                    grouped[key] = (grouped[key] || 0) + 1;
+                });
+                // En çok geçen ilk 15 kategori (veya chart.limit varsa o kadar) göster
+                const limit = chart.limit || 15;
+                chartData = Object.entries(grouped)
+                    .map(([argument, value]) => ({ argument, value }))
+                    .sort((a, b) => b.value - a.value)
+                    .slice(0, limit);
+            }
             const chartType = $(chart.typeSelector).val() || chart.defaultType || 'pie';
             // Önce eski grafik instance'ını yok et ve container'ı temizle
             if ($(chart.elementId).data('dxPieChart')) {
@@ -275,238 +467,291 @@ class RaporModul {
                 $(chart.elementId).dxChart('dispose');
                 $(chart.elementId).empty();
             }
+            const palette = chart.palette || undefined;
+            const legend = chart.legend || { visible: false };
+                const handleChartClick = (e) => {
+                    let secilen = e.target.originalArgument;
+                    if (chart.field === 'BekleyenGun') secilen = secilen.replace(' gün', '');
+                    if (typeof secilen === 'string') secilen = secilen.trim();
+                    // Hem filterElementId hem de ilgili filtre field'ı ile senkronize et
+                    if (chart.filterElementId) {
+                        this.filterState[chart.field] = secilen;
+                        const elem = document.querySelector(chart.filterElementId);
+                        if (elem) elem.value = secilen;
+                        // Eğer filterElementId bir select ise, ilgili filtre field'ı ile de senkronize et
+                        const filterField = (this.schema.filters || []).find(f => f.field === chart.field);
+                        if (filterField) {
+                            this.filterState[filterField.field] = secilen;
+                            const filterElem = document.getElementById(filterField.elementId);
+                            if (filterElem) filterElem.value = secilen;
+                        }
+                    }
+                    this.updateAll();
+                };
+                if (chartType === 'pie') {
+                    $(chart.elementId).dxPieChart({
+                        dataSource: chartData,
+                        palette: palette,
+                        series: [{ argumentField: 'argument', valueField: 'value', label: { visible: true, connector: { visible: true }, customizeText: function(point) { return point.valueText; } } }],
+                        tooltip: { enabled: true, contentTemplate: d => `${d.argumentText}: ${d.value}` },
+                        legend: legend,
+                        onPointClick: handleChartClick
+                    });
+                } else {
+                    $(chart.elementId).dxChart({
+                        dataSource: chartData,
+                        palette: palette,
+                        series: [{ argumentField: 'argument', valueField: 'value', name: chart.field, type: chartType }],
+                        tooltip: { enabled: true, contentTemplate: d => `${d.argumentText}: ${d.value}` },
+                        legend: legend,
+                        onPointClick: handleChartClick
+                    });
+                }
+        });
+    }
+
+    bindEvents() {
+        // Grid yüksekliği ve pencere resize
+        const gridElem = $("#gridContainer");
+        let grid = gridElem.data("dxDataGrid");
+        if (gridElem.length && grid) {
+            const headerHeight = $(".dx-datagrid-headers").outerHeight() || 0;
+            const footerHeight = $(".dx-datagrid-pager").outerHeight() || 0;
+            const gridHeight = $(window).height() - $("#filterContainer").outerHeight() - headerHeight - footerHeight - 40;
+            gridElem.dxDataGrid("instance").option("height", gridHeight);
+            $(window).off("resize.grid").on("resize.grid", () => {
+                const headerHeight = $(".dx-datagrid-headers").outerHeight() || 0;
+                const footerHeight = $(".dx-datagrid-pager").outerHeight() || 0;
+                const gridHeight = $(window).height() - $("#filterContainer").outerHeight() - headerHeight - footerHeight - 40;
+                gridElem.dxDataGrid("instance").option("height", gridHeight);
+            });
+        }
+
+        // Filtre değişiklikleri (filtrele butonu yok, otomatik çalışıyor)
+        (this.schema.filters || []).forEach(f => {
+            const elem = document.getElementById(f.elementId);
+            if (!elem) return;
+            elem.addEventListener('change', () => {
+                this.filterState[f.field] = elem.value;
+                if (f.type === 'date') {
+                    if (document.getElementById(f.elementId + '_min')) {
+                        this.filterState[f.field + '_min'] = document.getElementById(f.elementId + '_min').value;
+                    }
+                    if (document.getElementById(f.elementId + '_max')) {
+                        this.filterState[f.field + '_max'] = document.getElementById(f.elementId + '_max').value;
+                    }
+                }
+                this.updateAll();
+            });
+        });
+
+        // Grafik tipi değişiklikleri
+        (this.schema.charts || []).forEach(chart => {
+            if (chart.typeSelector) {
+                const el = document.querySelector(chart.typeSelector);
+                if (el) el.addEventListener('change', () => {
+                    this.filterState[chart.typeSelector.replace('#','')] = el.value;
+                    this.updateAll();
+                });
+            }
+        });
+
+        // Temizle butonu
+        document.querySelectorAll('.clear-filters').forEach(btn => {
+            btn.addEventListener('click', () => {
+                // Tüm filtre input/select sıfırla
+                (this.schema.filters || []).forEach(f => {
+                    const elem = document.getElementById(f.elementId);
+                    if (elem) elem.value = '';
+                    this.filterState[f.field] = '';
+                });
+                // Tüm grafik tipi select sıfırla
+                (this.schema.charts || []).forEach(chart => {
+                    if (chart.typeSelector) {
+                        const el = document.querySelector(chart.typeSelector);
+                        if (el) el.value = '';
+                        this.filterState[chart.typeSelector.replace('#','')] = '';
+                    }
+                });
+                // Dinamik olarak filterState'te kalan diğer alanları da sıfırla
+                for (const key in this.filterState) {
+                    if (!this.filterState.hasOwnProperty(key)) continue;
+                    // filters ve charts dışında kalanları sıfırla
+                    const isFilter = (this.schema.filters || []).some(f => f.field === key);
+                    const isChartType = (this.schema.charts || []).some(chart => chart.typeSelector && chart.typeSelector.replace('#','') === key);
+                    if (!isFilter && !isChartType) {
+                        this.filterState[key] = '';
+                    }
+                }
+                this.updateAll();
+                if (typeof this.renderDistributionTable === 'function') {
+                    this.renderDistributionTable();
+                }
+            });
+        });
+
+        // Varsayılan rapor kaydet butonu
+        const saveBtnId = 'saveDefaultReport_' + (this.schema.reportKey || 'default');
+        if (document.getElementById(saveBtnId)) {
+            document.getElementById(saveBtnId).onclick = () => this.saveDefaultFilters();
+        }
+
+        // Haftalık/Aylık dağılım tablosunu başlat
+        if (typeof this.renderDistributionTable === 'function') {
+            this.renderDistributionTable();
+        }
+    }
+
+    renderCharts() {
+        (this.schema.charts || []).forEach(chart => {
+            let chartData = [];
+            // BekleyenGun (bekleme süresi) için bucket'ları şemadan al
+            if (chart.field === 'BekleyenGun' && Array.isArray(this.schema.beklemeSuresiBuckets)) {
+                const buckets = this.schema.beklemeSuresiBuckets;
+                const grouped = buckets.map(b => ({ bucket: b.key, count: 0, min: b.min, max: b.max }));
+                (this.filtered || []).forEach(d => {
+                    const gun = Number(d.BekleyenGun) || 0;
+                    const bucket = grouped.find(b => gun >= b.min && gun <= b.max);
+                    if (bucket) bucket.count++;
+                });
+                chartData = grouped.map(g => ({ argument: g.bucket + ' gün', value: g.count }));
+            } else {
+                const grouped = {};
+                this.filtered.forEach(d => {
+                    const key = d[chart.field];
+                    if (!key) return;
+                    grouped[key] = (grouped[key] || 0) + 1;
+                });
+                // En çok geçen ilk 15 kategori (veya chart.limit varsa o kadar) göster
+                const limit = chart.limit || 15;
+                chartData = Object.entries(grouped)
+                    .map(([argument, value]) => ({ argument, value }))
+                    .sort((a, b) => b.value - a.value)
+                    .slice(0, limit);
+            }
+            const chartType = $(chart.typeSelector).val() || chart.defaultType || 'pie';
+            // Önce eski grafik instance'ını yok et ve container'ı temizle
+            if ($(chart.elementId).data('dxPieChart')) {
+                $(chart.elementId).dxPieChart('dispose');
+                $(chart.elementId).empty();
+            }
+            if ($(chart.elementId).data('dxChart')) {
+                $(chart.elementId).dxChart('dispose');
+                $(chart.elementId).empty();
+            }
+            const palette = chart.palette || undefined;
+            const legend = chart.legend || { visible: false };
+            // Grafik tıklamasında filterState güncellenir, input/select güncellenmez
             if (chartType === 'pie') {
                 $(chart.elementId).dxPieChart({
                     dataSource: chartData,
+                    palette: palette,
                     series: [{ argumentField: 'argument', valueField: 'value', label: { visible: true, connector: { visible: true }, customizeText: function(point) { return point.valueText; } } }],
-                    tooltip: { enabled: true },
-                    legend: { marginRight: 20, visible: grouped.length <= 7 },
-                    onPointClick: function(e) {
-                        const secilen = e.target.originalArgument;
-                        if (chart.filterElementId) $(chart.filterElementId).val(secilen);
-                        window.rapor.updateAll();
+                    tooltip: { enabled: true, contentTemplate: d => `${d.argumentText}: ${d.value}` },
+                    legend: legend,
+                    onPointClick: (e) => {
+                        let secilen = e.target.originalArgument;
+                        if (chart.field === 'BekleyenGun') secilen = secilen.replace(' gün', '');
+                        if (chart.filterElementId) {
+                            this.filterState[chart.field] = secilen;
+                            const elem = document.querySelector(chart.filterElementId);
+                            if (elem) elem.value = secilen;
+                        }
+                        this.updateAll();
                     }
                 });
             } else {
                 $(chart.elementId).dxChart({
                     dataSource: chartData,
-                    series: [{ argumentField: 'argument', valueField: 'value', type: chartType, color: chart.color || '#00eaff' }],
-                    tooltip: { enabled: true },
-                    legend: { visible: false },
-                    argumentAxis: { label: { font: { color: '#e0e0e0', size: 13 } }, color: '#444' },
-                    valueAxis: { label: { font: { color: '#e0e0e0', size: 13 } }, color: '#444' },
-                    onPointClick: function(e) {
-                        const secilen = e.target.originalArgument;
-                        if (chart.filterElementId) $(chart.filterElementId).val(secilen);
-                        window.rapor.updateAll();
+                    palette: palette,
+                    series: [{ argumentField: 'argument', valueField: 'value', name: chart.field, type: chartType }],
+                    tooltip: { enabled: true, contentTemplate: d => `${d.argumentText}: ${d.value}` },
+                    legend: legend,
+                    onPointClick: (e) => {
+                        let secilen = e.target.originalArgument;
+                        if (chart.field === 'BekleyenGun') secilen = secilen.replace(' gün', '');
+                        if (chart.filterElementId) {
+                            this.filterState[chart.field] = secilen;
+                            const elem = document.querySelector(chart.filterElementId);
+                            if (elem) elem.value = secilen;
+                        }
+                        this.updateAll();
                     }
                 });
             }
         });
     }
 
-    bindEvents() {
-        (this.schema.filters || []).forEach(f => {
-            const elem = document.getElementById(f.elementId);
-            if (elem) elem.addEventListener('change', () => this.updateAll());
-        });
-        (this.schema.charts || []).forEach(chart => {
-            if (chart.typeSelector) $(chart.typeSelector).on('change', () => this.updateAll());
-        });
-        $('.filter-btn').on('click', () => this.updateAll());
-        $('.clear-filters').on('click', () => {
-            (this.schema.filters || []).forEach(f => {
-                $('#' + f.elementId).val('');
-            });
-            this.updateAll();
-        });
-        // Dinamik varsayılan rapor kaydet butonu (her rapor için benzersiz id)
-        const saveBtnId = 'saveDefaultReport_' + (this.schema.reportKey || 'default');
-        if ($('#' + saveBtnId).length) {
-            $('#' + saveBtnId).off('click').on('click', () => this.saveDefaultFilters());
-        }
-
-        // Haftalık/Aylık dağılım tablosunu başlat
-        this.renderDistributionTable();
-    }
-
-    // Haftalık ve aylık dağılım tablosu
+    // Haftalık/Yıllık dağılım pivot tablosu
     renderDistributionTable() {
-        // Tabloyu ekleyeceğimiz yeri belirle
-        let container = document.getElementById('distributionTableContainer');
-        if (!container) {
-            container = document.createElement('div');
-            container.id = 'distributionTableContainer';
-            container.style.marginTop = '32px';
-            const gridElem = document.getElementById('gridContainer') || document.querySelector('#gridContainer');
-            if (gridElem && gridElem.parentNode) {
-                gridElem.parentNode.appendChild(container);
-            } else {
-                document.body.appendChild(container);
-            }
-        } else {
-            container.innerHTML = '';
-        }
-
-        // Dağılımı hesapla
-        const data = this.filteredWithCalculated || this.filtered;
-        if (!data || !data.length) {
-            container.innerHTML = '<div style="color:#888">Veri yok</div>';
+        const container = $("#pivotGridContainer");
+        if (!container.length) return;
+        // Pivot veri hazırlama
+        const data = (this.filteredWithCalculated && this.filteredWithCalculated.length) ? this.filteredWithCalculated : this.filtered;
+        if (!data || !data.length || !this.schema.pivotFields) {
+            container.dxPivotGrid({ dataSource: [] });
             return;
         }
-        // Data'yı PivotGrid formatına dönüştürme fonksiyonu şemadan alınabilir
-        let pivotData;
-        if (typeof this.schema.pivotDataTransform === 'function') {
-            pivotData = this.schema.pivotDataTransform(data);
-        } else {
-            const mappings = this.schema.pivotFieldMappings || {};
-            const getField = (d, keys) => {
-                if (!keys) return '';
-                for (let k of keys) {
-                    if (d[k]) return d[k];
+        // Alan eşlemesi (schema.pivotFieldMappings)
+        const mappings = this.schema.pivotFieldMappings || {};
+        const pivotData = data.map(d => {
+            const row = {};
+            this.schema.pivotFields.forEach(f => {
+                let val = null;
+                if (mappings[f.dataField]) {
+                    for (const key of mappings[f.dataField]) {
+                        if (d[key] !== undefined && d[key] !== null) {
+                            val = d[key];
+                            break;
+                        }
+                    }
+                } else if (d[f.dataField] !== undefined) {
+                    val = d[f.dataField];
                 }
-                return '';
-            };
-            const pivotFields = (this.schema.pivotFields || []).map(f => f.dataField);
-            pivotData = data.map(d => {
-                let dt = d.BaslamaTarihi ? new Date(d.BaslamaTarihi) : (d.SurecBaslangicTarihi ? new Date(d.SurecBaslangicTarihi) : null);
-                let year = dt ? dt.getFullYear() : null;
-                let jan1 = dt ? new Date(year, 0, 1) : null;
-                let days = dt ? Math.floor((dt - jan1) / 86400000) : null;
-                let week = dt ? Math.ceil((days + jan1.getDay() + 1) / 7) : null;
-                const result = { ...d };
-                pivotFields.forEach(field => {
-                    if (field === 'Yil') result.Yil = year;
-                    else if (field === 'Hafta') result.Hafta = week;
-                    else if (field === 'Adet') result.Adet = 1;
-                    else result[field] = getField(d, mappings[field]) || d[field] || '';
-                });
-                return result;
-            });
-        }
-
-        // PivotGrid'i oluştur
-        // DevExpress PivotGrid'i başlat
-        if (window.$ && window.$.fn && window.$.fn.dxPivotGrid) {
-            const pivotFields = this.schema.pivotFields;
-            $('#pivotGridContainer').dxPivotGrid({
-                dataSource: {
-                    fields: pivotFields,
-                    store: pivotData
-                },
-                allowSortingBySummary: true,
-                allowFiltering: true,
-                showBorders: true,
-                showColumnGrandTotals: true,
-                showColumnTotals: true,
-                showRowGrandTotals: true,
-                showRowTotals: true,
-                texts: {
-                    grandTotal: 'Tüm Yılların Toplamı',
-                    total: 'Toplam',
-                    allFields: 'Müdürlük'
-                },
-                height: 500,
-                scrolling: { mode: 'both', useNative: true },
-                export: { enabled: true, fileName: 'DetayTablo' },
-                fieldChooser: { enabled: true },
-                onCellPrepared: function(e) {
-                    // '-' yerine boş string göster
-                    if (e.cell && typeof e.cell.value !== 'undefined' && e.cell.value === '-') {
-                        e.cellElement.text('Veri yok');
-                    }
-                    if (e.area === 'data' && typeof e.cell.value === 'number' && e.cell.value > 7) {
-                        e.cellElement.css({ background: '#e57373', color: '#fff', fontWeight: 'bold' });
-                    }
-                },
-                    onExporting: function(e) {
-                        const workbook = new ExcelJS.Workbook();
-                        const worksheet = workbook.addWorksheet('DetayTablo');
-                        DevExpress.excelExporter.exportPivotGrid({
-                            component: e.component,
-                            worksheet: worksheet,
-                            customizeCell: function(options) {
-                                const { excelCell, pivotCell } = options;
-                                // Kırmızı hücreler (değeri 7'den büyük olanlar)
-                                if (pivotCell && typeof pivotCell.value === 'number' && pivotCell.value > 7) {
-                                    excelCell.fill = {
-                                        type: 'pattern',
-                                        pattern: 'solid',
-                                        fgColor: { argb: 'FFE57373' }
-                                    };
-                                    excelCell.font = { color: { argb: 'FFFFFFFF' }, bold: true };
-                                }
-                            }
-                        }).then(function() {
-                            workbook.xlsx.writeBuffer().then(function(buffer) {
-                                saveAs(new Blob([buffer], { type: 'application/octet-stream' }), 'DetayTablo.xlsx');
-                            });
-                        });
-                        e.cancel = true;
-                    },
-                onHeaderCellPrepared: function(e) {
-                    if (e.area === 'row' && e.cell && e.cell.columnIndex === 0 && e.cell.rowIndex === 0) {
-                        e.cellElement.text('Müdürlük');
+                // Yıl/Hafta otomatik hesapla
+                if (f.dataField === 'Yil' && d.SurecBaslangicTarihi) {
+                    const dt = new Date(d.SurecBaslangicTarihi);
+                    if (!isNaN(dt)) val = dt.getFullYear();
+                }
+                if (f.dataField === 'Hafta' && d.SurecBaslangicTarihi) {
+                    const dt = new Date(d.SurecBaslangicTarihi);
+                    if (!isNaN(dt)) {
+                        const jan1 = new Date(dt.getFullYear(), 0, 1);
+                        const days = Math.floor((dt - jan1) / 86400000);
+                        val = Math.ceil((days + jan1.getDay() + 1) / 7);
                     }
                 }
+                if (f.dataField === 'Adet') val = 1;
+                row[f.dataField] = val;
             });
-        } else {
-            document.getElementById('pivotGridContainer').innerHTML = '<div style="color:#c00">DevExpress PivotGrid yüklü değil!</div>';
-        }
+            return row;
+        });
+        container.dxPivotGrid({
+            dataSource: {
+                fields: this.schema.pivotFields,
+                store: pivotData
+            },
+            allowSortingBySummary: true,
+            allowFiltering: true,
+            showBorders: true,
+            showColumnGrandTotals: true,
+            showColumnTotals: true,
+            showRowGrandTotals: true,
+            showRowTotals: true,
+            texts: {
+                grandTotal: 'Tüm Yılların Toplamı',
+                total: 'O Yıla Ait Alt Toplam'
+            },
+            onCellPrepared: function(e) {
+                if (e.area === 'data' && typeof e.cell.value === 'number' && e.cell.value > 7) {
+                    e.cellElement.css({ background: '#e57373', color: '#fff', fontWeight: 'bold' });
+                }
+            },
+            height: 500,
+            scrolling: { mode: 'both', useNative: true },
+            export: { enabled: true, fileName: 'OzetTablo' },
+            fieldChooser: { enabled: true }
+        });
     }
 }
 
-// ÖRNEK: Ultra-dinamik şema (bu obje ileride API'den de gelebilir)
-const raporSchema = {
-    reportKey: 'qdms',
-    filters: [
-        { field: 'Durum', elementId: 'filterDurum', label: 'Durum' },
-        { field: 'MudurlukAdi', elementId: 'filterMudurluk', label: 'Müdürlük' },
-        { field: 'Tip', elementId: 'filterTip', label: 'Tip' },
-        { field: 'BaslamaTarihi', elementId: 'filterBaslangic', label: 'Başlangıç Tarihi' },
-        { field: 'BitisTarihi', elementId: 'filterBitis', label: 'Bitiş Tarihi' },
-    ],
-    columns: [
-        { dataField: 'BekletenSirket', caption: 'Şirket' },
-        { dataField: 'Aksiyon', caption: 'Aksiyon No' },
-        { dataField: 'KalemNo', caption: 'Kalem No' },
-        { dataField: 'BekletenSicilNo', caption: 'Sicil' },
-        { dataField: 'BekletenAdSoyad', caption: 'Ad Soyad' },
-        { dataField: 'SorumluAdSoyad', caption: 'Yönetici' },
-        { dataField: 'MudurlukAdi', caption: 'Müdürlük' },
-        { dataField: 'Durum', caption: 'Durum' },
-        { dataField: 'BitisTarihi', caption: 'Bitiş Tarihi' },
-        { dataField: 'GeciktiMi', caption: 'Gecikti mi?' },
-        { dataField: 'BeklemeGun', caption: 'Bekleme Gün' },
-        { dataField: 'GecikmeGun', caption: 'Gecikme Gün' }, 
-        { dataField: 'Tanım', caption: 'Tanım' }
-    ],
-    summaries: [
-        { type: 'avg', field: 'BeklemeGun', elementId: '#ortalamaBekleme' },
-        { type: 'max', field: 'BeklemeGun', elementId: '#enUzunBekleme' },
-        { type: 'count', elementId: '#bekleyenSurec' }
-    ],
-    charts: [
-        { field: 'Durum', elementId: '#durumChart', typeSelector: '#chartTypeDurum', filterElementId: '#filterDurum', defaultType: 'pie' },
-        { field: 'Mudurluk', elementId: '#sorumluChart', typeSelector: '#chartTypeMudurluk', filterElementId: '#filterMudurluk', defaultType: 'pie' }
-    ],
-        // PivotGrid için alanları dinamik belirle (örnek: Müdürlük, Üretim Yeri, Yıl, Hafta)
-        // Şemadan veya config'ten alınabilir, yoksa defaultlar kullanılır
-    pivotFields: [
-        { dataField: 'MudurlukAdi', area: 'row', caption: 'Müdürlük' },
-        { dataField: 'Yil', area: 'column', caption: 'Yıl' },
-        { dataField: 'UretimYeri', area: 'column', caption: 'Üretim Yeri' },
-        { dataField: 'Hafta', area: 'column', caption: 'Hafta' },
-        { dataField: 'Adet', area: 'data', summaryType: 'sum', caption: 'Toplam' }
-    ],
-    // PivotGrid alanlarını maplemek için dinamik eşleştirme
-    pivotFieldMappings: {
-        MudurlukAdi: ['MudurlukAdi', 'Departman'],
-        UretimYeri: ['UretimYeri', 'BekletenSirket']
-    },
-};
-
-window.rapor = new RaporModul(raporSchema);
-window.rapor.init();
-
-// Yeni rapor eklemek için sadece config tanımla ve RaporModul ile başlat.

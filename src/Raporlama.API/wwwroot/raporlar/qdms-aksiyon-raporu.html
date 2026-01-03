@@ -36,7 +36,7 @@
                 <label class="filter-label">Bitiş Tarihi</label>
                 <input type="date" id="filterBitis">
             </div>
-            <button class="filter-btn" onclick="updateAll()">🔄 <span>Filtrele</span></button>
+            <button class="filter-btn">🔄 <span>Filtrele</span></button>
             <button class="clear-filters">⊘ Temizle</button>
             <button id="saveDefaultReport_qdms" class="filter-btn" style="margin-top:12px;background:orange;color:#181A20;font-weight:bold;">⭐ Varsayılan olarak kaydet</button>
         </div>
@@ -60,6 +60,12 @@
                             <option value="bar">Çubuk</option>
                             <option value="line">Çizgi</option>
                         </select>
+                        <div style="position:relative;height:0;">
+                            <div style="position:absolute;top:-40px;right:8px;display:flex;gap:8px;z-index:2;">
+                                <span style="cursor:pointer;font-size:20px;" onclick="RaporModul.enlargeChart('durumChart', 'Durum Dağılımı')" title="Büyüt">🔍</span>
+                                <span style="cursor:pointer;font-size:20px;" onclick="RaporModul.downloadSVG('durumChart', 'Durum Dağılımı')" title="İndir">⬇️</span>
+                            </div>
+                        </div>
                         <div id="durumChart" style="height:260px"></div>
                     </div>
                     <div class="chart-container">
@@ -69,6 +75,12 @@
                             <option value="bar">Çubuk</option>
                             <option value="line">Çizgi</option>
                         </select>
+                        <div style="position:relative;height:0;">
+                            <div style="position:absolute;top:-40px;right:8px;display:flex;gap:8px;z-index:2;">
+                                <span style="cursor:pointer;font-size:20px;" onclick="RaporModul.enlargeChart('sorumluChart', 'Tip')" title="Büyüt">🔍</span>
+                                <span style="cursor:pointer;font-size:20px;" onclick="RaporModul.downloadSVG('sorumluChart', 'Tip')" title="İndir">⬇️</span>
+                            </div>
+                        </div>
                         <div id="sorumluChart" style="height:260px"></div>
                     </div>
                 </div>
@@ -85,6 +97,7 @@
     <script src="common.js"></script>
     <script src="toast.js"></script>
     <script src="raporModul.js"></script>
+    <script src="qdms-schema.js"></script>
     <script>
         window.API_BASE = '/api';
     </script>
