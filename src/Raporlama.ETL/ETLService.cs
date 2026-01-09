@@ -19,7 +19,7 @@ namespace Raporlama.ETL
         {
             _logger = logger;
             _configuration = configuration;
-            _connectionString = _configuration.GetConnectionString("DefaultConnection");
+            _connectionString = _configuration.GetConnectionString("BellonaRapor");
         }
 
         // Aktif görevleri veritabanından çeker

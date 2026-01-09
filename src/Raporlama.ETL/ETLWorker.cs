@@ -31,13 +31,17 @@ public class ETLWorker : BackgroundService
         while (!stoppingToken.IsCancellationRequested)
         {
             var nowLocal = DateTime.Now;
-            var nowUtc = DateTime.SpecifyKind(DateTime.UtcNow, DateTimeKind.Utc);
+            // Türkiye saat dilimini açıkça kullan
+            var turkeyTz = TimeZoneInfo.FindSystemTimeZoneById("Turkey Standard Time");
+            var nowUtc = DateTime.UtcNow;
+            var nowTurkey = TimeZoneInfo.ConvertTime(nowUtc, turkeyTz);
             try
             {
                 var gorevler = await _etlService.GetActiveTasksAsync();
                 foreach (var gorev in gorevler)
                 {
                     _logger.LogInformation($"[DEBUG] Görev: {gorev.GorevAdi}, Schedule: {gorev.Schedule}");
+                    _logger.LogInformation($"[DEBUG] nowUtc: {nowUtc:yyyy-MM-dd HH:mm:ss}, nowTurkey: {nowTurkey:yyyy-MM-dd HH:mm:ss}");
                     if (string.IsNullOrWhiteSpace(gorev.Schedule)) continue;
                     if (string.IsNullOrWhiteSpace(gorev.SorguMetni) || string.IsNullOrWhiteSpace(gorev.HedefTablo))
                     {
@@ -47,15 +51,16 @@ public class ETLWorker : BackgroundService
                     var cron = Cronos.CronExpression.Parse(gorev.Schedule);
                     if (!nextRunTimes.ContainsKey(gorev.GorevId) || nextRunTimes[gorev.GorevId] == null)
                     {
-                        _logger.LogInformation($"[DEBUG] Cron hesaplanıyor: {gorev.Schedule} için nowUtc: {nowUtc:yyyy-MM-dd HH:mm:ss}");
-                        var firstRunUtc = cron.GetNextOccurrence(nowUtc, TimeZoneInfo.Local);
-                        var firstRunLocal = firstRunUtc?.ToLocalTime();
-                        _logger.LogInformation($"[DEBUG] nextRunLocal: {firstRunLocal:yyyy-MM-dd HH:mm:ss}");
-                        nextRunTimes[gorev.GorevId] = firstRunLocal;
+                        _logger.LogInformation($"[DEBUG] Cron hesaplanıyor: {gorev.Schedule} için nowUtc: {nowUtc:yyyy-MM-dd HH:mm:ss}, nowTurkey: {nowTurkey:yyyy-MM-dd HH:mm:ss}");
+                        var firstRunUtc = cron.GetNextOccurrence(nowUtc, turkeyTz);
+                        var firstRunTurkey = firstRunUtc.HasValue ? TimeZoneInfo.ConvertTime(firstRunUtc.Value, turkeyTz) : (DateTime?)null;
+                        _logger.LogInformation($"[DEBUG] nextRunTurkey (Türkiye saati): {firstRunTurkey:yyyy-MM-dd HH:mm:ss}");
+                        nextRunTimes[gorev.GorevId] = firstRunTurkey;
                     }
                     var runTime = nextRunTimes[gorev.GorevId];
                     var tolerance = TimeSpan.FromSeconds(10); // döngü aralığı
-                    if (runTime.HasValue && nowLocal >= runTime.Value && nowLocal <= runTime.Value + tolerance)
+                    // Şu anki Türkiye saatiyle karşılaştır
+                    if (runTime.HasValue && nowTurkey >= runTime.Value && nowTurkey <= runTime.Value + tolerance)
                     {
                         _logger.LogInformation($"[DEBUG] TETIKLEME KOŞULU: {runTime.Value:yyyy-MM-dd HH:mm:ss} <= {nowLocal:yyyy-MM-dd HH:mm:ss} <= {runTime.Value + tolerance:yyyy-MM-dd HH:mm:ss}, ETL çalışacak!");
                         var start = DateTime.Now;
@@ -71,10 +76,11 @@ public class ETLWorker : BackgroundService
                             _logger.LogError(ex, $"[Otomatik] {gorev.GorevAdi} ETL çalıştırılırken hata oluştu");
                         }
                         // Sadece ETL çalıştıktan sonra bir sonraki zamanı güncelle
-                        var nextRunUtc = cron.GetNextOccurrence(DateTime.SpecifyKind(DateTime.UtcNow.AddSeconds(1), DateTimeKind.Utc), TimeZoneInfo.Local);
-                        var nextRunLocal = nextRunUtc?.ToLocalTime();
-                        _logger.LogInformation($"[DEBUG] nextRunLocal (sonra): {nextRunLocal:yyyy-MM-dd HH:mm:ss}");
-                        nextRunTimes[gorev.GorevId] = nextRunLocal;
+                        var nextRunUtc = DateTime.UtcNow.AddSeconds(1);
+                        var nextRunUtcVal = cron.GetNextOccurrence(nextRunUtc, turkeyTz);
+                        var nextRunTurkey = nextRunUtcVal.HasValue ? TimeZoneInfo.ConvertTime(nextRunUtcVal.Value, turkeyTz) : (DateTime?)null;
+                        _logger.LogInformation($"[DEBUG] nextRunTurkey (sonra, Türkiye saati): {nextRunTurkey:yyyy-MM-dd HH:mm:ss}");
+                        nextRunTimes[gorev.GorevId] = nextRunTurkey;
                     }
                 }
             }

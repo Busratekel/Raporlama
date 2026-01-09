@@ -2,8 +2,22 @@
 using Raporlama.ETL;
 using Serilog;
 using Microsoft.AspNetCore.Builder;
-using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.Hosting;
+
+
+
+// logs klasöründe bugünün dosyası hariç tüm etl-*.txt dosyalarını sil (klasör yolu workspace'e göre düzeltildi)
+var logsDir = Path.Combine(Directory.GetCurrentDirectory(), "logs");
+if (!Directory.Exists(logsDir))
+    Directory.CreateDirectory(logsDir);
+var today = DateTime.Now.ToString("yyyyMMdd");
+var files = Directory.GetFiles(logsDir, "etl-*.txt");
+foreach (var file in files)
+{
+    if (!file.Contains($"etl-{today}.txt"))
+    {
+        try { File.Delete(file); } catch { }
+    }
+}
 
 Log.Logger = new LoggerConfiguration()
     .WriteTo.Console()

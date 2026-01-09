@@ -16,7 +16,7 @@ namespace Raporlama.API.Services
         public ETLGorevService(IConfiguration config)
         {
             _config = config;
-            _connectionString = _config.GetConnectionString("DefaultConnection");
+            _connectionString = _config.GetConnectionString("BellonaRapor");
         }
 
         public async Task<IEnumerable<ETLGorev>> GetAllAsync()
