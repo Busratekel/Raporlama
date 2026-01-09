@@ -31,10 +31,12 @@ builder.Services.AddCors(options =>
 
 builder.Services.AddMemoryCache();
 builder.Services.AddHttpContextAccessor();
+
 builder.Services.AddScoped<IDatabaseService, DatabaseService>();
 builder.Services.AddScoped<IReportService, ReportService>();
 builder.Services.AddScoped<ICustomAuthorizationService, AuthorizationService>();
 builder.Services.AddScoped<IDataSourceService, DataSourceService>();
+builder.Services.AddScoped<ETLGorevService>();
 
 builder.Services.AddDevExpressControls();
 

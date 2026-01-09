@@ -1,0 +1,242 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <title>ETL Görev Yönetimi</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="../raporlar/rapor-ortak.css">
+    <style>
+        body { background: #181a1b; color: #f5f6fa; }
+        h1 { margin-top: 32px; margin-bottom: 24px; font-weight: bold; }
+        .table thead th { background: #23272b; color: #bfc7d5; }
+        .table tbody tr { background: #23272b; }
+        .table td, .table th { vertical-align: middle; }
+        .btn { min-width: 90px; }
+        .modal-content { background: #23272b; color: #f5f6fa; }
+        .form-label { margin-top: 8px; }
+        textarea { min-height: 80px; }
+    </style>
+</head>
+<body>
+    <div class="container-fluid">
+        <h1>ETL Görev Yönetimi</h1>
+        <button class="btn btn-success mb-3" onclick="showAddForm()">Yeni Görev Ekle</button>
+        <div class="table-responsive">
+            <table id="gorevTable" class="table table-dark table-striped align-middle">
+                <thead>
+                    <tr>
+                        <th>ID</th>
+                        <th>Görev Adı</th>
+                        <th>Sorgu Metni</th>
+                        <th>Hedef Tablo</th>
+                        <th>Zamanlama (Cron)</th>
+                        <th>Aktif</th>
+                        <th>Oluşturma Tarihi</th>
+                        <th>İşlemler</th>
+                    </tr>
+                </thead>
+                <tbody></tbody>
+            </table>
+        </div>
+        <!-- ETL Logları Bölümü -->
+        <div class="mt-5">
+            <h3>ETL Logları (Ham Metin)</h3>
+            <div style="max-height:400px;overflow-y:auto;border:1px solid #444;border-radius:8px;background:#23272b;">
+                <pre id="logText" style="color:#bfc7d5;padding:16px;white-space:pre-wrap;font-size:15px;"></pre>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal -->
+    <div class="modal fade" id="gorevModal" tabindex="-1" aria-labelledby="formTitle" aria-hidden="true">
+      <div class="modal-dialog">
+        <div class="modal-content">
+          <div class="modal-header">
+            <h5 class="modal-title" id="formTitle">Yeni Görev</h5>
+            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+          </div>
+          <div class="modal-body">
+            <form id="gorevForm" onsubmit="submitForm(event)">
+                <input type="hidden" id="gorevId">
+                <div class="mb-2">
+                    <label class="form-label">Adı</label>
+                    <input class="form-control" id="gorevAdi" required>
+                </div>
+                <div class="mb-2">
+                    <label class="form-label">Sorgu</label>
+                    <textarea class="form-control" id="sorguMetni" required></textarea>
+                </div>
+                <div class="mb-2">
+                    <label class="form-label">Hedef Tablo</label>
+                    <input class="form-control" id="hedefTablo" required>
+                </div>
+                <div class="mb-2">
+                    <label class="form-label">Çalışma Zamanı</label>
+                    <div class="row g-2">
+                        <div class="col-md-2">
+                            <input type="number" min="0" max="59" class="form-control" id="cronMinute" placeholder="Dakika" title="Dakika">
+                        </div>
+                        <div class="col-md-2">
+                            <input type="number" min="0" max="23" class="form-control" id="cronHour" placeholder="Saat" title="Saat">
+                        </div>
+                        <div class="col-md-2">
+                            <select class="form-select" id="cronDay">
+                                <option value="*">Her gün</option>
+                                <option value="1">Pazartesi</option>
+                                <option value="2">Salı</option>
+                                <option value="3">Çarşamba</option>
+                                <option value="4">Perşembe</option>
+                                <option value="5">Cuma</option>
+                                <option value="6">Cumartesi</option>
+                                <option value="0">Pazar</option>
+                            </select>
+                        </div>
+                        <div class="col-md-6">
+                            <input class="form-control" id="schedule" placeholder="Cron ifadesi (otomatik doldurulur)">
+                        </div>
+                    </div>
+                </div>
+                <div class="form-check mb-2">
+                    <input class="form-check-input" type="checkbox" id="aktif">
+                    <label class="form-check-label" for="aktif">Aktif</label>
+                </div>
+                <div class="modal-footer">
+                    <button type="submit" class="btn btn-primary">Kaydet</button>
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">İptal</button>
+                </div>
+            </form>
+          </div>
+        </div>
+      </div>
+    </div>
+
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+    const api = '/api/etlgorevleri';
+    let editingId = null;
+    let gorevModal = null;
+
+    function fetchGorevler() {
+        fetch(api)
+            .then(r => r.json())
+            .then(data => {
+                const tbody = document.querySelector('#gorevTable tbody');
+                tbody.innerHTML = '';
+                data.forEach(gorev => {
+                    const tr = document.createElement('tr');
+                    tr.innerHTML = [
+                        `<td>${gorev.gorevId}</td>`,
+                        `<td>${gorev.gorevAdi}</td>`,
+                        `<td><pre style="max-width:200px;white-space:pre-wrap;background:none;color:#bfc7d5;">${gorev.sorguMetni}</pre></td>`,
+                        `<td>${gorev.hedefTablo}</td>`,
+                        `<td>${gorev.schedule || ''}</td>`,
+                        `<td>${gorev.aktif ? '<span class="badge bg-success">Evet</span>' : '<span class="badge bg-secondary">Hayır</span>'}</td>`,
+                        `<td>${gorev.olusturmaTarihi ? new Date(gorev.olusturmaTarihi).toLocaleString() : ''}</td>`,
+                        `<td>
+                            <button class="btn btn-sm btn-warning" onclick="editGorev(${gorev.gorevId})">Düzenle</button>
+                            <button class="btn btn-sm btn-danger" onclick="deleteGorev(${gorev.gorevId})">Sil</button>
+                            <button class="btn btn-sm btn-info" onclick="runGorev(${gorev.gorevId})">Manuel Çalıştır</button>
+                        </td>`
+                    ].join('');
+                    tbody.appendChild(tr);
+                });
+            });
+    }
+
+    function showAddForm() {
+        editingId = null;
+        document.getElementById('formTitle').innerText = 'Yeni Görev';
+        document.getElementById('gorevId').value = '';
+        document.getElementById('gorevAdi').value = '';
+        document.getElementById('sorguMetni').value = '';
+        document.getElementById('hedefTablo').value = '';
+        document.getElementById('schedule').value = '';
+        document.getElementById('aktif').checked = true;
+        if (!gorevModal) gorevModal = new bootstrap.Modal(document.getElementById('gorevModal'));
+        gorevModal.show();
+    }
+
+    function editGorev(id) {
+        fetch(api + '/' + id)
+            .then(r => r.json())
+            .then(gorev => {
+                editingId = id;
+                document.getElementById('formTitle').innerText = 'Görev Düzenle';
+                document.getElementById('gorevId').value = gorev.gorevId;
+                document.getElementById('gorevAdi').value = gorev.gorevAdi;
+                document.getElementById('sorguMetni').value = gorev.sorguMetni;
+                document.getElementById('hedefTablo').value = gorev.hedefTablo;
+                document.getElementById('schedule').value = gorev.schedule || '';
+                const parts = (gorev.schedule || '').split(' ');
+                document.getElementById('cronMinute').value = parts[0] || '';
+                document.getElementById('cronHour').value = parts[1] || '';
+                document.getElementById('cronDay').value = parts[4] || '*';
+                document.getElementById('aktif').checked = gorev.aktif;
+                if (!gorevModal) gorevModal = new bootstrap.Modal(document.getElementById('gorevModal'));
+                gorevModal.show();
+            });
+    }
+
+    function submitForm(e) {
+        e.preventDefault();
+        // Cron ifadesi oluştur
+        const minute = document.getElementById('cronMinute').value || '*';
+        const hour = document.getElementById('cronHour').value || '*';
+        const dayOfWeek = document.getElementById('cronDay').value || '*';
+        let cron = `${minute} ${hour} * * ${dayOfWeek}`;
+        document.getElementById('schedule').value = cron;
+        const gorev = {
+            gorevAdi: document.getElementById('gorevAdi').value,
+            sorguMetni: document.getElementById('sorguMetni').value,
+            hedefTablo: document.getElementById('hedefTablo').value,
+            schedule: document.getElementById('schedule').value,
+            aktif: document.getElementById('aktif').checked
+        };
+        const id = document.getElementById('gorevId').value;
+        const closeModal = () => { if (gorevModal) gorevModal.hide(); };
+        if (editingId || id) {
+            fetch(api + '/' + (editingId || id), {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(gorev)
+            }).then(() => { closeModal(); fetchGorevler(); });
+        } else {
+            fetch(api, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(gorev)
+            }).then(() => { closeModal(); fetchGorevler(); });
+        }
+    }
+
+    function deleteGorev(id) {
+        if (!confirm('Silmek istediğinize emin misiniz?')) return;
+        fetch(api + '/' + id, { method: 'DELETE' })
+            .then(() => fetchGorevler());
+    }
+
+    function runGorev(id) {
+        fetch(api + '/run/' + id, { method: 'POST' })
+            .then(r => r.text())
+            .then(msg => alert(msg));
+    }
+
+    window.onload = fetchGorevler;
+        // ETL Loglarını çek ve göster
+        function fetchLogs() {
+            fetch('/api/etlgorevleri/logs?raw=1')
+                .then(r => r.ok ? r.text() : '')
+                .then(text => {
+                    document.getElementById('logText').textContent = text;
+                });
+        }
+        window.onload = function() {
+            fetchGorevler();
+            fetchLogs();
+            setInterval(fetchLogs, 5000); // 5 sn'de bir logları güncelle
+        }
+    </script>
+</body>
+</html>

@@ -1,5 +1,9 @@
+
 using Raporlama.ETL;
 using Serilog;
+using Microsoft.AspNetCore.Builder;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Hosting;
 
 Log.Logger = new LoggerConfiguration()
     .WriteTo.Console()
@@ -10,15 +14,18 @@ try
 {
     Log.Information("ETL Service başlatılıyor...");
 
-    var builder = Host.CreateApplicationBuilder(args);
-    
+    var builder = WebApplication.CreateBuilder(args);
+    builder.Host.UseSerilog();
+
     builder.Services.AddHostedService<ETLWorker>();
     builder.Services.AddSingleton<ETLService>();
-    
-    builder.Services.AddSerilog();
+    builder.Services.AddControllers();
 
-    var host = builder.Build();
-    host.Run();
+    var app = builder.Build();
+
+    app.MapControllers();
+
+    app.Run("http://0.0.0.0:5010");
 }
 catch (Exception ex)
 {
