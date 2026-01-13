@@ -11,6 +11,7 @@ namespace Raporlama.ETL
 {
     public class ETLService
     {
+        
         private readonly ILogger<ETLService> _logger;
         private readonly IConfiguration _configuration;
         private readonly string _connectionString;
@@ -20,6 +21,31 @@ namespace Raporlama.ETL
             _logger = logger;
             _configuration = configuration;
             _connectionString = _configuration.GetConnectionString("BellonaRapor");
+        }
+
+        public static void CleanupOldLogs()
+        {
+            try
+            {
+                var logDir = System.IO.Path.GetFullPath(System.IO.Path.Combine(AppContext.BaseDirectory, "..", "..", "src", "Raporlama.ETL", "logs"));
+                var today = DateTime.Now.ToString("yyyyMMdd");
+                var files = System.IO.Directory.GetFiles(logDir, "etl-*.txt");
+                foreach (var file in files)
+                {
+                    var fileName = System.IO.Path.GetFileNameWithoutExtension(file);
+                    if (fileName == $"etl-{today}")
+                    {
+                        // Bugünün dosyası ise içeriğini sıfırla
+                        try { System.IO.File.WriteAllText(file, string.Empty); } catch { }
+                    }
+                    else
+                    {
+                        // Eski dosyaları sil
+                        try { System.IO.File.Delete(file); } catch { }
+                    }
+                }
+            }
+            catch { }
         }
 
         // Aktif görevleri veritabanından çeker
@@ -33,6 +59,9 @@ namespace Raporlama.ETL
 
         public async Task<int> RunCustomETLWithResultAsync(string sorgu, string tablo)
         {
+            // Her ETL çalışmasından önce eski log dosyalarını sil
+            CleanupOldLogs();
+
             var start = DateTime.Now;
             _logger.LogInformation($"ETL Görevi Başladı: {tablo} ({tablo}) | Başlangıç: {start:yyyy-MM-dd HH:mm:ss}");
             _logger.LogInformation($"[DEBUG] ETL başlatılıyor: {tablo} için sorgu: {sorgu}");
@@ -70,6 +99,9 @@ namespace Raporlama.ETL
         }
         public async Task<string> RunTaskManuallyAsync(int gorevId)
         {
+            // Manuel ETL çalıştırmadan önce eski log dosyalarını sil
+            CleanupOldLogs();
+
             using var conn = new SqlConnection(_connectionString);
             var gorev = await conn.QueryFirstOrDefaultAsync<ETLGorev>("SELECT * FROM ETLGorevleri WHERE GorevId = @gorevId", new { gorevId });
             if (gorev == null)

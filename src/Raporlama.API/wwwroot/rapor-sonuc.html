@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <title>Rapor Sonucu</title>
+    <link rel="stylesheet" href="../raporlar/rapor-ortak.css">
+    <script src="../wwwroot/lib/js/jquery.min.js"></script>
+    <script src="../wwwroot/lib/js/dx.all.js"></script>
+    <style>
+        body { background: #f4f6fa; }
+        .sonuc-container { max-width: 900px; margin: 40px auto; background: #fff; border-radius: 12px; box-shadow: 0 4px 24px #0001; padding: 32px; }
+        h1 { color: #1976d2; text-align: center; margin-bottom: 32px; }
+        #grafikPaneli { margin: 32px 0; display: flex; flex-direction: column; align-items: center; gap: 32px; }
+        #grafikOnizleme { width: 80%; max-width: 600px; }
+        #tabloOnizleme { width: 80%; max-width: 800px; }
+    </style>
+</head>
+<body>
+    <div class="sonuc-container">
+        <h1 id="raporBaslik">Rapor Sonucu</h1>
+        <div id="grafikPaneli">
+            <div id="grafikOnizleme"></div>
+            <div id="tabloOnizleme"></div>
+        </div>
+    </div>
+    <script>
+    async function getQueryParam(name) {
+        const url = new URL(window.location.href);
+        return url.searchParams.get(name);
+    }
+    $(async function() {
+        const id = await getQueryParam('id');
+        if (!id) {
+            $('#raporBaslik').text('Rapor bulunamadı');
+            return;
+        }
+        // Kendi raporunu çek ve çalıştır
+        const raporRes = await fetch(`/api/reports/my/${id}/run`);
+        if (!raporRes.ok) {
+            $('#raporBaslik').text('Rapor bulunamadı');
+            return;
+        }
+        const result = await raporRes.json();
+        // Kolonlar ve veri
+        const kolonlar = result.columns;
+        const data = result.data;
+        $('#raporBaslik').text('Rapor Sonucu');
+        // Tablo
+        $('#tabloOnizleme').dxDataGrid({
+            dataSource: data,
+            columns: kolonlar,
+            showBorders: true,
+            height: 320
+        });
+        // Grafik
+        if (kolonlar.length >= 2) {
+            // Grafik tipi için UserCustomReport tablosunda GrafikTipi tutuluyor, isterseniz ekrana da getirebilirsiniz
+            // Örnek: ilk iki kolon ile grafik
+            let chartType = 'bar';
+            if (result.grafikTipi === 'pie') chartType = 'pie';
+            if (result.grafikTipi === 'line') chartType = 'line';
+            if (chartType === 'pie') {
+                $('#grafikOnizleme').dxPieChart({
+                    dataSource: data,
+                    series: [{ argumentField: kolonlar[0], valueField: kolonlar[1] }],
+                    size: { height: 320 },
+                    legend: { visible: true },
+                    tooltip: { enabled: true },
+                    title: 'Grafik'
+                });
+            } else {
+                $('#grafikOnizleme').dxChart({
+                    dataSource: data,
+                    series: [{
+                        argumentField: kolonlar[0],
+                        valueField: kolonlar[1],
+                        type: chartType
+                    }],
+                    size: { height: 320 },
+                    legend: { visible: true },
+                    tooltip: { enabled: true },
+                    title: 'Grafik'
+                });
+            }
+        }
+    });
+    </script>
+</body>
+</html>

@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <title>Kendi Raporlarım</title>
+    <link rel="stylesheet" href="../raporlar/rapor-ortak.css">
+    <style>
+        body { background: #f4f6fa; }
+        .raporlar-container { max-width: 900px; margin: 40px auto; background: #fff; border-radius: 12px; box-shadow: 0 4px 24px #0001; padding: 32px; }
+        h1 { color: #1976d2; text-align: center; margin-bottom: 32px; }
+        table { width: 100%; border-collapse: collapse; margin-top: 24px; }
+        th, td { padding: 12px 16px; border-bottom: 1px solid #e0e7ef; text-align: left; }
+        th { background: #f7f9fc; color: #1976d2; font-weight: 600; }
+        tr:hover { background: #f0f4fa; }
+        .btn { background: #1976d2; color: #fff; border: none; border-radius: 6px; padding: 8px 18px; font-size: 1rem; cursor: pointer; transition: background 0.2s; }
+        .btn:hover { background: #1251a3; }
+    </style>
+</head>
+<body>
+    <div class="raporlar-container">
+        <h1>Kendi Raporlarım</h1>
+        <table id="raporlarTablo">
+            <thead>
+                <tr>
+                    <th>Rapor Adı</th>
+                    <th>Tablo</th>
+                    <th>Kolonlar</th>
+                    <th>Grafik Tipi</th>
+                    <th>İşlem</th>
+                </tr>
+            </thead>
+            <tbody>
+                <!-- JS ile doldurulacak -->
+            </tbody>
+        </table>
+    </div>
+    <script src="lib/js/jquery.min.js"></script>
+    <script>
+    $(async function() {
+        // Sadece kullanıcıya ait raporlar çekilecek
+        const res = await fetch('/api/reports/my');
+        const raporlar = await res.json();
+        const tbody = $('#raporlarTablo tbody');
+        tbody.empty();
+        if (!raporlar.length) {
+            tbody.append('<tr><td colspan="5" style="text-align:center;color:#888;">Kayıtlı rapor yok.</td></tr>');
+            return;
+        }
+        raporlar.forEach(r => {
+            // Kolonlar string ise diziye çevir
+            let kolonlar = r.kolonlar;
+            if (typeof kolonlar === 'string') kolonlar = kolonlar.split(',');
+            tbody.append(`
+                <tr>
+                    <td>${r.raporAdi}</td>
+                    <td>${r.tablo}</td>
+                    <td>${(kolonlar||[]).join(', ')}</td>
+                    <td>${r.grafikTipi}</td>
+                    <td><button class="btn" onclick="window.location.href='rapor-sonuc.html?id=${r.id}'">Görüntüle</button></td>
+                </tr>
+            `);
+        });
+    });
+    </script>
+</body>
+</html>

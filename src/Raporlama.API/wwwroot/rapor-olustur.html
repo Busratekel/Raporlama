@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <title>Rapor Oluştur</title>
+    <link rel="stylesheet" href="../raporlar/rapor-ortak.css">
+    <link rel="stylesheet" href="https://cdn3.devexpress.com/jslib/23.1.6/css/dx.dark.css">
+    <script src="lib/js/jquery.min.js"></script>
+    <script src="lib/js/dx.all.js"></script>
+    <style>
+        body { background: #181a1b; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; margin: 0; padding: 0; color: #e0e0e0; }
+        .rapor-container { max-width: 480px; margin: 40px auto; background: #23272b; border-radius: 12px; box-shadow: 0 4px 24px #0008; padding: 32px 32px 24px 32px; }
+        h1 { text-align: center; color: #90caf9; margin-bottom: 32px; }
+        label { display: block; margin-bottom: 18px; color: #e0e0e0; font-weight: 500; }
+        input[type="text"], select { width: 100%; padding: 8px 10px; border-radius: 6px; border: 1px solid #444; font-size: 1rem; margin-top: 6px; background: #23272b; color: #e0e0e0; }
+        select[multiple] { min-height: 120px; font-size: 1rem; background: #23272b; color: #e0e0e0; }
+        button[type="submit"] { width: 100%; background: #1976d2; color: #fff; border: none; border-radius: 6px; padding: 12px; font-size: 1.1rem; font-weight: 600; margin-top: 18px; cursor: pointer; transition: background 0.2s; }
+        button[type="submit"]:hover { background: #1251a3; }
+    </style>
+</head>
+<body>
+    <div class="rapor-dragdrop-container" style="max-width:900px;margin:40px auto;background:#23272b;border-radius:12px;box-shadow:0 4px 24px #0008;padding:32px 32px 24px 32px;display:flex;gap:32px;">
+        <div style="flex:1;min-width:220px;">
+            <h2 style="color:#90caf9;font-size:1.3rem;">Tablolar</h2>
+            <select id="tabloSelect" style="width:100%;margin-bottom:18px;background:#23272b;color:#e0e0e0;border:1px solid #444;"></select>
+            <h3 style="font-size:1.1rem;color:#bbb;margin-bottom:8px;">Kolonlar</h3>
+            <ul id="kolonList" style="list-style:none;padding:0;border:1px solid #333;border-radius:8px;min-height:180px;max-height:340px;overflow-y:auto;background:#23272b;color:#e0e0e0;"></ul>
+        </div>
+        <div style="flex:2;min-width:320px;">
+            <h2 style="color:#90caf9;font-size:1.3rem;">Rapor Alanı</h2>
+            <div id="dropArea" style="min-height:48px;border:2px dashed #90caf9;border-radius:8px;background:#23272b;padding:16px;display:flex;flex-wrap:wrap;gap:12px;color:#e0e0e0;"></div>
+            <form id="raporForm" style="margin-top:32px;">
+                <label style="display:block;margin-bottom:12px;color:#e0e0e0;font-weight:500;">Rapor Adı:
+                    <input type="text" name="raporAdi" required autocomplete="off" style="width:100%;padding:8px 10px;border-radius:6px;border:1px solid #444;font-size:1rem;margin-top:6px;background:#23272b;color:#e0e0e0;">
+                </label>
+                <label style="display:block;margin-bottom:12px;color:#e0e0e0;font-weight:500;">Grafik Tipi:
+                    <select name="grafikTipi" id="grafikTipiSelect" style="width:100%;padding:8px 10px;border-radius:6px;border:1px solid #444;font-size:1rem;margin-top:6px;background:#23272b;color:#e0e0e0;">
+                        <option value="tablo">Tablo</option>
+                        <option value="bar">Bar</option>
+                        <option value="pie">Pie</option>
+                        <option value="line">Çizgi</option>
+                    </select>
+                </label>
+                <div id="eksensecim" style="display:none;gap:12px;flex-wrap:wrap;align-items:center;margin-bottom:12px;color:#e0e0e0;">
+                    <label style="margin-bottom:0;">X Ekseni:
+                        <select id="xEkseniSelect" style="width:140px;margin-left:8px;background:#23272b;color:#e0e0e0;border:1px solid #444;"></select>
+                    </label>
+                    <label style="margin-bottom:0;">Y Ekseni:
+                        <select id="yEkseniSelect" style="width:140px;margin-left:8px;background:#23272b;color:#e0e0e0;border:1px solid #444;"></select>
+                    </label>
+                </div>
+                <!-- Grafik konumu kaldırıldı -->
+                <button type="submit" style="width:100%;background:#1976d2;color:#fff;border:none;border-radius:6px;padding:12px;font-size:1.1rem;font-weight:600;margin-top:18px;cursor:pointer;transition:background 0.2s;">Kaydet</button>
+            </form>
+            <div id="onizlemePaneli" style="margin-top:32px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:24px;">
+                <div id="grafikOnizleme" style="width:80%;max-width:600px;background:#23272b;border-radius:10px;"></div>
+                <div id="tabloOnizleme" style="width:80%;max-width:800px;background:#23272b;border-radius:10px;"></div>
+            </div>
+        </div>
+    </div>
+    <script src="rapor-olustur.js"></script>
+</body>
+</html>

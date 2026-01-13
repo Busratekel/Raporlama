@@ -34,7 +34,7 @@ namespace Raporlama.API.Controllers
 
         private string GetCurrentUserName()
         {
-            try
+        try
             {
                 if (User?.Identity == null)
                 {
@@ -59,7 +59,7 @@ namespace Raporlama.API.Controllers
         [HttpGet]
         public async Task<IActionResult> GetAllReports()
         {
-            try
+        try
             {
                 var userName = GetCurrentUserName();
                 
@@ -92,7 +92,7 @@ namespace Raporlama.API.Controllers
         [HttpGet("{reportId}")]
         public async Task<IActionResult> GetReport(int reportId)
         {
-            try
+        try
             {
                 var userName = GetCurrentUserName();
                 
@@ -119,7 +119,7 @@ namespace Raporlama.API.Controllers
         [HttpGet("{reportId}/data")]
         public async Task<IActionResult> GetReportData(int reportId)
         {
-            try
+        try
             {
                 var userName = GetCurrentUserName();
                 
@@ -148,7 +148,7 @@ namespace Raporlama.API.Controllers
         [HttpGet("test-connection/{databaseName}")]
         public async Task<IActionResult> TestConnection(string databaseName)
         {
-            try
+        try
             {
                 var isConnected = await _databaseService.TestConnectionAsync(databaseName);
                 return Ok(new { database = databaseName, connected = isConnected });
@@ -163,7 +163,7 @@ namespace Raporlama.API.Controllers
         [HttpGet("tables/{databaseName}")]
         public async Task<IActionResult> GetTables(string databaseName)
         {
-            try
+        try
             {
                 var tables = await _databaseService.GetTableNamesAsync(databaseName);
                 return Ok(tables);
@@ -192,6 +192,163 @@ namespace Raporlama.API.Controllers
                 data = rows,
                 rowCount = rows.Count
             };
+        }
+         // Kullanıcının kendi kaydettiği raporu çalıştırır ve sonucunu döner
+        [HttpGet("my/{id}/run")]
+        public async Task<IActionResult> RunMyReport(int id)
+{
+    try
+    {
+        var userName = GetCurrentUserName();
+        var query = "SELECT Tablo, Kolonlar FROM UserCustomReport WHERE Id = @Id AND UserName = @UserName";
+        var rapor = (await _databaseService.QueryAsync<dynamic>("BellonaRapor", query, new { Id = id, UserName = userName })).FirstOrDefault();
+        if (rapor == null)
+            return NotFound(new { error = "Rapor bulunamadı veya size ait değil." });
+        var tablo = rapor.Tablo as string;
+        var kolonlar = (rapor.Kolonlar as string)?.Split(',') ?? new string[0];
+        if (string.IsNullOrWhiteSpace(tablo) || kolonlar.Length == 0)
+            return BadRequest(new { error = "Tablo veya kolonlar eksik." });
+        var kolonSql = string.Join(",", kolonlar.Select(k => $"[{k}]").ToArray());
+        var data = await _databaseService.QueryDataTableAsync("BellonaRapor", $"SELECT {kolonSql} FROM [{tablo}]", null);
+        var columns = kolonlar;
+        var rows = new List<Dictionary<string, object>>();
+        foreach (System.Data.DataRow row in data.Rows)
+        {
+            var dict = new Dictionary<string, object>();
+            foreach (var col in columns)
+                dict[col] = row[col];
+            rows.Add(dict);
+        }
+        return Ok(new { columns, data = rows });
+    }
+    catch (Exception ex)
+    {
+        _logger.LogError(ex, "Error running user's own report");
+        return StatusCode(500, new { error = ex.Message });
+    }
+}
+        // Kullanıcının kendi kaydettiği raporları döner
+        [HttpGet("my")]
+        public async Task<IActionResult> GetMyReports()
+        {
+            try
+            {
+                var userName = GetCurrentUserName();
+                var query = @"SELECT Id, ReportName as RaporAdi, GrafikTipi, Tablo, Kolonlar, CreatedAt FROM UserCustomReport WHERE UserName = @UserName ORDER BY CreatedAt DESC";
+                var raporlar = await _databaseService.QueryAsync<dynamic>("BellonaRapor", query, new { UserName = userName });
+                return Ok(raporlar);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error getting user's own reports");
+                return StatusCode(500, new { error = ex.Message });
+            }
+        }
+        // Kullanıcıya tablo listesini döner
+        [HttpGet("tables")]
+        public async Task<IActionResult> GetTables()
+        {
+            try
+            {
+                var tables = await _databaseService.GetTableNamesAsync("BellonaRapor");
+                return Ok(tables);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error getting table list");
+                return StatusCode(500, new { error = ex.Message });
+            }
+        }
+
+        // Kullanıcıya seçili tablonun kolonlarını döner
+        [HttpGet("columns")]
+        public async Task<IActionResult> GetColumns([FromQuery] string table)
+        {
+            try
+            {
+                var query = $"SELECT COLUMN_NAME FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_NAME = @TableName ORDER BY ORDINAL_POSITION";
+                var columns = await _databaseService.QueryAsync<string>("BellonaRapor", query, new { TableName = table });
+                return Ok(columns);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error getting columns for table {Table}", table);
+                return StatusCode(500, new { error = ex.Message });
+            }
+        }
+
+        // Kullanıcıdan gelen custom raporu kaydeder
+        [HttpPost("custom")]
+        public async Task<IActionResult> SaveCustomReport([FromBody] CustomReportDto dto)
+        {
+            try
+            {
+                var query = @"INSERT INTO [UserCustomReport] (UserName, ReportName, GrafikTipi, Tablo, Kolonlar, Filters, CreatedAt)
+                            VALUES (@UserName, @ReportName, @GrafikTipi, @Tablo, @Kolonlar, @Filters, GETDATE())";
+                var userName = GetCurrentUserName();
+                await _databaseService.QueryAsync<dynamic>("BellonaRapor", query, new {
+                    UserName = userName,
+                    ReportName = dto.RaporAdi,
+                    GrafikTipi = dto.GrafikTipi,
+                    Tablo = dto.Tablo,
+                    Kolonlar = string.Join(",", dto.Kolonlar ?? new List<string>()),
+                    Filters = "{}"
+                });
+                return Ok();
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error saving custom report");
+                return StatusCode(500, new { error = ex.Message });
+            }
+        }
+        // Canlı önizleme için örnek veri döndürür
+        [HttpGet("sample")]
+        public async Task<IActionResult> GetSample([FromQuery] string table, [FromQuery] string columns)
+        {
+            if (string.IsNullOrWhiteSpace(table) || string.IsNullOrWhiteSpace(columns))
+                return BadRequest("Tablo ve kolonlar zorunlu.");
+            var kolonList = columns.Split(',').Select(k => k.Trim()).ToList();
+            // Kolonları INFORMATION_SCHEMA.COLUMNS ile doğrula
+            var validColumns = await _databaseService.QueryAsync<string>(
+                "BellonaRapor",
+                "SELECT COLUMN_NAME FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_NAME = @TableName",
+                new { TableName = table }
+            );
+            var eksikKolonlar = kolonList.Where(k => !validColumns.Contains(k)).ToList();
+            if (eksikKolonlar.Any())
+                return BadRequest($"Tabloda bulunmayan kolon(lar): {string.Join(", ", eksikKolonlar)}");
+            var kolonlar = kolonList.Select(k => $"[{k}]").ToArray();
+            var kolonSql = string.Join(",", kolonlar);
+            // Her kolon için IS NOT NULL filtresi ekle
+            var notNullFilter = string.Join(" AND ", kolonList.Select(k => $"[{k}] IS NOT NULL"));
+            var sql = $"SELECT TOP 20 {kolonSql} FROM [{table}]" + (notNullFilter.Length > 0 ? $" WHERE {notNullFilter}" : "");
+            try
+            {
+                var data = await _databaseService.QueryDataTableAsync("BellonaRapor", sql, null);
+                var rows = new List<Dictionary<string, object>>();
+                foreach (System.Data.DataRow row in data.Rows)
+                {
+                    var dict = new Dictionary<string, object>();
+                    foreach (var col in kolonlar)
+                        dict[col.Trim('[', ']')] = row[col.Trim('[', ']')];
+                    rows.Add(dict);
+                }
+                return Ok(rows);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Sample veri alınamadı");
+                return BadRequest("Veri alınamadı: " + ex.Message);
+            }
+        }
+
+        public class CustomReportDto
+        {
+            public string RaporAdi { get; set; }
+            public string GrafikTipi { get; set; }
+            public string Tablo { get; set; }
+            public List<string> Kolonlar { get; set; }
         }
     }
 }

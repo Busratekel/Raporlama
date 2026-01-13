@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <title>ETL Görev Yönetimi</title>
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="lib/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="../raporlar/rapor-ortak.css">
     <style>
         body { background: #181a1b; color: #f5f6fa; }
@@ -113,6 +113,7 @@
 
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="../raporlar/toast.js"></script>
     <script>
     const api = '/api/etlgorevleri';
     let editingId = null;
@@ -218,9 +219,17 @@
     }
 
     function runGorev(id) {
+        showToast('ETL başlatıldı...', 'info');
         fetch(api + '/run/' + id, { method: 'POST' })
             .then(r => r.text())
-            .then(msg => alert(msg));
+            .then(msg => {
+                const lowerMsg = msg.toLowerCase();
+                if (lowerMsg.includes('başarı') || lowerMsg.includes('çalıştırıldı') || lowerMsg.includes('etkilenen kayıt')) {
+                    showToast('ETL' + msg + 'başarıyla tamamlandı!', 'success');
+                } else if (lowerMsg.includes('hata')) {
+                    showToast('ETL sırasında hata oluştu!', 'error');
+                }
+            });
     }
 
     window.onload = fetchGorevler;

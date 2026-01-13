@@ -15,8 +15,6 @@ public class ETLWorker : BackgroundService
 
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
-        // DEBUG: Şu anki zaman ve cron hesaplamasını logla
-        _logger.LogInformation($"[DEBUG] nowLocal: {DateTime.Now:yyyy-MM-dd HH:mm:ss}, nowUtc: {DateTime.UtcNow:yyyy-MM-dd HH:mm:ss}");
         // Log klasörü yoksa oluştur (sabit workspace yolu)
         var logDir = Path.GetFullPath(Path.Combine(AppContext.BaseDirectory, "..", "..", "src", "Raporlama.ETL", "logs"));
         if (!Directory.Exists(logDir))
@@ -24,6 +22,8 @@ public class ETLWorker : BackgroundService
             Directory.CreateDirectory(logDir);
             _logger.LogInformation($"Log klasörü oluşturuldu: {logDir}");
         }
+        // Her worker başında eski logları sil
+        ETLService.CleanupOldLogs();
         _logger.LogInformation("ETL Worker başlatıldı");
 
         // Dinamik görev zamanlama
@@ -31,7 +31,7 @@ public class ETLWorker : BackgroundService
         while (!stoppingToken.IsCancellationRequested)
         {
             var nowLocal = DateTime.Now;
-            // Türkiye saat dilimini açıkça kullan
+            // Türkiye saatini alma 
             var turkeyTz = TimeZoneInfo.FindSystemTimeZoneById("Turkey Standard Time");
             var nowUtc = DateTime.UtcNow;
             var nowTurkey = TimeZoneInfo.ConvertTime(nowUtc, turkeyTz);
@@ -40,8 +40,6 @@ public class ETLWorker : BackgroundService
                 var gorevler = await _etlService.GetActiveTasksAsync();
                 foreach (var gorev in gorevler)
                 {
-                    _logger.LogInformation($"[DEBUG] Görev: {gorev.GorevAdi}, Schedule: {gorev.Schedule}");
-                    _logger.LogInformation($"[DEBUG] nowUtc: {nowUtc:yyyy-MM-dd HH:mm:ss}, nowTurkey: {nowTurkey:yyyy-MM-dd HH:mm:ss}");
                     if (string.IsNullOrWhiteSpace(gorev.Schedule)) continue;
                     if (string.IsNullOrWhiteSpace(gorev.SorguMetni) || string.IsNullOrWhiteSpace(gorev.HedefTablo))
                     {

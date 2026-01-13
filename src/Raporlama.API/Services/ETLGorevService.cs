@@ -51,14 +51,21 @@ namespace Raporlama.API.Services
             return affected > 0;
         }
 
-        public async Task<bool> RunManuallyAsync(int id)
+        public async Task<string> RunManuallyAsync(int id)
         {
-            // ETL servisine manuel tetikleme isteği gönder (örnek: HTTP çağrısı)
             using var http = new System.Net.Http.HttpClient();
-            // ETL servisi adresini güncelleyin
             var etlUrl = $"http://localhost:5010/api/etl/run/{id}";
             var response = await http.PostAsync(etlUrl, null);
-            return response.IsSuccessStatusCode;
+            var msg = await response.Content.ReadAsStringAsync();
+            if (response.IsSuccessStatusCode)
+            {
+                // ETL servisi string mesaj döndürüyor, onu ilet
+                return msg;
+            }
+            else
+            {
+                return $"ETL çalıştırılamadı: {msg}";
+            }
         }
     }
 }

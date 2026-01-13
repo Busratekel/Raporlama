@@ -6,6 +6,29 @@
     <title>Rapor Seçimi</title>
     <link rel="stylesheet" href="style.css" />
     <style>
+                .top-buttons {
+                    position: absolute;
+                    top: 32px;
+                    right: 40px;
+                    display: flex;
+                    gap: 10px;
+                    z-index: 10;
+                }
+                .mini-btn {
+                    padding: 7px 16px;
+                    font-size: 1rem;
+                    border-radius: 8px;
+                    border: none;
+                    background: #1976d2;
+                    color: #fff;
+                    font-weight: 500;
+                    cursor: pointer;
+                    transition: background 0.2s;
+                    box-shadow: 0 2px 8px #0003;
+                }
+                .mini-btn:hover {
+                    background: #1565c0;
+                }
         body {
             background: #181A20;
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
@@ -84,6 +107,10 @@
     </style>
 </head>
 <body>
+    <div class="top-buttons">
+        <button class="mini-btn" onclick="window.location.href='rapor-olustur.html'">➕ Rapor Oluştur</button>
+        <button class="mini-btn" onclick="window.location.href='kendi-raporlarim.html'">👤 Kendi Raporlarım</button>
+    </div>
     <div class="container">
         <h2>📊 Rapor Seçimi</h2>
         
