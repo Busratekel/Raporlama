@@ -4,25 +4,19 @@ public class ETLWorker : BackgroundService
 {
     private readonly ILogger<ETLWorker> _logger;
     private readonly ETLService _etlService;
-    private readonly IConfiguration _configuration;
 
-    public ETLWorker(ILogger<ETLWorker> logger, ETLService etlService, IConfiguration configuration)
+    public ETLWorker(ILogger<ETLWorker> logger, ETLService etlService)
     {
         _logger = logger;
         _etlService = etlService;
-        _configuration = configuration;
     }
 
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
-        // Log klasörü yoksa oluştur (sabit workspace yolu)
-        var logDir = Path.GetFullPath(Path.Combine(AppContext.BaseDirectory, "..", "..", "src", "Raporlama.ETL", "logs"));
-        if (!Directory.Exists(logDir))
-        {
-            Directory.CreateDirectory(logDir);
-            _logger.LogInformation($"Log klasörü oluşturuldu: {logDir}");
-        }
-        // Her worker başında eski logları sil
+        var logDir = ETLService.GetLogDirectory();
+        Directory.CreateDirectory(logDir);
+        _logger.LogInformation("Log klasörü: {LogDir}", logDir);
+
         ETLService.CleanupOldLogs();
         _logger.LogInformation("ETL Worker başlatıldı");
 

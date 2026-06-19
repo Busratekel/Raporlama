@@ -3,7 +3,6 @@ using Microsoft.AspNetCore.Authorization;
 using Raporlama.API.Services;
 using Raporlama.API.Data;
 using System.Data;
-using System.Security.Principal;
 
 namespace Raporlama.API.Controllers
 {
@@ -42,11 +41,6 @@ namespace Raporlama.API.Controllers
                     return "Unknown";
                 }
 
-                if (User.Identity is WindowsIdentity identity)
-                {
-                    return identity.Name ?? "Unknown";
-                }
-                
                 return User.Identity.Name ?? "Unknown";
             }
             catch (Exception ex)
@@ -66,7 +60,7 @@ namespace Raporlama.API.Controllers
                 if (userName == "Unknown")
                 {
                     _logger.LogWarning("Unknown user trying to access reports");
-                    return Unauthorized(new { error = "Kullanıcı kimliği alınamadı. Lütfen Windows Authentication ile giriş yapın." });
+                    return Unauthorized(new { error = "Kullanıcı kimliği alınamadı. Lütfen portaldan giriş yapın." });
                 }
 
                 var allReports = await _reportService.GetAllReportsAsync();

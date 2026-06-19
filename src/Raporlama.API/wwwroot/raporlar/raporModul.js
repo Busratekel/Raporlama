@@ -193,7 +193,6 @@ class RaporModul {
                     }
                 });
             }
-            if (typeof this.updateAll === 'function') this.updateAll();
         }
 
     constructor(schema) {
@@ -210,6 +209,7 @@ class RaporModul {
         this.populateFilters();
         await this.loadDefaultFilters();
         this.bindEvents();
+        this.updateAll();
     }
 
     async fetchSchemaAndData() {
@@ -223,6 +223,10 @@ class RaporModul {
         this.schema = schema;
         // Data çek
         let dataUrl = schema.dataUrl;
+        const metaReportId = document.getElementById('reportMeta')?.dataset?.reportId;
+        if (!dataUrl && metaReportId) {
+            dataUrl = window.API_BASE + `/reports/${metaReportId}/data`;
+        }
         if (!dataUrl && schema.reportKey) {
             // Otomatik endpoint
             const reportsResp = await fetch(window.API_BASE + '/reports', { credentials: 'include' });
@@ -250,8 +254,11 @@ class RaporModul {
     }
 
     populateFilters() {
+        const filterData = typeof this.schema.enrichRow === 'function'
+            ? this.data.map(r => this.schema.enrichRow(r))
+            : this.data;
         (this.schema.filters || []).forEach(f => {
-            const set = new Set(this.data.map(d => d[f.field]).filter(Boolean));
+            const set = new Set(filterData.map(d => d[f.field]).filter(Boolean));
             const select = document.getElementById(f.elementId);
             if (!select) return;
             select.innerHTML = `<option value="">Tümü</option>`;
@@ -283,13 +290,57 @@ class RaporModul {
         });
     }
 
+    cloneLegend(legend) {
+        if (!legend) return { visible: false };
+        return JSON.parse(JSON.stringify(legend));
+    }
+
+    disposeChartElement(elementId) {
+        const $el = $(elementId);
+        if (!$el.length) return;
+        try {
+            const pie = $el.dxPieChart('instance');
+            if (pie) pie.dispose();
+        } catch (_) {}
+        try {
+            const bar = $el.dxChart('instance');
+            if (bar) bar.dispose();
+        } catch (_) {}
+        $el.empty();
+    }
+
+    getDataFilterKeys() {
+        const keys = new Set();
+        (this.schema.filters || []).forEach(f => {
+            if (document.getElementById(f.elementId)) keys.add(f.field);
+        });
+        keys.add('BekleyenGun');
+        if (this.schema.bucketFilters) {
+            Object.keys(this.schema.bucketFilters).forEach(k => keys.add(k));
+        }
+        return keys;
+    }
+
+    getUiStateKeys() {
+        const keys = new Set();
+        (this.schema.charts || []).forEach(c => {
+            if (c.typeSelector) keys.add(c.typeSelector.replace('#', ''));
+        });
+        return keys;
+    }
+
     getFilteredData() {
-        // filterState'e göre filtreleme
-        return this.data.filter(d => {
+        const dataFilterKeys = this.getDataFilterKeys();
+        const uiStateKeys = this.getUiStateKeys();
+        const sourceData = typeof this.schema.enrichRow === 'function'
+            ? this.data.map(r => this.schema.enrichRow(r))
+            : this.data;
+        return sourceData.filter(d => {
             let match = true;
-            // 1. Tüm aktif filterState alanlarını gez
             for (const key in this.filterState) {
                 if (!this.filterState.hasOwnProperty(key)) continue;
+                if (uiStateKeys.has(key)) continue;
+                if (!dataFilterKeys.has(key)) continue;
                 const val = this.filterState[key];
                 if (val === undefined || val === null || val === '') continue;
                 // Tarih filtreleri
@@ -321,7 +372,6 @@ class RaporModul {
                         if (recVal.getTime() !== inputDate.getTime()) match = false;
                     }
                 } else if (key === 'BekleyenGun') {
-                    // Bekleyen gün için bucket desteği
                     const bucketVal = this.filterState['BekleyenGun'];
                     if (bucketVal) {
                         const ranges = {
@@ -332,6 +382,14 @@ class RaporModul {
                             const v = Number(d.BekleyenGun) || 0;
                             if (!(v >= range[0] && v <= range[1])) match = false;
                         }
+                    }
+                } else if (this.schema.bucketFilters && this.schema.bucketFilters[key]) {
+                    const cfg = this.schema.bucketFilters[key];
+                    const bucket = (cfg.buckets || []).find(b => b.key === val);
+                    if (bucket) {
+                        const fields = cfg.fields || [key];
+                        const v = fields.map(f => Number(d[f])).find(n => !isNaN(n)) ?? 0;
+                        if (!(v >= bucket.min && v <= bucket.max)) match = false;
                     }
                 } else {
                     // Diğer tüm alanlar için trim ve null-safe karşılaştırma
@@ -345,47 +403,30 @@ class RaporModul {
 
     updateAll() {
         this.filtered = this.getFilteredData();
+        this.filteredWithCalculated = this.filtered;
         this.renderGrid();
         this.renderSummaries();
         this.renderCharts();
+        if (typeof this.renderDistributionTable === 'function') {
+            this.renderDistributionTable();
+        }
     }
 
     renderGrid() {
         const gridElem = $("#gridContainer");
         let grid = gridElem.data("dxDataGrid");
-        //GeciktiMi kolonunu ekle
-        const today = new Date().toISOString().split('T')[0];
-        const gridData = this.filtered.map(row => {
-            let gecikti = 'Hayır';
-            if (row.BitisTarihi) {
-                const bitis = row.BitisTarihi.split('T')[0];
-                if (bitis < today) gecikti = 'Evet';
-            }
-            // Bekleme gün hesapla
-            let beklemeGun = '';
-            if (row.BaslamaTarihi) {
-                const bas = new Date(row.BaslamaTarihi.split('T')[0]);
-                const now = new Date(today);
-                if (!isNaN(bas)) {
-                    beklemeGun = Math.floor((now - bas) / (1000 * 60 * 60 * 24));
-                }
-            }
-            //Gecikme Gün hesapla
-            let GecikmeGun = '' ;
-            if(row.BitisTarihi){
-                const bitis = new Date(row.BitisTarihi.split('T')[0]);
-                const now = new Date(today);
-                if(!isNaN(bitis) && !isNaN(now)){
-                    GecikmeGun = Math.floor((bitis - now) / (1000 * 60 * 60 * 24));
-                }    
-            }
-            return { ...row, GeciktiMi: gecikti, BeklemeGun: beklemeGun, GecikmeGun: GecikmeGun };
+        const gridData = this.filteredWithCalculated;
+        const gridColumns = this.columns.map(col => {
+            if (!col.forceText) return col;
+            return {
+                ...col,
+                calculateCellValue: row => row[col.dataField] != null ? String(row[col.dataField]) : ''
+            };
         });
-        this.filteredWithCalculated = gridData;
         if (!grid) {
             gridElem.dxDataGrid({
                 dataSource: gridData,
-                columns: this.columns,
+                columns: gridColumns,
                 showBorders: true,
                 filterRow: { visible: true },
                 searchPanel: { visible: true, width: 240, placeholder: "Ara..." },
@@ -419,7 +460,8 @@ class RaporModul {
             if (summary.type === 'count') {
                 value = data.length;
             } else if (summary.type === 'max') {
-                value = Math.max(...data.map(d => Number(d[summary.field]) || 0));
+                const vals = data.map(d => Number(d[summary.field])).filter(x => !isNaN(x));
+                value = vals.length ? Math.max(...vals) : '-';
             } else if (summary.type === 'avg') {
                 const vals = data.map(d => Number(d[summary.field])).filter(x => !isNaN(x));
                 value = vals.length ? (vals.reduce((a, b) => a + b, 0) / vals.length).toFixed(1) : '-';
@@ -431,26 +473,29 @@ class RaporModul {
     }
 
     renderCharts() {
+        const chartSource = (this.filteredWithCalculated && this.filteredWithCalculated.length)
+            ? this.filteredWithCalculated
+            : this.filtered;
         (this.schema.charts || []).forEach(chart => {
+            try {
             let chartData = [];
-            // BekleyenGun (bekleme süresi) için bucket'ları şemadan al
-            if (chart.field === 'BekleyenGun' && Array.isArray(this.schema.beklemeSuresiBuckets)) {
+            const useBuckets = chart.useBuckets || chart.field === 'BekleyenGun';
+            if (useBuckets && Array.isArray(this.schema.beklemeSuresiBuckets)) {
                 const buckets = this.schema.beklemeSuresiBuckets;
                 const grouped = buckets.map(b => ({ bucket: b.key, count: 0, min: b.min, max: b.max }));
-                (this.filtered || []).forEach(d => {
-                    const gun = Number(d.BekleyenGun) || 0;
+                (chartSource || []).forEach(d => {
+                    const gun = Number(d[chart.field] ?? d.BekleyenGun ?? d.BeklemeGun) || 0;
                     const bucket = grouped.find(b => gun >= b.min && gun <= b.max);
                     if (bucket) bucket.count++;
                 });
                 chartData = grouped.map(g => ({ argument: g.bucket + ' gün', value: g.count }));
             } else {
                 const grouped = {};
-                this.filtered.forEach(d => {
+                (chartSource || []).forEach(d => {
                     const key = d[chart.field];
                     if (!key) return;
                     grouped[key] = (grouped[key] || 0) + 1;
                 });
-                // En çok geçen ilk 15 kategori (veya chart.limit varsa o kadar) göster
                 const limit = chart.limit || 15;
                 chartData = Object.entries(grouped)
                     .map(([argument, value]) => ({ argument, value }))
@@ -458,55 +503,48 @@ class RaporModul {
                     .slice(0, limit);
             }
             const chartType = $(chart.typeSelector).val() || chart.defaultType || 'pie';
-            // Önce eski grafik instance'ını yok et ve container'ı temizle
-            if ($(chart.elementId).data('dxPieChart')) {
-                $(chart.elementId).dxPieChart('dispose');
-                $(chart.elementId).empty();
-            }
-            if ($(chart.elementId).data('dxChart')) {
-                $(chart.elementId).dxChart('dispose');
-                $(chart.elementId).empty();
-            }
+            this.disposeChartElement(chart.elementId);
             const palette = chart.palette || undefined;
-            const legend = chart.legend || { visible: false };
-                const handleChartClick = (e) => {
-                    let secilen = e.target.originalArgument;
-                    if (chart.field === 'BekleyenGun') secilen = secilen.replace(' gün', '');
-                    if (typeof secilen === 'string') secilen = secilen.trim();
-                    // Hem filterElementId hem de ilgili filtre field'ı ile senkronize et
-                    if (chart.filterElementId) {
-                        this.filterState[chart.field] = secilen;
-                        const elem = document.querySelector(chart.filterElementId);
-                        if (elem) elem.value = secilen;
-                        // Eğer filterElementId bir select ise, ilgili filtre field'ı ile de senkronize et
-                        const filterField = (this.schema.filters || []).find(f => f.field === chart.field);
-                        if (filterField) {
-                            this.filterState[filterField.field] = secilen;
-                            const filterElem = document.getElementById(filterField.elementId);
-                            if (filterElem) filterElem.value = secilen;
-                        }
+            const legend = this.cloneLegend(chart.legend);
+            const handleChartClick = (e) => {
+                let secilen = e.target.originalArgument;
+                if (useBuckets) secilen = secilen.replace(' gün', '');
+                if (typeof secilen === 'string') secilen = secilen.trim();
+                if (chart.filterElementId) {
+                    this.filterState[chart.field] = secilen;
+                    const elem = document.querySelector(chart.filterElementId);
+                    if (elem) elem.value = secilen;
+                    const filterField = (this.schema.filters || []).find(f => f.field === chart.field);
+                    if (filterField) {
+                        this.filterState[filterField.field] = secilen;
+                        const filterElem = document.getElementById(filterField.elementId);
+                        if (filterElem) filterElem.value = secilen;
                     }
-                    this.updateAll();
-                };
-                if (chartType === 'pie') {
-                    $(chart.elementId).dxPieChart({
-                        dataSource: chartData,
-                        palette: palette,
-                        series: [{ argumentField: 'argument', valueField: 'value', label: { visible: true, connector: { visible: true }, customizeText: function(point) { return point.valueText; } } }],
-                        tooltip: { enabled: true, contentTemplate: d => `${d.argumentText}: ${d.value}` },
-                        legend: legend,
-                        onPointClick: handleChartClick
-                    });
-                } else {
-                    $(chart.elementId).dxChart({
-                        dataSource: chartData,
-                        palette: palette,
-                        series: [{ argumentField: 'argument', valueField: 'value', name: chart.field, type: chartType }],
-                        tooltip: { enabled: true, contentTemplate: d => `${d.argumentText}: ${d.value}` },
-                        legend: legend,
-                        onPointClick: handleChartClick
-                    });
                 }
+                this.updateAll();
+            };
+            if (chartType === 'pie') {
+                $(chart.elementId).dxPieChart({
+                    dataSource: chartData,
+                    palette: palette,
+                    series: [{ argumentField: 'argument', valueField: 'value', label: { visible: true, connector: { visible: true }, customizeText: function(point) { return point.valueText; } } }],
+                    tooltip: { enabled: true, contentTemplate: d => `${d.argumentText}: ${d.value}` },
+                    legend: legend,
+                    onPointClick: handleChartClick
+                });
+            } else {
+                $(chart.elementId).dxChart({
+                    dataSource: chartData,
+                    palette: palette,
+                    series: [{ argumentField: 'argument', valueField: 'value', name: chart.field, type: chartType }],
+                    tooltip: { enabled: true, contentTemplate: d => `${d.argumentText}: ${d.value}` },
+                    legend: legend,
+                    onPointClick: handleChartClick
+                });
+            }
+            } catch (err) {
+                console.error('Grafik render hatasi:', chart.elementId, err);
+            }
         });
     }
 
@@ -551,7 +589,7 @@ class RaporModul {
                 const el = document.querySelector(chart.typeSelector);
                 if (el) el.addEventListener('change', () => {
                     this.filterState[chart.typeSelector.replace('#','')] = el.value;
-                    this.updateAll();
+                    this.renderCharts();
                 });
             }
         });
@@ -584,9 +622,6 @@ class RaporModul {
                     }
                 }
                 this.updateAll();
-                if (typeof this.renderDistributionTable === 'function') {
-                    this.renderDistributionTable();
-                }
             });
         });
 
@@ -595,110 +630,18 @@ class RaporModul {
         if (document.getElementById(saveBtnId)) {
             document.getElementById(saveBtnId).onclick = () => this.saveDefaultFilters();
         }
-
-        // Haftalık/Aylık dağılım tablosunu başlat
-        if (typeof this.renderDistributionTable === 'function') {
-            this.renderDistributionTable();
-        }
     }
 
-    renderCharts() {
-        (this.schema.charts || []).forEach(chart => {
-            let chartData = [];
-            // BekleyenGun (bekleme süresi) için bucket'ları şemadan al
-            if (chart.field === 'BekleyenGun' && Array.isArray(this.schema.beklemeSuresiBuckets)) {
-                const buckets = this.schema.beklemeSuresiBuckets;
-                const grouped = buckets.map(b => ({ bucket: b.key, count: 0, min: b.min, max: b.max }));
-                (this.filtered || []).forEach(d => {
-                    const gun = Number(d.BekleyenGun) || 0;
-                    const bucket = grouped.find(b => gun >= b.min && gun <= b.max);
-                    if (bucket) bucket.count++;
-                });
-                chartData = grouped.map(g => ({ argument: g.bucket + ' gün', value: g.count }));
-            } else {
-                const grouped = {};
-                this.filtered.forEach(d => {
-                    const key = d[chart.field];
-                    if (!key) return;
-                    grouped[key] = (grouped[key] || 0) + 1;
-                });
-                // En çok geçen ilk 15 kategori (veya chart.limit varsa o kadar) göster
-                const limit = chart.limit || 15;
-                chartData = Object.entries(grouped)
-                    .map(([argument, value]) => ({ argument, value }))
-                    .sort((a, b) => b.value - a.value)
-                    .slice(0, limit);
-            }
-            const chartType = $(chart.typeSelector).val() || chart.defaultType || 'pie';
-            // Önce eski grafik instance'ını yok et ve container'ı temizle
-            if ($(chart.elementId).data('dxPieChart')) {
-                $(chart.elementId).dxPieChart('dispose');
-                $(chart.elementId).empty();
-            }
-            if ($(chart.elementId).data('dxChart')) {
-                $(chart.elementId).dxChart('dispose');
-                $(chart.elementId).empty();
-            }
-            const palette = chart.palette || undefined;
-            const legend = chart.legend || { visible: false };
-            // Grafik tıklamasında filterState güncellenir, input/select güncellenmez
-            if (chartType === 'pie') {
-                $(chart.elementId).dxPieChart({
-                    dataSource: chartData,
-                    palette: palette,
-                    series: [{ argumentField: 'argument', valueField: 'value', label: { visible: true, connector: { visible: true }, customizeText: function(point) { return point.valueText; } } }],
-                    tooltip: { enabled: true, contentTemplate: d => `${d.argumentText}: ${d.value}` },
-                    legend: legend,
-                    onPointClick: (e) => {
-                        let secilen = e.target.originalArgument;
-                        if (chart.field === 'BekleyenGun') secilen = secilen.replace(' gün', '');
-                        if (chart.filterElementId) {
-                            this.filterState[chart.field] = secilen;
-                            const elem = document.querySelector(chart.filterElementId);
-                            if (elem) elem.value = secilen;
-                        }
-                        this.updateAll();
-                    }
-                });
-            } else {
-                $(chart.elementId).dxChart({
-                    dataSource: chartData,
-                    palette: palette,
-                    series: [{ argumentField: 'argument', valueField: 'value', name: chart.field, type: chartType }],
-                    tooltip: { enabled: true, contentTemplate: d => `${d.argumentText}: ${d.value}` },
-                    legend: legend,
-                    onPointClick: (e) => {
-                        let secilen = e.target.originalArgument;
-                        if (chart.field === 'BekleyenGun') secilen = secilen.replace(' gün', '');
-                        if (chart.filterElementId) {
-                            this.filterState[chart.field] = secilen;
-                            const elem = document.querySelector(chart.filterElementId);
-                            if (elem) elem.value = secilen;
-                        }
-                        this.updateAll();
-                    }
-                });
-            }
-        });
-    }
-
-    // Haftalık/Yıllık dağılım pivot tablosu
-    renderDistributionTable() {
-        const container = $("#pivotGridContainer");
-        if (!container.length) return;
-        // Pivot veri hazırlama
-        const data = (this.filteredWithCalculated && this.filteredWithCalculated.length) ? this.filteredWithCalculated : this.filtered;
-        if (!data || !data.length || !this.schema.pivotFields) {
-            container.dxPivotGrid({ dataSource: [] });
-            return;
-        }
-        // Alan eşlemesi (schema.pivotFieldMappings)
-        const mappings = this.schema.pivotFieldMappings || {};
-        const pivotData = data.map(d => {
+    buildPivotData(data, fields, fieldMappings) {
+        const mappings = fieldMappings || {};
+        const resolvers = this.schema.pivotValueResolvers || {};
+        return data.map(d => {
             const row = {};
-            this.schema.pivotFields.forEach(f => {
+            fields.forEach(f => {
                 let val = null;
-                if (mappings[f.dataField]) {
+                if (resolvers[f.dataField]) {
+                    val = resolvers[f.dataField](d);
+                } else if (mappings[f.dataField]) {
                     for (const key of mappings[f.dataField]) {
                         if (d[key] !== undefined && d[key] !== null) {
                             val = d[key];
@@ -708,24 +651,80 @@ class RaporModul {
                 } else if (d[f.dataField] !== undefined) {
                     val = d[f.dataField];
                 }
-                // Yıl/Hafta otomatik hesapla
-                if (f.dataField === 'Yil' && d.SurecBaslangicTarihi) {
-                    const dt = new Date(d.SurecBaslangicTarihi);
+                const dateField = d.SurecBaslangicTarihi || d.BaslamaTarihi;
+                if (val == null && f.dataField === 'Yil' && dateField) {
+                    const dt = new Date(dateField);
                     if (!isNaN(dt)) val = dt.getFullYear();
                 }
-                if (f.dataField === 'Hafta' && d.SurecBaslangicTarihi) {
-                    const dt = new Date(d.SurecBaslangicTarihi);
+                if (val == null && f.dataField === 'Hafta' && dateField) {
+                    const dt = new Date(dateField);
                     if (!isNaN(dt)) {
                         const jan1 = new Date(dt.getFullYear(), 0, 1);
                         const days = Math.floor((dt - jan1) / 86400000);
                         val = Math.ceil((days + jan1.getDay() + 1) / 7);
                     }
                 }
-                if (f.dataField === 'Adet') val = 1;
+                if (val == null && f.dataField === 'Adet') val = 1;
                 row[f.dataField] = val;
             });
             return row;
         });
+    }
+
+    renderPivotTable(cfg) {
+        const container = $('#' + cfg.containerId);
+        if (!container.length) return;
+        const data = (this.filteredWithCalculated && this.filteredWithCalculated.length)
+            ? this.filteredWithCalculated
+            : this.filtered;
+        if (!data || !data.length || !cfg.fields) {
+            container.dxPivotGrid({ dataSource: [] });
+            return;
+        }
+        const pivotData = this.buildPivotData(data, cfg.fields, cfg.fieldMappings);
+        container.dxPivotGrid({
+            dataSource: {
+                fields: cfg.fields,
+                store: pivotData
+            },
+            allowSortingBySummary: true,
+            allowFiltering: true,
+            showBorders: true,
+            showColumnGrandTotals: true,
+            showColumnTotals: true,
+            showRowGrandTotals: true,
+            showRowTotals: true,
+            texts: cfg.texts || {
+                grandTotal: 'Tüm Yılların Toplamı',
+                total: 'O Yıla Ait Alt Toplam'
+            },
+            onCellPrepared: function(e) {
+                if (e.area === 'data' && typeof e.cell.value === 'number' && e.cell.value > 7) {
+                    e.cellElement.css({ background: '#e57373', color: '#fff', fontWeight: 'bold' });
+                }
+            },
+            height: cfg.height || 500,
+            scrolling: { mode: 'both', useNative: true },
+            export: { enabled: true, fileName: cfg.fileName || 'OzetTablo' },
+            fieldChooser: { enabled: true }
+        });
+    }
+
+    renderDistributionTable() {
+        if (this.schema.pivotTables && this.schema.pivotTables.length) {
+            this.schema.pivotTables.forEach(cfg => this.renderPivotTable(cfg));
+            return;
+        }
+        const container = $("#pivotGridContainer");
+        if (!container.length || !this.schema.pivotFields) return;
+        const data = (this.filteredWithCalculated && this.filteredWithCalculated.length)
+            ? this.filteredWithCalculated
+            : this.filtered;
+        if (!data || !data.length) {
+            container.dxPivotGrid({ dataSource: [] });
+            return;
+        }
+        const pivotData = this.buildPivotData(data, this.schema.pivotFields, this.schema.pivotFieldMappings);
         container.dxPivotGrid({
             dataSource: {
                 fields: this.schema.pivotFields,

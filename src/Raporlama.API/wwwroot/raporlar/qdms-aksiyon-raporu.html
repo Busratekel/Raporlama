@@ -1,105 +1,419 @@
 <!DOCTYPE html>
+
 <html lang="tr">
+
 <head>
+
     <meta charset="UTF-8">
+
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
     <title>QDMS Aksiyon Raporu</title>
+
     <link rel="stylesheet" href="../lib/css/dx.dark.css" />
+
     <link rel="stylesheet" href="rapor-ortak.css" />
+
 </head>
+
 <body>
+
     <div id="reportMeta" data-report-id="2"></div>
+
     <div class="header">
+
         <h1>📋 QDMS Aksiyon Raporu</h1>
+
     </div>
+
     <div class="main-layout">
-        <!-- SOL PANEL: FİLTRELER -->
+
         <div class="sidebar">
+
             <h3 style="font-size: 22px; color: #00eaff; margin-bottom: 24px; letter-spacing: 1px;">🔍 Filtreler</h3>
+
             <div class="filter-group">
+
                 <label class="filter-label">Durum</label>
+
                 <select id="filterDurum"><option value="">Tümü</option></select>
+
             </div>
+
             <div class="filter-group">
+
                 <label class="filter-label">Müdürlük</label>
+
                 <select id="filterMudurluk"><option value="">Tümü</option></select>
+
             </div>
+
             <div class="filter-group">
+
                 <label class="filter-label">Tip</label>
+
                 <select id="filterTip"><option value="">Tümü</option></select>
+
             </div>
+
             <div class="filter-group">
+
+                <label class="filter-label">Şirket</label>
+
+                <select id="filterSirket"><option value="">Tümü</option></select>
+
+            </div>
+
+            <div class="filter-group">
+
+                <label class="filter-label">Gecikti mi?</label>
+
+                <select id="filterGecikti"><option value="">Tümü</option></select>
+
+            </div>
+
+            <div class="filter-group">
+
+                <label class="filter-label">Bekleten Kişi</label>
+
+                <select id="filterKisi"><option value="">Tümü</option></select>
+
+            </div>
+
+            <div class="filter-group">
+
+                <label class="filter-label">Yönetici</label>
+
+                <select id="filterYonetici"><option value="">Tümü</option></select>
+
+            </div>
+
+            <div class="filter-group">
+
                 <label class="filter-label">Başlama Tarihi</label>
+
                 <input type="date" id="filterBaslangic">
+
             </div>
+
             <div class="filter-group">
+
                 <label class="filter-label">Bitiş Tarihi</label>
+
                 <input type="date" id="filterBitis">
+
             </div>
-            <button class="filter-btn">🔄 <span>Filtrele</span></button>
+
             <button class="clear-filters">⊘ Temizle</button>
+
             <button id="saveDefaultReport_qdms" class="filter-btn" style="margin-top:12px;background:orange;color:#181A20;font-weight:bold;">⭐ Varsayılan olarak kaydet</button>
+
         </div>
-        <!-- SAĞ PANEL: VERİ VE GRAFİKLER -->
+
         <div class="content">
+
             <div class="card">
+
                 <h2>📊 İstatistikler</h2>
+
                 <div class="stats">
+
                     <div class="stat-card stat-card-blue"><h3 id="ortalamaBekleme">-</h3><p>Ortalama Bekleme (gün)</p></div>
+
                     <div class="stat-card stat-card-green"><h3 id="bekleyenSurec">-</h3><p>Bekleyen Süreç</p></div>
+
                     <div class="stat-card stat-card-red"><h3 id="enUzunBekleme">-</h3><p>En Uzun Bekleme (gün)</p></div>
+
                 </div>
+
             </div>
+
             <div class="card">
+
                 <h2>📈 Grafikler</h2>
+
                 <div class="charts-grid">
+
                     <div class="chart-container">
+
                         <h4>Durum Dağılımı</h4>
+
                         <select id="chartTypeDurum" style="margin-bottom:8px;width:120px">
+
                             <option value="pie">Pasta</option>
+
                             <option value="bar">Çubuk</option>
+
                             <option value="line">Çizgi</option>
+
                         </select>
+
                         <div style="position:relative;height:0;">
+
                             <div style="position:absolute;top:-40px;right:8px;display:flex;gap:8px;z-index:2;">
+
                                 <span style="cursor:pointer;font-size:20px;" onclick="RaporModul.enlargeChart('durumChart', 'Durum Dağılımı')" title="Büyüt">🔍</span>
+
                                 <span style="cursor:pointer;font-size:20px;" onclick="RaporModul.downloadSVG('durumChart', 'Durum Dağılımı')" title="İndir">⬇️</span>
+
                             </div>
+
                         </div>
-                        <div id="durumChart" style="height:260px"></div>
+
+                        <div id="durumChart" style="height:340px;min-height:340px;max-height:340px;"></div>
+
                     </div>
+
                     <div class="chart-container">
-                        <h4>Tip</h4>
-                        <select id="chartTypeMudurluk" style="margin-bottom:8px;width:120px">
+
+                        <h4>Tip Dağılımı</h4>
+
+                        <select id="chartTypeTip" style="margin-bottom:8px;width:120px">
+
                             <option value="pie">Pasta</option>
+
                             <option value="bar">Çubuk</option>
+
                             <option value="line">Çizgi</option>
+
                         </select>
+
                         <div style="position:relative;height:0;">
+
                             <div style="position:absolute;top:-40px;right:8px;display:flex;gap:8px;z-index:2;">
-                                <span style="cursor:pointer;font-size:20px;" onclick="RaporModul.enlargeChart('sorumluChart', 'Tip')" title="Büyüt">🔍</span>
-                                <span style="cursor:pointer;font-size:20px;" onclick="RaporModul.downloadSVG('sorumluChart', 'Tip')" title="İndir">⬇️</span>
+
+                                <span style="cursor:pointer;font-size:20px;" onclick="RaporModul.enlargeChart('tipChart', 'Tip Dağılımı')" title="Büyüt">🔍</span>
+
+                                <span style="cursor:pointer;font-size:20px;" onclick="RaporModul.downloadSVG('tipChart', 'Tip Dağılımı')" title="İndir">⬇️</span>
+
                             </div>
+
                         </div>
-                        <div id="sorumluChart" style="height:260px"></div>
+
+                        <div id="tipChart" style="height:340px;min-height:340px;max-height:340px;"></div>
+
                     </div>
+
+                    <div class="chart-container">
+
+                        <h4>Müdürlük Dağılımı</h4>
+
+                        <select id="chartTypeMudurluk" style="margin-bottom:8px;width:120px">
+
+                            <option value="pie">Pasta</option>
+
+                            <option value="bar">Çubuk</option>
+
+                            <option value="line">Çizgi</option>
+
+                        </select>
+
+                        <div style="position:relative;height:0;">
+
+                            <div style="position:absolute;top:-40px;right:8px;display:flex;gap:8px;z-index:2;">
+
+                                <span style="cursor:pointer;font-size:20px;" onclick="RaporModul.enlargeChart('mudurlukChart', 'Müdürlük Dağılımı')" title="Büyüt">🔍</span>
+
+                                <span style="cursor:pointer;font-size:20px;" onclick="RaporModul.downloadSVG('mudurlukChart', 'Müdürlük Dağılımı')" title="İndir">⬇️</span>
+
+                            </div>
+
+                        </div>
+
+                        <div id="mudurlukChart" style="height:340px;min-height:340px;max-height:340px;"></div>
+
+                    </div>
+
+                    <div class="chart-container">
+
+                        <h4>Şirket Dağılımı</h4>
+
+                        <select id="chartTypeSirket" style="margin-bottom:8px;width:120px">
+
+                            <option value="pie">Pasta</option>
+
+                            <option value="bar">Çubuk</option>
+
+                            <option value="line">Çizgi</option>
+
+                        </select>
+
+                        <div style="position:relative;height:0;">
+
+                            <div style="position:absolute;top:-40px;right:8px;display:flex;gap:8px;z-index:2;">
+
+                                <span style="cursor:pointer;font-size:20px;" onclick="RaporModul.enlargeChart('sirketChart', 'Şirket Dağılımı')" title="Büyüt">🔍</span>
+
+                                <span style="cursor:pointer;font-size:20px;" onclick="RaporModul.downloadSVG('sirketChart', 'Şirket Dağılımı')" title="İndir">⬇️</span>
+
+                            </div>
+
+                        </div>
+
+                        <div id="sirketChart" style="height:340px;min-height:340px;max-height:340px;"></div>
+
+                    </div>
+
+                    <div class="chart-container">
+
+                        <h4>Bekleten Kişi</h4>
+
+                        <select id="chartTypeKisi" style="margin-bottom:8px;width:120px">
+
+                            <option value="bar">Çubuk</option>
+
+                            <option value="pie">Pasta</option>
+
+                            <option value="line">Çizgi</option>
+
+                        </select>
+
+                        <div style="position:relative;height:0;">
+
+                            <div style="position:absolute;top:-40px;right:8px;display:flex;gap:8px;z-index:2;">
+
+                                <span style="cursor:pointer;font-size:20px;" onclick="RaporModul.enlargeChart('kisiChart', 'Bekleten Kişi')" title="Büyüt">🔍</span>
+
+                                <span style="cursor:pointer;font-size:20px;" onclick="RaporModul.downloadSVG('kisiChart', 'Bekleten Kişi')" title="İndir">⬇️</span>
+
+                            </div>
+
+                        </div>
+
+                        <div id="kisiChart" style="height:340px;min-height:340px;max-height:340px;"></div>
+
+                    </div>
+
+                    <div class="chart-container">
+
+                        <h4>Yönetici Dağılımı</h4>
+
+                        <select id="chartTypeYonetici" style="margin-bottom:8px;width:120px">
+
+                            <option value="bar">Çubuk</option>
+
+                            <option value="pie">Pasta</option>
+
+                            <option value="line">Çizgi</option>
+
+                        </select>
+
+                        <div style="position:relative;height:0;">
+
+                            <div style="position:absolute;top:-40px;right:8px;display:flex;gap:8px;z-index:2;">
+
+                                <span style="cursor:pointer;font-size:20px;" onclick="RaporModul.enlargeChart('yoneticiChart', 'Yönetici Dağılımı')" title="Büyüt">🔍</span>
+
+                                <span style="cursor:pointer;font-size:20px;" onclick="RaporModul.downloadSVG('yoneticiChart', 'Yönetici Dağılımı')" title="İndir">⬇️</span>
+
+                            </div>
+
+                        </div>
+
+                        <div id="yoneticiChart" style="height:340px;min-height:340px;max-height:340px;"></div>
+
+                    </div>
+
+                    <div class="chart-container">
+
+                        <h4>Gecikti mi?</h4>
+
+                        <select id="chartTypeGecikti" style="margin-bottom:8px;width:120px">
+
+                            <option value="pie">Pasta</option>
+
+                            <option value="bar">Çubuk</option>
+
+                            <option value="line">Çizgi</option>
+
+                        </select>
+
+                        <div style="position:relative;height:0;">
+
+                            <div style="position:absolute;top:-40px;right:8px;display:flex;gap:8px;z-index:2;">
+
+                                <span style="cursor:pointer;font-size:20px;" onclick="RaporModul.enlargeChart('geciktiChart', 'Gecikti mi?')" title="Büyüt">🔍</span>
+
+                                <span style="cursor:pointer;font-size:20px;" onclick="RaporModul.downloadSVG('geciktiChart', 'Gecikti mi?')" title="İndir">⬇️</span>
+
+                            </div>
+
+                        </div>
+
+                        <div id="geciktiChart" style="height:340px;min-height:340px;max-height:340px;"></div>
+
+                    </div>
+
+                    <div class="chart-container">
+
+                        <h4>Bekleme Süresi Dağılımı (Gün)</h4>
+
+                        <select id="chartTypeBekleme" style="margin-bottom:8px;width:120px">
+
+                            <option value="bar">Çubuk</option>
+
+                            <option value="pie">Pasta</option>
+
+                            <option value="line">Çizgi</option>
+
+                        </select>
+
+                        <div style="position:relative;height:0;">
+
+                            <div style="position:absolute;top:-40px;right:8px;display:flex;gap:8px;z-index:2;">
+
+                                <span style="cursor:pointer;font-size:20px;" onclick="RaporModul.enlargeChart('beklemeChart', 'Bekleme Süresi Dağılımı')" title="Büyüt">🔍</span>
+
+                                <span style="cursor:pointer;font-size:20px;" onclick="RaporModul.downloadSVG('beklemeChart', 'Bekleme Süresi Dağılımı')" title="İndir">⬇️</span>
+
+                            </div>
+
+                        </div>
+
+                        <div id="beklemeChart" style="height:340px;min-height:340px;max-height:340px;"></div>
+
+                    </div>
+
                 </div>
+
             </div>
+
             <h2 style="margin-top:32px;">📑 Detaylı Tablo</h2>
+
             <div id="gridContainer" class="card"></div>
-            <h2 style="margin-top:32px;">📑 Aksiyon Detay Verisi(Haftalık/Yıllık Dağılım)</h2>
+
+            <h2 style="margin-top:32px;">📑 Aksiyon No Dağılımı</h2>
+            <div id="aksiyonPivotGridContainer" class="card"></div>
+            <h2 style="margin-top:32px;">📑 Aksiyon Detay Verisi (Haftalık/Yıllık Dağılım)</h2>
+
             <div id="pivotGridContainer" class="card"></div>
+
         </div>
+
     </div>
+
     <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+
     <script src="/lib/js/jszip.min.js"></script>
+
     <script src="/lib/js/dx.all.js"></script>
+
     <script src="common.js"></script>
+
     <script src="toast.js"></script>
+
     <script src="raporModul.js"></script>
+
     <script src="qdms-schema.js"></script>
+
     <script>
+
         window.API_BASE = '/api';
+
     </script>
+
 </body>
+
 </html>
+
+

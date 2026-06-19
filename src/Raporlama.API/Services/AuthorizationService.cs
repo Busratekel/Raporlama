@@ -1,5 +1,4 @@
 using Raporlama.API.Data;
-using System.Security.Principal;
 
 namespace Raporlama.API.Services
 {
@@ -79,33 +78,53 @@ namespace Raporlama.API.Services
 
         public async Task<UserInfo> GetUserByUserNameAsync(string userName)
         {
-            var user = await _databaseService.QueryAsync<UserInfo>(
+            var userInfo = await FindUserByLoginAsync(userName, requireActive: false);
+            if (userInfo != null)
+                return userInfo;
+
+            await EnsureUserExistsAsync(userName, userName, "", "");
+
+            userInfo = await FindUserByLoginAsync(userName, requireActive: false);
+            return userInfo ?? new UserInfo { UserName = userName };
+        }
+
+        /// <summary>
+        /// Portal/Windows farklı format gönderebilir (BUSRA.TEKEL vs BELLONA\busra.tekel).
+        /// Mevcut kullanıcıyı büyük/küçük harf ve domain bağımsız bulur.
+        /// </summary>
+        private async Task<UserInfo?> FindUserByLoginAsync(string userName, bool requireActive)
+        {
+            if (string.IsNullOrWhiteSpace(userName) || userName == "Unknown")
+                return null;
+
+            var loginName = userName.Contains('\\')
+                ? userName[(userName.IndexOf('\\') + 1)..]
+                : userName;
+
+            var activeClause = requireActive ? " AND Aktif = 1" : "";
+
+            var users = await _databaseService.QueryAsync<UserInfo>(
                 "BellonaRapor",
-                "SELECT UserKey, UserName, DisplayName, Email, Groups, Aktif as IsActive FROM [User] WHERE UserName = @UserName",
-                new { UserName = userName }
+                $@"SELECT TOP 1 UserKey, UserName, DisplayName, Email, Groups, Aktif as IsActive
+                   FROM [User]
+                   WHERE (
+                       UserName COLLATE SQL_Latin1_General_CP1_CI_AS = @UserName
+                       OR (
+                           CHARINDEX('\', UserName) > 0
+                           AND SUBSTRING(UserName, CHARINDEX('\', UserName) + 1, 4000) COLLATE SQL_Latin1_General_CP1_CI_AS = @LoginName
+                       )
+                       OR UserName COLLATE SQL_Latin1_General_CP1_CI_AS = @LoginName
+                   ){activeClause}
+                   ORDER BY UserKey",
+                new { UserName = userName, LoginName = loginName }
             );
 
-            var userInfo = user.FirstOrDefault();
-            if (userInfo == null)
-            {
-                // Kullanıcı yoksa oluştur
-                var identity = GetCurrentIdentity();
-                var groupNames = identity?.Groups != null
-                    ? identity.Groups.Select(g => g.Translate(typeof(NTAccount)).ToString()).ToList()
-                    : new List<string>();
-                var groups = string.Join(",", groupNames);
+            var found = users.FirstOrDefault();
+            if (found != null)
+                _logger.LogInformation("Kullanıcı eşleşti: aranan={Searched}, bulunan={Found}, UserKey={UserKey}",
+                    userName, found.UserName, found.UserKey);
 
-                await EnsureUserExistsAsync(userName, userName, "", groups);
-                
-                user = await _databaseService.QueryAsync<UserInfo>(
-                    "BellonaRapor",
-                    "SELECT UserKey, UserName, DisplayName, Email, Groups, Aktif as IsActive FROM [User] WHERE UserName = @UserName",
-                    new { UserName = userName }
-                );
-                userInfo = user.FirstOrDefault();
-            }
-
-            return userInfo ?? new UserInfo { UserName = userName };
+            return found;
         }
 
         private string GetCurrentUserName()
@@ -124,39 +143,21 @@ namespace Raporlama.API.Services
                 return "Unknown";
             }
 
-            // WindowsIdentity kontrolü
-            if (httpContext.User.Identity is WindowsIdentity windowsIdentity)
+            // WindowsIdentity veya cookie (portal SSO) kimliği
+            if (!string.IsNullOrWhiteSpace(httpContext.User.Identity.Name))
             {
-                _logger.LogInformation("WindowsIdentity found: {UserName}", windowsIdentity.Name);
-                return windowsIdentity.Name;
+                _logger.LogInformation("Authenticated user: {UserName}", httpContext.User.Identity.Name);
+                return httpContext.User.Identity.Name;
             }
 
-            // Generic Identity kontrolü
-            var userName = httpContext.User.Identity.Name;
-            _logger.LogInformation("Generic Identity found: {UserName}, IsAuthenticated: {IsAuthenticated}", 
-                userName, httpContext.User.Identity.IsAuthenticated);
-            
-            return userName ?? "Unknown";
-        }
-
-        private WindowsIdentity? GetCurrentIdentity()
-        {
-            var httpContext = _httpContextAccessor.HttpContext;
-            return httpContext?.User?.Identity as WindowsIdentity;
+            return "Unknown";
         }
 
         public async Task<bool> HasReportAccessAsync(int reportId, string userName)
         {
             try
             {
-                // Önce kullanıcının var olup olmadığını kontrol et
-                var user = await _databaseService.QueryAsync<UserInfo>(
-                    "BellonaRapor",
-                    "SELECT UserKey FROM [User] WHERE UserName = @UserName AND Aktif = 1",
-                    new { UserName = userName }
-                );
-
-                var userInfo = user.FirstOrDefault();
+                var userInfo = await FindUserByLoginAsync(userName, requireActive: true);
                 if (userInfo == null)
                     return false;
 
@@ -191,13 +192,7 @@ namespace Raporlama.API.Services
         {
             try
             {
-                var user = await _databaseService.QueryAsync<UserInfo>(
-                    "BellonaRapor",
-                    "SELECT UserKey FROM [User] WHERE UserName = @UserName AND Aktif = 1",
-                    new { UserName = userName }
-                );
-
-                var userInfo = user.FirstOrDefault();
+                var userInfo = await FindUserByLoginAsync(userName, requireActive: true);
                 if (userInfo == null)
                     return Enumerable.Empty<int>();
 
@@ -223,6 +218,17 @@ namespace Raporlama.API.Services
         {
             try
             {
+                var existing = await FindUserByLoginAsync(userName, requireActive: false);
+                if (existing != null)
+                {
+                    await _databaseService.QueryAsync<int>(
+                        "BellonaRapor",
+                        "UPDATE [User] SET Groups = @Groups, DisplayName = @DisplayName WHERE UserKey = @UserKey",
+                        new { UserKey = existing.UserKey, DisplayName = displayName, Groups = groups }
+                    );
+                    return;
+                }
+
                 var userExists = await _databaseService.QueryAsync<int>(
                     "BellonaRapor",
                     "SELECT COUNT(*) FROM [User] WHERE UserName = @UserName",

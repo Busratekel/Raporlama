@@ -1,6 +1,5 @@
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Authorization;
-using System.Security.Principal;
 
 namespace Raporlama.API.Controllers
 {
@@ -15,6 +14,7 @@ namespace Raporlama.API.Controllers
             _logger = logger;
         }
         [HttpGet("status")]
+        [AllowAnonymous]
         public IActionResult GetAuthStatus()
         {
             var result = new
@@ -22,8 +22,6 @@ namespace Raporlama.API.Controllers
                 IsAuthenticated = User.Identity?.IsAuthenticated ?? false,
                 AuthenticationType = User.Identity?.AuthenticationType,
                 UserName = User.Identity?.Name ?? "Not authenticated",
-                IsWindowsIdentity = User.Identity is WindowsIdentity,
-                WindowsIdentityName = (User.Identity as WindowsIdentity)?.Name,
                 Claims = User.Claims.Select(c => new { c.Type, c.Value }).ToList()
             };
 
@@ -41,9 +39,7 @@ namespace Raporlama.API.Controllers
             {
                 Message = "Bu endpoint'e sadece giriş yapmış kullanıcılar erişebilir",
                 IsAuthenticated = User.Identity?.IsAuthenticated ?? false,
-                UserName = User.Identity?.Name ?? "Unknown",
-                IsWindowsIdentity = User.Identity is WindowsIdentity,
-                WindowsIdentityName = (User.Identity as WindowsIdentity)?.Name
+                UserName = User.Identity?.Name ?? "Unknown"
             };
 
             return Ok(result);

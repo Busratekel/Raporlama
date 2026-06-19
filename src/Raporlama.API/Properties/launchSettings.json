@@ -10,8 +10,8 @@
       "environmentVariables": {
         "ASPNETCORE_ENVIRONMENT": "Development"
       },
-      "windowsAuthentication": true,
-      "anonymousAuthentication": false
+      "windowsAuthentication": false,
+      "anonymousAuthentication": true
     },
     "IIS Express": {
       "commandName": "IISExpress",
@@ -20,8 +20,8 @@
       "environmentVariables": {
         "ASPNETCORE_ENVIRONMENT": "Development"
       },
-      "windowsAuthentication": true,
-      "anonymousAuthentication": false
+      "windowsAuthentication": false,
+      "anonymousAuthentication": true
     }
   }
 }

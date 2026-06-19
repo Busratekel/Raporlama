@@ -1,6 +1,8 @@
+using Microsoft.AspNetCore.Authentication.Cookies;
+using Microsoft.AspNetCore.Authorization;
+using Raporlama.API.Configuration;
 using Raporlama.API.Services;
 using Raporlama.API.Data;
-using DevExpress.AspNetCore;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -8,14 +10,31 @@ builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 
-// Active Directory (Windows) Authentication
-builder.Services.AddAuthentication("Negotiate")
-    .AddNegotiate();
+builder.Services.Configure<PortalAuthOptions>(builder.Configuration.GetSection(PortalAuthOptions.SectionName));
+builder.Services.Configure<AppAuthorizationOptions>(builder.Configuration.GetSection(AppAuthorizationOptions.SectionName));
+builder.Services.AddSingleton<IAdminService, AdminService>();
+builder.Services.AddSingleton<ISsoTokenValidator, SsoTokenValidator>();
+builder.Services.AddHttpClient();
 
-// tüm authenticated kullanıcılar erişebilir
+builder.Services.AddAuthentication(CookieAuthenticationDefaults.AuthenticationScheme)
+    .AddCookie(options =>
+    {
+        options.Cookie.Name = "Raporlama.Auth";
+        options.Cookie.HttpOnly = true;
+        options.Cookie.SameSite = SameSiteMode.Lax;
+        options.Cookie.SecurePolicy = builder.Environment.IsDevelopment()
+            ? CookieSecurePolicy.SameAsRequest
+            : CookieSecurePolicy.Always;
+        options.ExpireTimeSpan = TimeSpan.FromHours(8);
+        options.SlidingExpiration = true;
+        options.LoginPath = "/menu.html";
+    });
+
 builder.Services.AddAuthorization(options =>
 {
-    options.FallbackPolicy = options.DefaultPolicy;
+    options.FallbackPolicy = new AuthorizationPolicyBuilder(CookieAuthenticationDefaults.AuthenticationScheme)
+        .RequireAuthenticatedUser()
+        .Build();
 });
 
 builder.Services.AddCors(options =>
@@ -38,8 +57,6 @@ builder.Services.AddScoped<ICustomAuthorizationService, AuthorizationService>();
 builder.Services.AddScoped<IDataSourceService, DataSourceService>();
 builder.Services.AddScoped<ETLGorevService>();
 
-builder.Services.AddDevExpressControls();
-
 var app = builder.Build();
 
 if (app.Environment.IsDevelopment())
@@ -47,8 +64,6 @@ if (app.Environment.IsDevelopment())
     app.UseSwagger();
     app.UseSwaggerUI();
 }
-
-app.UseDevExpressControls();
 
 app.UseStaticFiles();
 
@@ -60,6 +75,3 @@ app.UseAuthorization();
 app.MapControllers();
 
 app.Run();
-
-
-

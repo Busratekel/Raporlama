@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Data;
+using System.Globalization;
 using System.Threading.Tasks;
 using Dapper;
 using Microsoft.Data.SqlClient;
@@ -23,25 +24,27 @@ namespace Raporlama.ETL
             _connectionString = _configuration.GetConnectionString("BellonaRapor");
         }
 
+        public static string GetLogDirectory() =>
+            Path.Combine(AppContext.BaseDirectory, "logs");
+
         public static void CleanupOldLogs()
         {
             try
             {
-                var logDir = System.IO.Path.GetFullPath(System.IO.Path.Combine(AppContext.BaseDirectory, "..", "..", "src", "Raporlama.ETL", "logs"));
+                var logDir = GetLogDirectory();
+                Directory.CreateDirectory(logDir);
                 var today = DateTime.Now.ToString("yyyyMMdd");
-                var files = System.IO.Directory.GetFiles(logDir, "etl-*.txt");
+                var files = Directory.GetFiles(logDir, "etl-*.txt");
                 foreach (var file in files)
                 {
-                    var fileName = System.IO.Path.GetFileNameWithoutExtension(file);
+                    var fileName = Path.GetFileNameWithoutExtension(file);
                     if (fileName == $"etl-{today}")
                     {
-                        // Bugünün dosyası ise içeriğini sıfırla
-                        try { System.IO.File.WriteAllText(file, string.Empty); } catch { }
+                        try { File.WriteAllText(file, string.Empty); } catch { }
                     }
                     else
                     {
-                        // Eski dosyaları sil
-                        try { System.IO.File.Delete(file); } catch { }
+                        try { File.Delete(file); } catch { }
                     }
                 }
             }
@@ -57,46 +60,72 @@ namespace Raporlama.ETL
             return result.AsList();
         }
 
+        private static object NormalizeCellValue(object value)
+        {
+            if (value == null || value == DBNull.Value) return null;
+
+            if (value is string s)
+            {
+                s = s.Trim();
+                if (s.Length == 0) return null;
+
+                // View'den gelen dd.MM.yyyy tarihleri (örn. 08.04.2026) datetime kolonuna yazılabilsin.
+                if (DateTime.TryParseExact(s, "dd.MM.yyyy", CultureInfo.InvariantCulture, DateTimeStyles.None, out var trDate))
+                    return trDate;
+                if (DateTime.TryParseExact(s, "d.M.yyyy", CultureInfo.InvariantCulture, DateTimeStyles.None, out trDate))
+                    return trDate;
+
+                return s;
+            }
+
+            return value;
+        }
+
         public async Task<int> RunCustomETLWithResultAsync(string sorgu, string tablo)
         {
-            // Her ETL çalışmasından önce eski log dosyalarını sil
             CleanupOldLogs();
 
             var start = DateTime.Now;
             _logger.LogInformation($"ETL Görevi Başladı: {tablo} ({tablo}) | Başlangıç: {start:yyyy-MM-dd HH:mm:ss}");
             _logger.LogInformation($"[DEBUG] ETL başlatılıyor: {tablo} için sorgu: {sorgu}");
-            using var conn = new SqlConnection(_connectionString);
-            var data = await conn.QueryAsync(sorgu);
-            await conn.ExecuteAsync($"DELETE FROM {tablo}");
-            int count = 0;
-            foreach (var row in data)
+
+            await using var conn = new SqlConnection(_connectionString);
+            await conn.OpenAsync();
+            var data = (await conn.QueryAsync(sorgu)).AsList();
+
+            await using var tx = await conn.BeginTransactionAsync();
+            try
             {
-                var dict = (IDictionary<string, object>)row;
-                var converted = new Dictionary<string, object>();
-                foreach (var kvp in dict)
+                await conn.ExecuteAsync($"DELETE FROM {tablo}", transaction: tx);
+                int count = 0;
+                foreach (var row in data)
                 {
-                    object val = kvp.Value;
-                    if (val is string s)
-                    {
-                        // Tarih formatı kontrolü
-                        if (DateTime.TryParse(s, out var dt))
-                            val = dt;
-                        else if (int.TryParse(s, out var i))
-                            val = i;
-                    }
-                    converted[kvp.Key] = val;
+                    var source = (IDictionary<string, object>)row;
+                    var dict = new Dictionary<string, object>();
+                    foreach (var kv in source)
+                        dict[kv.Key] = NormalizeCellValue(kv.Value);
+
+                    var columns = string.Join(",", dict.Keys);
+                    var parameters = string.Join(",", dict.Keys.Select(k => "@" + k));
+                    var sql = $"INSERT INTO {tablo} ({columns}) VALUES ({parameters})";
+                    await conn.ExecuteAsync(sql, dict, transaction: tx);
+                    count++;
                 }
-                var columns = string.Join(",", converted.Keys);
-                var parameters = string.Join(",", converted.Keys.Select(k => "@" + k));
-                var sql = $"INSERT INTO {tablo} ({columns}) VALUES ({parameters})";
-                await conn.ExecuteAsync(sql, converted);
-                count++;
+
+                await tx.CommitAsync();
+                var end = DateTime.Now;
+                _logger.LogInformation($"ETL Görevi Bitti: {tablo} ({tablo}) | Bitiş: {end:yyyy-MM-dd HH:mm:ss} | Çekilen Kayıt: {count}");
+                _logger.LogInformation($"[DEBUG] ETL tamamlandı: {tablo}, kayıt: {count}");
+                return count;
             }
-            var end = DateTime.Now;
-            _logger.LogInformation($"ETL Görevi Bitti: {tablo} ({tablo}) | Bitiş: {end:yyyy-MM-dd HH:mm:ss} | Çekilen Kayıt: {count}");
-            _logger.LogInformation($"[DEBUG] ETL tamamlandı: {tablo}, kayıt: {count}");
-            return count;
+            catch (Exception ex)
+            {
+                await tx.RollbackAsync();
+                _logger.LogError(ex, "ETL hata verdi, DELETE geri alındı: {Tablo}", tablo);
+                throw;
+            }
         }
+
         public async Task<string> RunTaskManuallyAsync(int gorevId)
         {
             // Manuel ETL çalıştırmadan önce eski log dosyalarını sil

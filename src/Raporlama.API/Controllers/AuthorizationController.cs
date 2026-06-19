@@ -1,8 +1,9 @@
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Authorization;
+using Microsoft.Extensions.Options;
+using Raporlama.API.Configuration;
 using Raporlama.API.Services;
 using Raporlama.API.Data;
-using System.Security.Principal;
 
 namespace Raporlama.API.Controllers
 {
@@ -11,35 +12,55 @@ namespace Raporlama.API.Controllers
     [Authorize]
     public class AuthorizationController : ControllerBase
     {
-        [HttpPost("default-report")]
-            public async Task<IActionResult> SetDefaultReport([FromBody] SetDefaultReportRequest request)
-            {
-                var userInfo = await _authorizationService.GetUserByUserNameAsync(GetCurrentUserName());
-                if (userInfo == null || userInfo.UserKey == 0)
-                    return BadRequest(new { error = "Kullanıcı bulunamadı" });
-                string? filtersJson = null;
-                if (request.Filters != null)
-                    filtersJson = System.Text.Json.JsonSerializer.Serialize(request.Filters);
-                await _authorizationService.SetUserDefaultReportAsync(userInfo.UserKey, request.ReportKey, filtersJson);
-                return Ok(new { message = "Varsayılan rapor kaydedildi" });
-            }
-            /// Kullanıcının varsayılan raporunu döndürür
-            [HttpGet("default-report")]
-            public async Task<IActionResult> GetDefaultReport(int? reportKey = null)
-            {
-                var userInfo = await _authorizationService.GetUserByUserNameAsync(GetCurrentUserName());
-                if (userInfo == null || userInfo.UserKey == 0)
-                    return Ok(new { reportKey = (int?)null, filters = (string?)null });
-                (int? rk, string? filters) = await _authorizationService.GetUserDefaultReportAsync(userInfo.UserKey, reportKey);
-                return Ok(new { reportKey = rk, filters });
-            }
+        private readonly ICustomAuthorizationService _authorizationService;
+        private readonly IDatabaseService _databaseService;
+        private readonly IAdminService _adminService;
+        private readonly PortalAuthOptions _portalOptions;
+        private readonly ILogger<AuthorizationController> _logger;
 
-            public class SetDefaultReportRequest
-            {
-                public int ReportKey { get; set; }
-                public object? Filters { get; set; }
-            }
-        /// Kullanıcının bir rapora erişim yetkisi olup olmadığını döndürür
+        public AuthorizationController(
+            ICustomAuthorizationService authorizationService,
+            IDatabaseService databaseService,
+            IAdminService adminService,
+            IOptions<PortalAuthOptions> portalOptions,
+            ILogger<AuthorizationController> logger)
+        {
+            _authorizationService = authorizationService;
+            _databaseService = databaseService;
+            _adminService = adminService;
+            _portalOptions = portalOptions.Value;
+            _logger = logger;
+        }
+
+        [HttpGet("is-admin")]
+        public IActionResult IsAdmin()
+        {
+            return Ok(new { isAdmin = _adminService.IsAdmin(GetCurrentUserName()) });
+        }
+
+        [HttpPost("default-report")]
+        public async Task<IActionResult> SetDefaultReport([FromBody] SetDefaultReportRequest request)
+        {
+            var userInfo = await _authorizationService.GetUserByUserNameAsync(GetCurrentUserName());
+            if (userInfo == null || userInfo.UserKey == 0)
+                return BadRequest(new { error = "Kullanıcı bulunamadı" });
+            string? filtersJson = null;
+            if (request.Filters != null)
+                filtersJson = System.Text.Json.JsonSerializer.Serialize(request.Filters);
+            await _authorizationService.SetUserDefaultReportAsync(userInfo.UserKey, request.ReportKey, filtersJson);
+            return Ok(new { message = "Varsayılan rapor kaydedildi" });
+        }
+
+        [HttpGet("default-report")]
+        public async Task<IActionResult> GetDefaultReport(int? reportKey = null)
+        {
+            var userInfo = await _authorizationService.GetUserByUserNameAsync(GetCurrentUserName());
+            if (userInfo == null || userInfo.UserKey == 0)
+                return Ok(new { reportKey = (int?)null, filters = (string?)null });
+            (int? rk, string? filters) = await _authorizationService.GetUserDefaultReportAsync(userInfo.UserKey, reportKey);
+            return Ok(new { reportKey = rk, filters });
+        }
+
         [HttpGet("has-access")]
         public async Task<IActionResult> HasAccess(int reportId)
         {
@@ -47,44 +68,7 @@ namespace Raporlama.API.Controllers
             var hasAccess = await _authorizationService.HasReportAccessAsync(reportId, userName);
             return Ok(new { hasAccess });
         }
-        private readonly Services.ICustomAuthorizationService _authorizationService;
-        private readonly IDatabaseService _databaseService;
-        private readonly ILogger<AuthorizationController> _logger;
 
-        public AuthorizationController(
-            Services.ICustomAuthorizationService authorizationService,
-            IDatabaseService databaseService,
-            ILogger<AuthorizationController> logger)
-        {
-            _authorizationService = authorizationService;
-            _databaseService = databaseService;
-            _logger = logger;
-        }
-
-        private string GetCurrentUserName()
-        {
-            try
-            {
-                if (User?.Identity == null)
-                {
-                    _logger.LogWarning("User.Identity is null in AuthorizationController");
-                    return "Unknown";
-                }
-
-                if (User.Identity is WindowsIdentity identity)
-                {
-                    return identity.Name ?? "Unknown";
-                }
-                
-                return User.Identity.Name ?? "Unknown";
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Error getting current user name");
-                return "Unknown";
-            }
-        }
-        /// Mevcut kullanıcı bilgilerini döndürür
         [HttpGet("current-user")]
         public async Task<IActionResult> GetCurrentUser()
         {
@@ -99,7 +83,7 @@ namespace Raporlama.API.Controllers
                 return StatusCode(500, new { error = ex.Message });
             }
         }
-        /// Kullanıcının erişebileceği rapor ID'lerini döndürür
+
         [HttpGet("accessible-reports")]
         public async Task<IActionResult> GetAccessibleReports()
         {
@@ -115,10 +99,11 @@ namespace Raporlama.API.Controllers
                 return StatusCode(500, new { error = ex.Message });
             }
         }
-        /// Tüm kullanıcıları listeler (admin)
+
         [HttpGet("users")]
         public async Task<IActionResult> GetAllUsers()
         {
+            if (!RequireAdmin(out var denied)) return denied!;
             try
             {
                 var users = await _databaseService.QueryAsync<dynamic>(
@@ -133,10 +118,97 @@ namespace Raporlama.API.Controllers
                 return StatusCode(500, new { error = ex.Message });
             }
         }
-        /// Tüm raporları listeler (admin)
+
+        [HttpPost("users")]
+        public async Task<IActionResult> CreateUser([FromBody] CreateUserRequest request)
+        {
+            if (!RequireAdmin(out var denied)) return denied!;
+            if (string.IsNullOrWhiteSpace(request.UserName))
+                return BadRequest(new { error = "Kullanıcı adı gerekli." });
+
+            var userName = NormalizeNewUserName(request.UserName.Trim());
+            var displayName = string.IsNullOrWhiteSpace(request.DisplayName) ? userName : request.DisplayName.Trim();
+
+            await _authorizationService.EnsureUserExistsAsync(userName, displayName, request.Email ?? "", "");
+            var user = await _authorizationService.GetUserByUserNameAsync(userName);
+            return Ok(user);
+        }
+
+        [HttpGet("reports/{reportKey}/metadata")]
+        public async Task<IActionResult> GetReportMetadata(int reportKey)
+        {
+            if (!RequireAdmin(out var denied)) return denied!;
+            var reports = await _databaseService.QueryAsync<dynamic>(
+                "BellonaRapor",
+                "SELECT ReportKey, ReportCode, ReportName, Url FROM [Report] WHERE ReportKey = @ReportKey",
+                new { ReportKey = reportKey }
+            );
+            var report = reports.FirstOrDefault();
+            if (report == null)
+                return NotFound(new { error = "Rapor bulunamadı" });
+
+            string code = report.ReportCode ?? "";
+            string name = report.ReportName ?? "";
+            string url = report.Url ?? "";
+            var meta = ReportPermissionMetadata.Resolve(code, name, url);
+
+            if (meta == null)
+            {
+                return Ok(new
+                {
+                    hasMetadata = false,
+                    filterFields = Array.Empty<object>(),
+                    columns = Array.Empty<object>()
+                });
+            }
+
+            var filterFields = meta.FilterFields.Select(f => new
+            {
+                field = f,
+                label = meta.FilterLabels.TryGetValue(f, out var lbl) ? lbl : f
+            });
+            var columns = meta.Columns.Select(c => new
+            {
+                field = c,
+                label = meta.ColumnLabels.TryGetValue(c, out var lbl) ? lbl : c
+            });
+
+            return Ok(new { hasMetadata = true, filterFields, columns });
+        }
+
+        private string NormalizeNewUserName(string userName)
+        {
+            if (userName.Contains('\\'))
+                return userName;
+            if (!string.IsNullOrWhiteSpace(_portalOptions.UserNameDomain))
+                return $"{_portalOptions.UserNameDomain}\\{userName}";
+            return userName;
+        }
+
+        [HttpPatch("users/{userKey}/active")]
+        public async Task<IActionResult> SetUserActive(int userKey, [FromBody] SetUserActiveRequest request)
+        {
+            if (!RequireAdmin(out var denied)) return denied!;
+            try
+            {
+                await _databaseService.QueryAsync<int>(
+                    "BellonaRapor",
+                    "UPDATE [User] SET Aktif = @Aktif WHERE UserKey = @UserKey",
+                    new { UserKey = userKey, Aktif = request.Aktif }
+                );
+                return Ok(new { message = "Kullanıcı durumu güncellendi" });
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error updating user active status");
+                return StatusCode(500, new { error = ex.Message });
+            }
+        }
+
         [HttpGet("reports")]
         public async Task<IActionResult> GetAllReports()
         {
+            if (!RequireAdmin(out var denied)) return denied!;
             try
             {
                 var reports = await _databaseService.QueryAsync<dynamic>(
@@ -151,45 +223,38 @@ namespace Raporlama.API.Controllers
                 return StatusCode(500, new { error = ex.Message });
             }
         }
-        /// Kullanıcıya rapor yetkisi verir (admin)
+
         [HttpPost("permissions")]
         public async Task<IActionResult> CreatePermission([FromBody] CreatePermissionRequest request)
         {
+            if (!RequireAdmin(out var denied)) return denied!;
             try
             {
-                // Kullanıcı ve rapor var mı kontrol et
                 var user = await _databaseService.QueryAsync<dynamic>(
                     "BellonaRapor",
                     "SELECT UserKey FROM [User] WHERE UserKey = @UserKey",
                     new { UserKey = request.UserKey }
                 );
-
                 if (!user.Any())
-                {
-                    return BadRequest(new { error = "User not found" });
-                }
+                    return BadRequest(new { error = "Kullanıcı bulunamadı" });
 
                 var report = await _databaseService.QueryAsync<dynamic>(
                     "BellonaRapor",
                     "SELECT ReportKey FROM [Report] WHERE ReportKey = @ReportKey",
                     new { ReportKey = request.ReportKey }
                 );
-
                 if (!report.Any())
-                {
-                    return BadRequest(new { error = "Report not found" });
-                }
+                    return BadRequest(new { error = "Rapor bulunamadı" });
 
-                // Yetki var mı kontrol et
                 var existingPermission = await _databaseService.QueryAsync<dynamic>(
                     "BellonaRapor",
                     "SELECT PermissionKey FROM UserReportPermission WHERE UserKey = @UserKey AND ReportKey = @ReportKey",
                     new { UserKey = request.UserKey, ReportKey = request.ReportKey }
                 );
 
+                int permissionKeyId;
                 if (existingPermission.Any())
                 {
-                    // Varsa güncelle
                     await _databaseService.QueryAsync<int>(
                         "BellonaRapor",
                         @"UPDATE UserReportPermission 
@@ -203,33 +268,16 @@ namespace Raporlama.API.Controllers
                         "SELECT PermissionKey FROM UserReportPermission WHERE UserKey = @UserKey AND ReportKey = @ReportKey",
                         new { UserKey = request.UserKey, ReportKey = request.ReportKey }
                     );
+                    permissionKeyId = permissionKey.First();
 
-                    // Kolon yetkilerini güncelle
-                    if (request.Columns != null && request.Columns.Any())
-                    {
-                        // Önce mevcut kolonları sil
-                        await _databaseService.QueryAsync<int>(
-                            "BellonaRapor",
-                            "DELETE FROM PermissionColumn WHERE PermissionKey = @PermissionKey",
-                            new { PermissionKey = permissionKey.First() }
-                        );
-
-                        // Yeni kolonları ekle
-                        foreach (var column in request.Columns)
-                        {
-                            await _databaseService.QueryAsync<int>(
-                                "BellonaRapor",
-                                "INSERT INTO PermissionColumn (PermissionKey, ColumnName) VALUES (@PermissionKey, @ColumnName)",
-                                new { PermissionKey = permissionKey.First(), ColumnName = column }
-                            );
-                        }
-                    }
-
-                    return Ok(new { message = "Permission updated", PermissionKey = permissionKey.First() });
+                    await _databaseService.QueryAsync<int>(
+                        "BellonaRapor",
+                        "DELETE FROM PermissionColumn WHERE PermissionKey = @PermissionKey",
+                        new { PermissionKey = permissionKeyId }
+                    );
                 }
                 else
                 {
-                    // Yoksa oluştur
                     var permissionKey = await _databaseService.QueryAsync<int>(
                         "BellonaRapor",
                         @"INSERT INTO UserReportPermission (UserKey, ReportKey, RowFilter, Aktif) 
@@ -237,24 +285,22 @@ namespace Raporlama.API.Controllers
                           VALUES (@UserKey, @ReportKey, @RowFilter, @Aktif)",
                         new { UserKey = request.UserKey, ReportKey = request.ReportKey, RowFilter = request.RowFilter ?? "", Aktif = request.Aktif }
                     );
-
-                    var newPermissionKey = permissionKey.First();
-
-                    // Kolon yetkilerini ekle
-                    if (request.Columns != null && request.Columns.Any())
-                    {
-                        foreach (var column in request.Columns)
-                        {
-                            await _databaseService.QueryAsync<int>(
-                                "BellonaRapor",
-                                "INSERT INTO PermissionColumn (PermissionKey, ColumnName) VALUES (@PermissionKey, @ColumnName)",
-                                new { PermissionKey = newPermissionKey, ColumnName = column }
-                            );
-                        }
-                    }
-
-                    return Ok(new { message = "Permission created", PermissionKey = newPermissionKey });
+                    permissionKeyId = permissionKey.First();
                 }
+
+                if (request.Columns != null)
+                {
+                    foreach (var column in request.Columns.Where(c => !string.IsNullOrWhiteSpace(c)))
+                    {
+                        await _databaseService.QueryAsync<int>(
+                            "BellonaRapor",
+                            "INSERT INTO PermissionColumn (PermissionKey, ColumnName) VALUES (@PermissionKey, @ColumnName)",
+                            new { PermissionKey = permissionKeyId, ColumnName = column.Trim() }
+                        );
+                    }
+                }
+
+                return Ok(new { message = "Yetki kaydedildi", permissionKey = permissionKeyId });
             }
             catch (Exception ex)
             {
@@ -262,10 +308,11 @@ namespace Raporlama.API.Controllers
                 return StatusCode(500, new { error = ex.Message });
             }
         }
-        /// Kullanıcının rapor yetkilerini listeler
+
         [HttpGet("permissions/{userKey}")]
         public async Task<IActionResult> GetUserPermissions(int userKey)
         {
+            if (!RequireAdmin(out var denied)) return denied!;
             try
             {
                 var permissions = await _databaseService.QueryAsync<dynamic>(
@@ -277,7 +324,8 @@ namespace Raporlama.API.Controllers
                       INNER JOIN [Report] r ON p.ReportKey = r.ReportKey
                       LEFT JOIN PermissionColumn c ON p.PermissionKey = c.PermissionKey
                       WHERE p.UserKey = @UserKey
-                      GROUP BY p.PermissionKey, p.UserKey, p.ReportKey, p.RowFilter, p.Aktif, r.ReportCode, r.ReportName",
+                      GROUP BY p.PermissionKey, p.UserKey, p.ReportKey, p.RowFilter, p.Aktif, r.ReportCode, r.ReportName
+                      ORDER BY r.ReportName",
                     new { UserKey = userKey }
                 );
                 return Ok(permissions);
@@ -288,27 +336,24 @@ namespace Raporlama.API.Controllers
                 return StatusCode(500, new { error = ex.Message });
             }
         }
-        /// Yetkiyi siler (admin)
+
         [HttpDelete("permissions/{permissionKey}")]
         public async Task<IActionResult> DeletePermission(int permissionKey)
         {
+            if (!RequireAdmin(out var denied)) return denied!;
             try
             {
-                // Önce kolon yetkilerini sil
                 await _databaseService.QueryAsync<int>(
                     "BellonaRapor",
                     "DELETE FROM PermissionColumn WHERE PermissionKey = @PermissionKey",
                     new { PermissionKey = permissionKey }
                 );
-
-                // Sonra yetkiyi sil
                 await _databaseService.QueryAsync<int>(
                     "BellonaRapor",
                     "DELETE FROM UserReportPermission WHERE PermissionKey = @PermissionKey",
                     new { PermissionKey = permissionKey }
                 );
-
-                return Ok(new { message = "Permission deleted" });
+                return Ok(new { message = "Yetki silindi" });
             }
             catch (Exception ex)
             {
@@ -316,6 +361,43 @@ namespace Raporlama.API.Controllers
                 return StatusCode(500, new { error = ex.Message });
             }
         }
+
+        private bool RequireAdmin(out IActionResult? deniedResult)
+        {
+            if (_adminService.IsAdmin(GetCurrentUserName()))
+            {
+                deniedResult = null;
+                return true;
+            }
+            deniedResult = StatusCode(403, new { error = "Bu işlem için yönetici yetkisi gerekli." });
+            return false;
+        }
+
+        private string GetCurrentUserName()
+        {
+            if (User?.Identity == null)
+                return "Unknown";
+            return User.Identity.Name ?? "Unknown";
+        }
+
+        public class CreateUserRequest
+        {
+            public string UserName { get; set; } = string.Empty;
+            public string? DisplayName { get; set; }
+            public string? Email { get; set; }
+        }
+
+        public class SetDefaultReportRequest
+        {
+            public int ReportKey { get; set; }
+            public object? Filters { get; set; }
+        }
+
+        public class SetUserActiveRequest
+        {
+            public bool Aktif { get; set; }
+        }
+
         public class CreatePermissionRequest
         {
             public int UserKey { get; set; }
@@ -326,4 +408,3 @@ namespace Raporlama.API.Controllers
         }
     }
 }
-

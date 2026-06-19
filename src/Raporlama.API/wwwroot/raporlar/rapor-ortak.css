@@ -179,6 +179,12 @@
     padding: 22px;
     flex: 1;
     min-width: 320px;
+    overflow: hidden;
+}
+
+.chart-container > div[id$="Chart"] {
+    overflow: hidden;
+    max-width: 100%;
 }
 
 body {

@@ -104,7 +104,7 @@ window.bekleyenSchema = {
             elementId: '#formChart',
             typeSelector: '#chartTypeForm',
             filterElementId: '#filterForm',
-            defaultType: 'pie',
+            defaultType: 'bar',
             // palette: ['#607d8b', '#795548', '#ff5722', '#009688'],
             legend: {
                 visible: true,
