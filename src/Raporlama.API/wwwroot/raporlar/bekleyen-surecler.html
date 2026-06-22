@@ -20,15 +20,50 @@
             <h3>🔍 Filtreler</h3>
             
             <div class="filter-group">
-                <label class="filter-label">Müdürlük</label>
+                <label class="filter-label">Bekleten Müdürlük Adı</label>
                 <select id="filterMudurluk">
                     <option value="">Tümü</option>
                 </select>
             </div>
             
             <div class="filter-group">
-                <label class="filter-label">Direktörlük</label>
+                <label class="filter-label">Bekleten Direktörlük Adı</label>
                 <select id="filterDirektorluk">
+                    <option value="">Tümü</option>
+                </select>
+            </div>
+
+            <div class="filter-group">
+                <label class="filter-label">Dolduran Şirket</label>
+                <select id="filterDolduranSirket">
+                    <option value="">Tümü</option>
+                </select>
+            </div>
+
+            <div class="filter-group">
+                <label class="filter-label">Bekleten Şirket</label>
+                <select id="filterBekletenSirket">
+                    <option value="">Tümü</option>
+                </select>
+            </div>
+
+            <div class="filter-group">
+                <label class="filter-label">Form Adı</label>
+                <select id="filterForm">
+                    <option value="">Tümü</option>
+                </select>
+            </div>
+
+            <div class="filter-group">
+                <label class="filter-label">Dolduran Kişi</label>
+                <select id="filterDolduranKisi">
+                    <option value="">Tümü</option>
+                </select>
+            </div>
+
+            <div class="filter-group">
+                <label class="filter-label">Bekleten Kişi</label>
+                <select id="filterBekletenKisi">
                     <option value="">Tümü</option>
                 </select>
             </div>
@@ -86,8 +121,8 @@
                         </select>
                         <div style="position:relative;height:0;">
                             <div style="position:absolute;top:-50px;right:8px;display:flex;gap:8px;z-index:2;">
-                                <span style="cursor:pointer;font-size:20px;" onclick="enlargeChart('pieChart', 'DOLDURAN İŞLETMELER')" title="Büyüt">🔍</span>
-                                <span style="cursor:pointer;font-size:20px;" onclick="downloadSVG('pieChart', 'DOLDURAN İŞLETMELER')" title="İndir">⬇️</span>
+                                <span style="cursor:pointer;font-size:20px;" onclick="RaporModul.enlargeChart('pieChart', 'DOLDURAN İŞLETMELER')" title="Büyüt">🔍</span>
+                                <span style="cursor:pointer;font-size:20px;" onclick="RaporModul.downloadSVG('pieChart', 'DOLDURAN İŞLETMELER')" title="İndir">⬇️</span>
                             </div>
                         </div>
                         <div id="pieChart" style="height:340px;min-height:340px;max-height:340px;"></div>
@@ -101,8 +136,8 @@
                         </select>
                         <div style="position:relative;height:0;">
                             <div style="position:absolute;top:-50px;right:8px;display:flex;gap:8px;z-index:2;">
-                                <span style="cursor:pointer;font-size:20px;" onclick="enlargeChart('pieChartBekleten', 'BEKLETEN İŞLETMELER')" title="Büyüt">🔍</span>
-                                <span style="cursor:pointer;font-size:20px;" onclick="downloadSVG('pieChartBekleten', 'BEKLETEN İŞLETMELER')" title="İndir">⬇️</span>
+                                <span style="cursor:pointer;font-size:20px;" onclick="RaporModul.enlargeChart('pieChartBekleten', 'BEKLETEN İŞLETMELER')" title="Büyüt">🔍</span>
+                                <span style="cursor:pointer;font-size:20px;" onclick="RaporModul.downloadSVG('pieChartBekleten', 'BEKLETEN İŞLETMELER')" title="İndir">⬇️</span>
                             </div>
                         </div>
                         <div id="pieChartBekleten" style="height:340px;min-height:340px;max-height:340px;"></div>
@@ -116,8 +151,8 @@
                         </select>
                         <div style="position:relative;height:0;">
                             <div style="position:absolute;top:-50px;right:8px;display:flex;gap:8px;z-index:2;">
-                                <span style="cursor:pointer;font-size:20px;" onclick="enlargeChart('personChartDolduran', 'Kişilere Göre Dolduran')" title="Büyüt">🔍</span>
-                                <span style="cursor:pointer;font-size:20px;" onclick="downloadSVG('personChartDolduran', 'Kişilere Göre Dolduran')" title="İndir">⬇️</span>
+                                <span style="cursor:pointer;font-size:20px;" onclick="RaporModul.enlargeChart('lineChart', 'Bekleme Süresi Dağılımı')" title="Büyüt">🔍</span>
+                                <span style="cursor:pointer;font-size:20px;" onclick="RaporModul.downloadSVG('lineChart', 'Bekleme Süresi Dağılımı')" title="İndir">⬇️</span>
                             </div>
                         </div>
                         <div id="lineChart" style="height:340px;min-height:340px;max-height:340px;"></div>
@@ -131,8 +166,8 @@
                         </select>
                         <div style="position:relative;height:0;">
                             <div style="position:absolute;top:-50px;right:8px;display:flex;gap:8px;z-index:2;">
-                                <span style="cursor:pointer;font-size:20px;" onclick="enlargeChart('personChartDolduran', 'Kişilere Göre Dolduran')" title="Büyüt">🔍</span>
-                                <span style="cursor:pointer;font-size:20px;" onclick="downloadSVG('personChartDolduran', 'Kişilere Göre Dolduran')" title="İndir">⬇️</span>
+                                <span style="cursor:pointer;font-size:20px;" onclick="RaporModul.enlargeChart('personChartDolduran', 'Kişilere Göre Dolduran')" title="Büyüt">🔍</span>
+                                <span style="cursor:pointer;font-size:20px;" onclick="RaporModul.downloadSVG('personChartDolduran', 'Kişilere Göre Dolduran')" title="İndir">⬇️</span>
                             </div>
                         </div>
                         <div id="personChartDolduran" style="height:340px;min-height:340px;max-height:340px;"></div>
@@ -146,8 +181,8 @@
                         </select>
                         <div style="position:relative;height:0;">
                             <div style="position:absolute;top:-50px;right:8px;display:flex;gap:8px;z-index:2;">
-                                <span style="cursor:pointer;font-size:20px;" onclick="enlargeChart('personChartBekleten', 'Kişilere Göre Bekleten')" title="Büyüt">🔍</span>
-                                <span style="cursor:pointer;font-size:20px;" onclick="downloadSVG('personChartBekleten', 'Kişilere Göre Bekleten')" title="İndir">⬇️</span>
+                                <span style="cursor:pointer;font-size:20px;" onclick="RaporModul.enlargeChart('personChartBekleten', 'Kişilere Göre Bekleten')" title="Büyüt">🔍</span>
+                                <span style="cursor:pointer;font-size:20px;" onclick="RaporModul.downloadSVG('personChartBekleten', 'Kişilere Göre Bekleten')" title="İndir">⬇️</span>
                             </div>
                         </div>
                         <div id="personChartBekleten" style="height:340px;min-height:340px;max-height:340px;"></div>
@@ -161,8 +196,8 @@
                         </select>
                         <div style="position:relative;height:0;">
                             <div style="position:absolute;top:-50px;right:8px;display:flex;gap:8px;z-index:2;">
-                                <span style="cursor:pointer;font-size:20px;" onclick="enlargeChart('mudurlukChart', 'MÜDÜRLÜKLERE GÖRE DAĞILIM')" title="Büyüt">🔍</span>
-                                <span style="cursor:pointer;font-size:20px;" onclick="downloadSVG('mudurlukChart', 'MÜDÜRLÜKLERE GÖRE DAĞILIM')" title="İndir">⬇️</span>
+                                <span style="cursor:pointer;font-size:20px;" onclick="RaporModul.enlargeChart('mudurlukChart', 'MÜDÜRLÜKLERE GÖRE DAĞILIM')" title="Büyüt">🔍</span>
+                                <span style="cursor:pointer;font-size:20px;" onclick="RaporModul.downloadSVG('mudurlukChart', 'MÜDÜRLÜKLERE GÖRE DAĞILIM')" title="İndir">⬇️</span>
                             </div>
                         </div>
                         <div id="mudurlukChart" style="height:340px;min-height:340px;max-height:340px;"></div>
@@ -176,8 +211,8 @@
                         </select>
                         <div style="position:relative;height:0;">
                             <div style="position:absolute;top:-50px;right:8px;display:flex;gap:8px;z-index:2;">
-                                <span style="cursor:pointer;font-size:20px;" onclick="enlargeChart('formChart', 'FORMLARA GÖRE DAĞILIM')" title="Büyüt">🔍</span>
-                                <span style="cursor:pointer;font-size:20px;" onclick="downloadSVG('formChart', 'FORMLARA GÖRE DAĞILIM')" title="İndir">⬇️</span>
+                                <span style="cursor:pointer;font-size:20px;" onclick="RaporModul.enlargeChart('formChart', 'FORMLARA GÖRE DAĞILIM')" title="Büyüt">🔍</span>
+                                <span style="cursor:pointer;font-size:20px;" onclick="RaporModul.downloadSVG('formChart', 'FORMLARA GÖRE DAĞILIM')" title="İndir">⬇️</span>
                             </div>
                         </div>
                         <div id="formChart" style="height:340px;min-height:340px;max-height:340px;"></div>
@@ -201,17 +236,15 @@
         </div>
     </div>
     <script src="https://code.jquery.com/jquery-3.6.0.min.js" integrity="sha256-/xUj+3OJU5yExlq6GSYGSHk7tPXikynS7ogEvDej/m4=" crossorigin="anonymous"></script>
-    <!-- DevExpress JS -->
+    <script src="/lib/js/jszip.min.js"></script>
     <script src="/lib/js/dx.all.js"></script>
-    <script src="/lib/js/FileSaver.min.js"></script>
-    <script src="/lib/js/exceljs.min.js"></script>
     <script src="common.js"></script>
     <script src="toast.js"></script>
-    <script src="raporModul.js"></script>
-    <script src="bekleyen-schema.js"></script>
     <script>
         window.API_BASE = '/api';
     </script>
+    <script src="raporModul.js"></script>
+    <script src="bekleyen-schema.js"></script>
     </body>
     </html>
 

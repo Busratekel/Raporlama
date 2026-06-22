@@ -1,5 +1,27 @@
 window.API_BASE = window.API_BASE || (window.location.origin + '/api');
 
+async function fetchJsonSafe(url, options = {}) {
+    const resp = await fetch(url, { credentials: 'include', ...options });
+    const text = await resp.text();
+    let payload = null;
+    if (text && text.trim()) {
+        try {
+            payload = JSON.parse(text);
+        } catch {
+            throw new Error(`Sunucu geçersiz yanıt döndü (HTTP ${resp.status}).`);
+        }
+    }
+    if (!resp.ok) {
+        const msg = payload?.error || payload?.message || `İstek başarısız (HTTP ${resp.status}).`;
+        if (resp.status === 401) {
+            window.location.href = '/menu.html';
+            throw new Error('Oturum bulunamadı. Menüye yönlendiriliyorsunuz…');
+        }
+        throw new Error(msg);
+    }
+    return payload ?? {};
+}
+
 // Ultra-dinamik rapor modülü: Şema ve alanlar API'den veya JSON'dan alınır
 class RaporModul {
         // Ortak grafik büyütme fonksiyonu
@@ -205,20 +227,25 @@ class RaporModul {
     }
 
     async init() {
-        await this.fetchSchemaAndData();
-        this.populateFilters();
-        await this.loadDefaultFilters();
-        this.bindEvents();
-        this.updateAll();
+        try {
+            await this.fetchSchemaAndData();
+            this.populateFilters();
+            await this.loadDefaultFilters();
+            this.bindEvents();
+            this.updateAll();
+        } catch (err) {
+            console.error('Rapor yüklenemedi:', err);
+            const msg = err?.message || 'Rapor verisi yüklenirken hata oluştu.';
+            if (typeof showToast === 'function') showToast(msg, 'error');
+            else alert(msg);
+        }
     }
 
     async fetchSchemaAndData() {
         // Şema API'den veya window.raporSchema'dan alınabilir
         let schema = this.schema;
         if (typeof schema === 'string') {
-            // API'den şema çek
-            const resp = await fetch(schema, { credentials: 'include' });
-            schema = await resp.json();
+            schema = await fetchJsonSafe(schema);
         }
         this.schema = schema;
         // Data çek
@@ -228,15 +255,13 @@ class RaporModul {
             dataUrl = window.API_BASE + `/reports/${metaReportId}/data`;
         }
         if (!dataUrl && schema.reportKey) {
-            // Otomatik endpoint
-            const reportsResp = await fetch(window.API_BASE + '/reports', { credentials: 'include' });
-            const reports = await reportsResp.json();
-            let report = reports.find(r => r.reportCode && r.reportCode.toLowerCase().includes(schema.reportKey.toLowerCase()));
+            const reports = await fetchJsonSafe(window.API_BASE + '/reports');
+            const list = Array.isArray(reports) ? reports : [];
+            let report = list.find(r => r.reportCode && r.reportCode.toLowerCase().includes(schema.reportKey.toLowerCase()));
             if (report) dataUrl = window.API_BASE + `/reports/${report.reportID}/data`;
         }
         if (!dataUrl) throw new Error('Data endpointi bulunamadı!');
-        const dataResp = await fetch(dataUrl, { credentials: 'include' });
-        const result = await dataResp.json();
+        const result = await fetchJsonSafe(dataUrl);
         this.data = result.data || result || [];
         // Kolonlar otomatik veya şemadan
         if (schema.columns && schema.columns.length) {
@@ -260,9 +285,11 @@ class RaporModul {
         (this.schema.filters || []).forEach(f => {
             const set = new Set(filterData.map(d => d[f.field]).filter(Boolean));
             const select = document.getElementById(f.elementId);
-            if (!select) return;
+            if (!select || select.tagName !== 'SELECT') return;
             select.innerHTML = `<option value="">Tümü</option>`;
-            set.forEach(val => {
+            [...set]
+                .sort((a, b) => String(a).localeCompare(String(b), 'tr', { sensitivity: 'base' }))
+                .forEach(val => {
                 const opt = document.createElement('option');
                 opt.value = val;
                 opt.text = val;
@@ -314,7 +341,9 @@ class RaporModul {
         (this.schema.filters || []).forEach(f => {
             if (document.getElementById(f.elementId)) keys.add(f.field);
         });
-        keys.add('BekleyenGun');
+        (this.schema.charts || []).forEach(c => {
+            if (c.field) keys.add(c.field);
+        });
         if (this.schema.bucketFilters) {
             Object.keys(this.schema.bucketFilters).forEach(k => keys.add(k));
         }
@@ -371,18 +400,6 @@ class RaporModul {
                     } else if (compare === '=') {
                         if (recVal.getTime() !== inputDate.getTime()) match = false;
                     }
-                } else if (key === 'BekleyenGun') {
-                    const bucketVal = this.filterState['BekleyenGun'];
-                    if (bucketVal) {
-                        const ranges = {
-                            '0-7': [0,7], '8-15': [8,15], '16-30': [16,30], '31-60': [31,60], '61-180': [61,180], '>180': [181, Number.MAX_SAFE_INTEGER]
-                        };
-                        const range = ranges[bucketVal];
-                        if (range) {
-                            const v = Number(d.BekleyenGun) || 0;
-                            if (!(v >= range[0] && v <= range[1])) match = false;
-                        }
-                    }
                 } else if (this.schema.bucketFilters && this.schema.bucketFilters[key]) {
                     const cfg = this.schema.bucketFilters[key];
                     const bucket = (cfg.buckets || []).find(b => b.key === val);
@@ -407,9 +424,7 @@ class RaporModul {
         this.renderGrid();
         this.renderSummaries();
         this.renderCharts();
-        if (typeof this.renderDistributionTable === 'function') {
-            this.renderDistributionTable();
-        }
+        this.renderDistributionTable();
     }
 
     renderGrid() {
@@ -439,6 +454,7 @@ class RaporModul {
                 scrolling: { mode: "standard" },
                 export: {
                     enabled: true,
+                    allowExportHiddenColumns: true,
                     allowExportSelectedData: true,
                     texts: {
                         exportAll: "Tümünü Excel'e Aktar",
@@ -448,7 +464,9 @@ class RaporModul {
                 },
             });
         } else {
-            gridElem.dxDataGrid("instance").option("dataSource", gridData);
+            const instance = gridElem.dxDataGrid("instance");
+            instance.option("columns", gridColumns);
+            instance.option("dataSource", gridData);
         }
     }
 
@@ -510,16 +528,16 @@ class RaporModul {
                 let secilen = e.target.originalArgument;
                 if (useBuckets) secilen = secilen.replace(' gün', '');
                 if (typeof secilen === 'string') secilen = secilen.trim();
+                this.filterState[chart.field] = secilen;
+                const filterField = (this.schema.filters || []).find(f => f.field === chart.field);
+                if (filterField) {
+                    this.filterState[filterField.field] = secilen;
+                    const filterElem = document.getElementById(filterField.elementId);
+                    if (filterElem) filterElem.value = secilen;
+                }
                 if (chart.filterElementId) {
-                    this.filterState[chart.field] = secilen;
                     const elem = document.querySelector(chart.filterElementId);
                     if (elem) elem.value = secilen;
-                    const filterField = (this.schema.filters || []).find(f => f.field === chart.field);
-                    if (filterField) {
-                        this.filterState[filterField.field] = secilen;
-                        const filterElem = document.getElementById(filterField.elementId);
-                        if (filterElem) filterElem.value = secilen;
-                    }
                 }
                 this.updateAll();
             };

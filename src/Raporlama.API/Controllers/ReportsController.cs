@@ -94,7 +94,7 @@ namespace Raporlama.API.Controllers
                 var hasAccess = await _authorizationService.HasReportAccessAsync(reportId, userName);
                 if (!hasAccess)
                 {
-                    return Forbid($"User {userName} does not have access to report {reportId}");
+                    return StatusCode(403, new { error = $"Bu rapora erişim yetkiniz yok. (Rapor {reportId})" });
                 }
 
                 var report = await _reportService.GetReportAsync(reportId);
@@ -121,7 +121,7 @@ namespace Raporlama.API.Controllers
                 var hasAccess = await _authorizationService.HasReportAccessAsync(reportId, userName);
                 if (!hasAccess)
                 {
-                    return Forbid($"User {userName} does not have access to report {reportId}");
+                    return StatusCode(403, new { error = $"Bu rapora erişim yetkiniz yok. (Rapor {reportId})" });
                 }
 
                 var data = await _dataSourceService.GetReportDataAsync(reportId, userName, null);
@@ -130,7 +130,7 @@ namespace Raporlama.API.Controllers
             catch (UnauthorizedAccessException ex)
             {
                 _logger.LogWarning(ex, "Unauthorized access attempt for report {ReportId}", reportId);
-                return Forbid(ex.Message);
+                return StatusCode(403, new { error = ex.Message });
             }
             catch (Exception ex)
             {
