@@ -24,31 +24,38 @@ async function fetchJsonSafe(url, options = {}) {
 
 // Ultra-dinamik rapor modülü: Şema ve alanlar API'den veya JSON'dan alınır
 class RaporModul {
-        // Ortak grafik büyütme fonksiyonu
         static enlargeChart(chartId, title) {
+            if (window.rapor && typeof window.rapor.enlargeChart === 'function') {
+                window.rapor.enlargeChart(chartId, title);
+                return;
+            }
+            RaporModul.enlargeChartLegacy(chartId, title);
+        }
+
+        static downloadSVG(chartId, title) {
+            if (window.rapor && typeof window.rapor.downloadChart === 'function') {
+                window.rapor.downloadChart(chartId, title);
+                return;
+            }
+            RaporModul.downloadSVGLegacy(chartId, title);
+        }
+
+        static enlargeChartLegacy(chartId, title) {
             const oldModal = document.getElementById('chartEnlargeModal');
             if (oldModal) oldModal.remove();
             const chartElem = document.getElementById(chartId);
             if (!chartElem) return;
             const modal = document.createElement('div');
             modal.id = 'chartEnlargeModal';
-            modal.style.position = 'fixed';
-            modal.style.top = '0';
-            modal.style.left = '0';
-            modal.style.width = '100vw';
-            modal.style.height = '100vh';
-            modal.style.background = 'rgba(0,0,0,0.8)';
-            modal.style.zIndex = '9999';
-            modal.style.display = 'flex';
-            modal.style.alignItems = 'center';
-            modal.style.justifyContent = 'center';
+            modal.style.cssText = 'position:fixed;top:0;left:0;width:100vw;height:100vh;background:rgba(0,0,0,0.8);z-index:9999;display:flex;align-items:center;justify-content:center;';
             modal.innerHTML = `<div style='background:#23242a;padding:32px;border-radius:12px;max-width:90vw;max-height:90vh;overflow:auto;position:relative;'>
                 <h2 style='color:#00eaff;text-align:center;margin-bottom:18px;'>${title}</h2>
                 <div id='modalChartContent' style='text-align:center;'></div>
-                <button onclick='document.body.removeChild(this.parentNode.parentNode)' style='position:absolute;top:12px;right:12px;background:#e74c3c;color:#fff;padding:8px 16px;border:none;border-radius:6px;cursor:pointer;'>Kapat</button>
+                <button type="button" id="chartEnlargeCloseBtn" style='position:absolute;top:12px;right:12px;background:#e74c3c;color:#fff;padding:8px 16px;border:none;border-radius:6px;cursor:pointer;'>Kapat</button>
             </div>`;
             document.body.appendChild(modal);
-            const chartContent = chartElem.querySelector('svg') ? chartElem.querySelector('svg').cloneNode(true) : chartElem.querySelector('canvas') ? chartElem.querySelector('canvas').cloneNode(true) : null;
+            modal.querySelector('#chartEnlargeCloseBtn').onclick = () => modal.remove();
+            const chartContent = chartElem.querySelector('svg')?.cloneNode(true) || chartElem.querySelector('canvas')?.cloneNode(true);
             if (chartContent) {
                 chartContent.style.width = '800px';
                 chartContent.style.height = '500px';
@@ -58,37 +65,34 @@ class RaporModul {
             }
         }
 
-        // Ortak SVG indirme fonksiyonu
-        static downloadSVG(chartId, title) {
-            const chartElem = document.getElementById(chartId);
-            if (!chartElem) return;
-            const svgElem = chartElem.querySelector('svg');
+        static downloadSVGLegacy(chartId, title) {
+            const svgElem = document.getElementById(chartId)?.querySelector('svg');
             if (!svgElem) { alert('SVG bulunamadı!'); return; }
+            RaporModul.saveSvgElement(svgElem, title);
+        }
+
+        static saveSvgElement(svgElem, title) {
             let svgString = new XMLSerializer().serializeToString(svgElem);
             const parser = new DOMParser();
             const doc = parser.parseFromString(svgString, 'image/svg+xml');
             const svg = doc.documentElement;
-            let width = svg.getAttribute('width') || '800';
-            let height = svg.getAttribute('height') || '500';
-            width = parseInt(width);
-            height = parseInt(height);
+            let width = parseInt(svg.getAttribute('width') || '800', 10);
+            let height = parseInt(svg.getAttribute('height') || '500', 10);
             const titleFontSize = 28;
             const titleMargin = 24;
             const extraSpace = 32;
             const newHeight = height + titleFontSize + titleMargin + extraSpace;
-            svg.setAttribute('height', newHeight);
+            svg.setAttribute('height', String(newHeight));
             if (svg.hasAttribute('viewBox')) {
                 const vb = svg.getAttribute('viewBox').split(' ');
-                if (vb.length === 4) {
-                    vb[3] = String(parseInt(vb[3]) + titleFontSize + titleMargin + extraSpace);
-                    svg.setAttribute('viewBox', vb.join(' '));
-                }
+                if (vb.length === 4) vb[3] = String(parseInt(vb[3], 10) + titleFontSize + titleMargin + extraSpace);
+                svg.setAttribute('viewBox', vb.join(' '));
             }
             const titleText = doc.createElementNS('http://www.w3.org/2000/svg', 'text');
-            titleText.setAttribute('x', width/2);
-            titleText.setAttribute('y', titleFontSize + titleMargin/2);
+            titleText.setAttribute('x', String(width / 2));
+            titleText.setAttribute('y', String(titleFontSize + titleMargin / 2));
             titleText.setAttribute('text-anchor', 'middle');
-            titleText.setAttribute('font-size', titleFontSize);
+            titleText.setAttribute('font-size', String(titleFontSize));
             titleText.setAttribute('font-weight', 'bold');
             titleText.setAttribute('fill', '#00eaff');
             titleText.setAttribute('font-family', 'Segoe UI, Arial, sans-serif');
@@ -96,8 +100,8 @@ class RaporModul {
             svg.setAttribute('style', 'background:#23242a;display:block;margin:auto;');
             Array.from(svg.children).forEach(child => {
                 if (child.tagName !== 'text') {
-                    let prev = child.getAttribute('transform') || '';
-                    let translate = `translate(0,${titleFontSize + titleMargin + extraSpace})`;
+                    const prev = child.getAttribute('transform') || '';
+                    const translate = `translate(0,${titleFontSize + titleMargin + extraSpace})`;
                     child.setAttribute('transform', prev ? `${prev} ${translate}` : translate);
                 }
             });
@@ -107,7 +111,7 @@ class RaporModul {
             const url = URL.createObjectURL(blob);
             const a = document.createElement('a');
             a.href = url;
-            a.download = `${title.replace(/ /g,'_')}.svg`;
+            a.download = `${title.replace(/ /g, '_')}.svg`;
             document.body.appendChild(a);
             a.click();
             document.body.removeChild(a);
@@ -206,11 +210,11 @@ class RaporModul {
                         const el = document.querySelector(chart.typeSelector);
                         const key = chart.typeSelector.replace('#','');
                         if (el) {
-                            if (filters[key] !== undefined && filters[key] !== null && filters[key] !== "") {
-                                el.value = filters[key];
-                            } else if (chart.defaultType) {
-                                el.value = chart.defaultType;
-                            }
+                            const preferred = (filters[key] !== undefined && filters[key] !== null && filters[key] !== '')
+                                ? filters[key]
+                                : chart.defaultType;
+                            const resolved = this.setChartTypeSelectValue(el, preferred, chart.defaultType);
+                            this.filterState[key] = resolved;
                         }
                     }
                 });
@@ -231,6 +235,7 @@ class RaporModul {
             await this.fetchSchemaAndData();
             this.populateFilters();
             await this.loadDefaultFilters();
+            this.sortFilterDropdowns();
             this.bindEvents();
             this.updateAll();
         } catch (err) {
@@ -278,36 +283,88 @@ class RaporModul {
         }
     }
 
+    sortFilterOptions(values) {
+        return [...values].sort((a, b) =>
+            String(a ?? '').trim().localeCompare(String(b ?? '').trim(), 'tr-TR', { numeric: true, sensitivity: 'base' })
+        );
+    }
+
+    getRowValue(row, field) {
+        if (!row || !field) return undefined;
+        if (row[field] != null && String(row[field]).trim() !== '') return row[field];
+        const norm = String(field).toLocaleLowerCase('tr-TR');
+        for (const k of Object.keys(row)) {
+            if (k.toLocaleLowerCase('tr-TR') === norm) {
+                const v = row[k];
+                if (v != null && String(v).trim() !== '') return v;
+            }
+        }
+        const aliases = (this.schema.fieldAliases && this.schema.fieldAliases[field]) || [];
+        for (const alt of aliases) {
+            const v = this.getRowValue(row, alt);
+            if (v != null && String(v).trim() !== '') return v;
+        }
+        return undefined;
+    }
+
+    setChartTypeSelectValue(selectEl, value, fallback) {
+        if (!selectEl || selectEl.tagName !== 'SELECT') return fallback || 'pie';
+        const allowed = [...selectEl.options].map(o => o.value).filter(Boolean);
+        const pick = allowed.includes(value)
+            ? value
+            : (allowed.includes(fallback) ? fallback : (allowed[0] || 'pie'));
+        selectEl.value = pick;
+        return pick;
+    }
+
+    syncChartTypeSelects() {
+        (this.schema.charts || []).forEach(chart => {
+            if (!chart.typeSelector) return;
+            const el = document.querySelector(chart.typeSelector);
+            if (!el) return;
+            const key = chart.typeSelector.replace('#', '');
+            const preferred = this.filterState[key] || el.value || chart.defaultType;
+            const resolved = this.setChartTypeSelectValue(el, preferred, chart.defaultType);
+            this.filterState[key] = resolved;
+        });
+    }
+
+    sortFilterDropdowns() {
+        (this.schema.filters || []).forEach(f => {
+            const select = document.getElementById(f.elementId);
+            if (!select || select.tagName !== 'SELECT') return;
+            const current = select.value;
+            const options = [...select.options].filter(o => o.value !== '');
+            options.sort((a, b) =>
+                a.text.localeCompare(b.text, 'tr-TR', { numeric: true, sensitivity: 'base' })
+            );
+            select.innerHTML = '<option value="">Tümü</option>';
+            options.forEach(o => select.appendChild(o));
+            if (current) select.value = current;
+        });
+    }
+
     populateFilters() {
         const filterData = typeof this.schema.enrichRow === 'function'
             ? this.data.map(r => this.schema.enrichRow(r))
             : this.data;
         (this.schema.filters || []).forEach(f => {
-            const set = new Set(filterData.map(d => d[f.field]).filter(Boolean));
+            const set = new Set(filterData.map(d => this.getRowValue(d, f.field)).filter(Boolean));
             const select = document.getElementById(f.elementId);
             if (!select || select.tagName !== 'SELECT') return;
+            const saved = this.filterState[f.field] || select.value || '';
             select.innerHTML = `<option value="">Tümü</option>`;
-            [...set]
-                .sort((a, b) => String(a).localeCompare(String(b), 'tr', { sensitivity: 'base' }))
-                .forEach(val => {
+            this.sortFilterOptions([...set]).forEach(val => {
                 const opt = document.createElement('option');
                 opt.value = val;
                 opt.text = val;
                 select.appendChild(opt);
             });
-            // filterState'e ilk değerleri ata
-            this.filterState[f.field] = '';
+            if (saved) select.value = saved;
+            this.filterState[f.field] = select.value || '';
         });
-        // Grafik tipi select'lerinde defaultType varsa, sadece value ata, option ekleme
-        (this.schema.charts || []).forEach(chart => {
-            if (chart.typeSelector && chart.defaultType) {
-                const el = document.querySelector(chart.typeSelector);
-                if (el) {
-                    el.value = chart.defaultType;
-                    this.filterState[chart.typeSelector.replace('#','')] = chart.defaultType;
-                }
-            }
-        });
+        // Grafik tipi select'lerinde mevcut seçimi koru
+        this.syncChartTypeSelects();
         // Dinamik tarih filtreleri için filterState başlat
         (this.schema.filters || []).forEach(f => {
             if (f.type === 'date') {
@@ -322,6 +379,267 @@ class RaporModul {
         return JSON.parse(JSON.stringify(legend));
     }
 
+    findChartByHostId(chartId) {
+        const id = String(chartId).replace(/^#/, '');
+        return (this.schema.charts || []).find(c => c.elementId === `#${id}` || c.elementId === id);
+    }
+
+    getChartSource() {
+        return (this.filteredWithCalculated && this.filteredWithCalculated.length)
+            ? this.filteredWithCalculated
+            : this.filtered;
+    }
+
+    buildChartData(chart, chartSource) {
+        const useBuckets = chart.useBuckets || chart.field === 'BekleyenGun';
+        if (useBuckets && Array.isArray(this.schema.beklemeSuresiBuckets)) {
+            const buckets = this.schema.beklemeSuresiBuckets;
+            const grouped = buckets.map(b => ({ bucket: b.key, count: 0, min: b.min, max: b.max }));
+            (chartSource || []).forEach(d => {
+                const gun = Number(d[chart.field] ?? d.BekleyenGun ?? d.BeklemeGun) || 0;
+                const bucket = grouped.find(b => gun >= b.min && gun <= b.max);
+                if (bucket) bucket.count++;
+            });
+            return grouped.map(g => ({ argument: g.bucket + ' gün', value: g.count }));
+        }
+        const grouped = {};
+        (chartSource || []).forEach(d => {
+            const key = this.getRowValue(d, chart.field);
+            if (key == null || String(key).trim() === '') return;
+            grouped[key] = (grouped[key] || 0) + 1;
+        });
+        const limit = chart.limit || 15;
+        return Object.entries(grouped)
+            .map(([argument, value]) => ({ argument, value }))
+            .sort((a, b) => b.value - a.value)
+            .slice(0, limit);
+    }
+
+    getChartType(chart) {
+        return $(chart.typeSelector).val() || chart.defaultType || 'pie';
+    }
+
+    createChartClickHandler(chart, useBuckets) {
+        return (e) => {
+            let secilen = e.target.originalArgument;
+            if (useBuckets) secilen = secilen.replace(' gün', '');
+            if (typeof secilen === 'string') secilen = secilen.trim();
+            this.filterState[chart.field] = secilen;
+            const filterField = (this.schema.filters || []).find(f => f.field === chart.field);
+            if (filterField) {
+                this.filterState[filterField.field] = secilen;
+                const filterElem = document.getElementById(filterField.elementId);
+                if (filterElem) filterElem.value = secilen;
+            }
+            if (chart.filterElementId) {
+                const elem = document.querySelector(chart.filterElementId);
+                if (elem) elem.value = secilen;
+            }
+            this.updateAll();
+        };
+    }
+
+    getEnlargedChartSize(chartType, count) {
+        if (chartType === 'pie') {
+            return {
+                width: Math.max(1100, Math.min(count * 70, 1800)),
+                height: Math.max(680, 420 + Math.ceil(count / 3) * 28)
+            };
+        }
+        if (chartType === 'bar' && count > 8) {
+            return {
+                width: 1100,
+                height: Math.max(700, count * 44)
+            };
+        }
+        return {
+            width: Math.max(1100, Math.min(count * 100, 2400)),
+            height: count > 10 ? 680 : 620
+        };
+    }
+
+    static COMPACT_PIE_LEGEND_MAX = 6;
+
+    buildLegend(chart, chartType, chartData, profile) {
+        const base = this.cloneLegend(chart.legend);
+        const count = chartData.length;
+
+        if (profile === 'enlarge') {
+            if (chartType === 'pie') {
+                return {
+                    visible: true,
+                    orientation: 'horizontal',
+                    horizontalAlignment: 'center',
+                    verticalAlignment: 'bottom',
+                    itemTextPosition: 'right',
+                    columnCount: Math.min(4, Math.max(2, Math.ceil(count / 6))),
+                    paddingLeftRight: 12,
+                    paddingTopBottom: 8,
+                    font: { size: 12 },
+                    margin: 20
+                };
+            }
+            return { ...base, visible: true, font: { size: 12 } };
+        }
+
+        // Kompakt çubuk/çizgi: şemadaki legend ayarları
+        if (chartType !== 'pie') {
+            return { ...base, visible: true };
+        }
+
+        // Kompakt pasta: az kategori varsa legend, çok veride gizle
+        if (count > RaporModul.COMPACT_PIE_LEGEND_MAX) {
+            return { visible: false };
+        }
+
+        return {
+            ...base,
+            visible: true,
+            verticalAlignment: 'bottom',
+            horizontalAlignment: 'center',
+            margin: 24,
+            paddingTopBottom: 8,
+            paddingLeftRight: 8,
+            columnCount: Math.min(4, Math.max(2, Math.ceil(count / 3))),
+            font: { size: 9 }
+        };
+    }
+
+    renderDxChart($container, chart, chartData, chartType, profile, onPointClick) {
+        const isEnlarge = profile === 'enlarge';
+        const palette = chart.palette || undefined;
+        const legend = this.buildLegend(chart, chartType, chartData, profile);
+        const count = chartData.length;
+        const size = isEnlarge ? this.getEnlargedChartSize(chartType, count) : null;
+
+        if (isEnlarge) {
+            $container.css({ width: size.width, height: size.height, minWidth: size.width, minHeight: size.height });
+        } else {
+            $container.css({ width: '', height: '340px', minHeight: '340px', maxHeight: '340px' });
+        }
+
+        const labelCustomize = isEnlarge
+            ? (point) => `${point.argumentText}: ${point.valueText}`
+            : (point) => point.valueText;
+
+        if (chartType === 'pie') {
+            $container.dxPieChart({
+                dataSource: chartData,
+                palette,
+                size: isEnlarge ? { width: size.width, height: size.height } : undefined,
+                series: [{
+                    argumentField: 'argument',
+                    valueField: 'value',
+                    label: {
+                        visible: true,
+                        connector: { visible: true },
+                        customizeText: labelCustomize
+                    }
+                }],
+                tooltip: { enabled: true, contentTemplate: d => `${d.argumentText}: ${d.value}` },
+                legend,
+                onPointClick: onPointClick || undefined
+            });
+            return;
+        }
+
+        const rotation = count > 6 ? -45 : (count > 4 ? -30 : 0);
+        const useRotatedBar = isEnlarge && chartType === 'bar' && count > 8;
+        const chartOptions = {
+            dataSource: chartData,
+            palette,
+            size: isEnlarge ? { width: size.width, height: size.height } : undefined,
+            rotated: useRotatedBar,
+            series: [{ argumentField: 'argument', valueField: 'value', name: chart.field, type: chartType }],
+            tooltip: { enabled: true, contentTemplate: d => `${d.argumentText}: ${d.value}` },
+            legend,
+            onPointClick: onPointClick || undefined
+        };
+        if (isEnlarge) {
+            chartOptions.argumentAxis = {
+                label: {
+                    visible: true,
+                    overlappingBehavior: 'none',
+                    rotationAngle: useRotatedBar ? 0 : rotation,
+                    font: { size: 11 }
+                }
+            };
+        }
+        $container.dxChart(chartOptions);
+    }
+
+    enlargeChart(chartId, title) {
+        const chart = this.findChartByHostId(chartId);
+        if (!chart) {
+            RaporModul.enlargeChartLegacy(chartId, title);
+            return;
+        }
+
+        const oldModal = document.getElementById('chartEnlargeModal');
+        if (oldModal) oldModal.remove();
+
+        const chartData = this.buildChartData(chart, this.getChartSource());
+        const chartType = this.getChartType(chart);
+        const size = this.getEnlargedChartSize(chartType, chartData.length);
+        const useBuckets = chart.useBuckets || chart.field === 'BekleyenGun';
+        const onPointClick = this.createChartClickHandler(chart, useBuckets);
+
+        const modal = document.createElement('div');
+        modal.id = 'chartEnlargeModal';
+        modal.className = 'chart-modal-backdrop';
+        modal.innerHTML = `
+            <div class="chart-modal-panel">
+                <h2 class="chart-modal-title">${title}</h2>
+                <div id="modalChartScroll" style="overflow:auto;max-width:90vw;">
+                    <div id="modalChartHost"></div>
+                </div>
+                <button type="button" id="chartEnlargeCloseBtn" class="chart-modal-close">Kapat</button>
+            </div>`;
+        document.body.appendChild(modal);
+
+        const close = () => {
+            this.disposeChartElement('#modalChartHost');
+            modal.remove();
+        };
+        modal.querySelector('#chartEnlargeCloseBtn').onclick = close;
+        modal.addEventListener('click', (e) => { if (e.target === modal) close(); });
+
+        this.renderDxChart($('#modalChartHost'), chart, chartData, chartType, 'enlarge', onPointClick);
+    }
+
+    downloadChart(chartId, title) {
+        const chart = this.findChartByHostId(chartId);
+        if (!chart) {
+            RaporModul.downloadSVGLegacy(chartId, title);
+            return;
+        }
+
+        const hostId = 'chartDownloadHost';
+        let $host = $(`#${hostId}`);
+        if (!$host.length) {
+            $('body').append(`<div id="${hostId}" style="position:fixed;left:-20000px;top:0;visibility:hidden;"></div>`);
+            $host = $(`#${hostId}`);
+        }
+
+        this.disposeChartElement(`#${hostId}`);
+        const chartData = this.buildChartData(chart, this.getChartSource());
+        const chartType = this.getChartType(chart);
+        this.renderDxChart($host, chart, chartData, chartType, 'enlarge', null);
+
+        setTimeout(() => {
+            const svgElem = document.getElementById(hostId)?.querySelector('svg');
+            if (!svgElem) {
+                alert('Grafik indirilemedi.');
+                this.disposeChartElement(`#${hostId}`);
+                $host.empty();
+                return;
+            }
+            RaporModul.saveSvgElement(svgElem, title);
+            this.disposeChartElement(`#${hostId}`);
+            $host.empty();
+        }, 400);
+    }
+
     disposeChartElement(elementId) {
         const $el = $(elementId);
         if (!$el.length) return;
@@ -334,6 +652,7 @@ class RaporModul {
             if (bar) bar.dispose();
         } catch (_) {}
         $el.empty();
+        $el.css({ width: '', height: '340px', minHeight: '340px', maxHeight: '340px' });
     }
 
     getDataFilterKeys() {
@@ -410,7 +729,7 @@ class RaporModul {
                     }
                 } else {
                     // Diğer tüm alanlar için trim ve null-safe karşılaştırma
-                    if (String(d[key] || '').trim().toLowerCase() !== String(val).trim().toLowerCase()) match = false;
+                    if (String(this.getRowValue(d, key) || '').trim().toLowerCase() !== String(val).trim().toLowerCase()) match = false;
                 }
                 if (!match) break;
             }
@@ -427,17 +746,48 @@ class RaporModul {
         this.renderDistributionTable();
     }
 
+    buildGridColumns() {
+        return this.columns.map(col => {
+            const mapped = { ...col };
+            if (col.visible === false) {
+                mapped.allowExporting = true;
+                mapped.showInColumnChooser = false;
+            }
+            if (!col.forceText) return mapped;
+            return {
+                ...mapped,
+                calculateCellValue: row => row[col.dataField] != null ? String(row[col.dataField]) : ''
+            };
+        });
+    }
+
+    getHiddenExportColumnFields(columns) {
+        return columns
+            .filter(c => c.visible === false && c.dataField)
+            .map(c => c.dataField);
+    }
+
+    createGridExportHandlers(hiddenFields) {
+        const hideColumns = (component) => {
+            hiddenFields.forEach(field => component.columnOption(field, 'visible', false));
+        };
+        return {
+            onExporting: (e) => {
+                hiddenFields.forEach(field => e.component.columnOption(field, 'visible', true));
+                // onExported eski DevExtreme sürümlerinde tetiklenmeyebilir
+                setTimeout(() => hideColumns(e.component), 1500);
+            },
+            onExported: (e) => hideColumns(e.component)
+        };
+    }
+
     renderGrid() {
         const gridElem = $("#gridContainer");
         let grid = gridElem.data("dxDataGrid");
         const gridData = this.filteredWithCalculated;
-        const gridColumns = this.columns.map(col => {
-            if (!col.forceText) return col;
-            return {
-                ...col,
-                calculateCellValue: row => row[col.dataField] != null ? String(row[col.dataField]) : ''
-            };
-        });
+        const gridColumns = this.buildGridColumns();
+        const hiddenExportFields = this.getHiddenExportColumnFields(gridColumns);
+        const exportHandlers = this.createGridExportHandlers(hiddenExportFields);
         if (!grid) {
             gridElem.dxDataGrid({
                 dataSource: gridData,
@@ -454,7 +804,6 @@ class RaporModul {
                 scrolling: { mode: "standard" },
                 export: {
                     enabled: true,
-                    allowExportHiddenColumns: true,
                     allowExportSelectedData: true,
                     texts: {
                         exportAll: "Tümünü Excel'e Aktar",
@@ -462,12 +811,129 @@ class RaporModul {
                         exportTo: "Excel'e Aktar"
                     }
                 },
+                onExporting: exportHandlers.onExporting,
+                onExported: exportHandlers.onExported,
             });
         } else {
             const instance = gridElem.dxDataGrid("instance");
             instance.option("columns", gridColumns);
             instance.option("dataSource", gridData);
+            instance.option("onExporting", exportHandlers.onExporting);
+            instance.option("onExported", exportHandlers.onExported);
         }
+    }
+
+    buildSummaryModalColumns(cfg) {
+        const allCols = this.buildGridColumns();
+        const colMap = new Map(allCols.map(c => [c.dataField, c]));
+        if (cfg && cfg.columns && cfg.columns.length) {
+            return cfg.columns
+                .map(df => colMap.get(df) || { dataField: df, caption: df })
+                .filter(Boolean);
+        }
+        return allCols.filter(c => c.visible !== false);
+    }
+
+    getSummaryDetailRows(summary, summaryValue) {
+        const cfg = summary.detailModal || {};
+        const sortField = cfg.sortField || summary.field;
+        const data = [...(this.filteredWithCalculated || this.filtered || [])];
+        const sortDir = cfg.sortOrder === 'asc' ? 1 : -1;
+
+        data.sort((a, b) => {
+            const na = Number(this.getRowValue(a, sortField));
+            const nb = Number(this.getRowValue(b, sortField));
+            if (isNaN(na) && isNaN(nb)) return 0;
+            if (isNaN(na)) return 1;
+            if (isNaN(nb)) return -1;
+            return sortDir * (na - nb);
+        });
+
+        const maxVal = Number(summaryValue);
+        if (summary.type === 'max' && cfg.nearMaxMargin != null && !isNaN(maxVal)) {
+            const minVal = maxVal - cfg.nearMaxMargin;
+            return data.filter(d => {
+                const v = Number(this.getRowValue(d, sortField));
+                return !isNaN(v) && v >= minVal;
+            });
+        }
+        return data;
+    }
+
+    openSummaryDetailModal(summary, summaryValue) {
+        const cfg = summary.detailModal;
+        if (!cfg) return;
+
+        const existing = document.getElementById('summaryDetailModal');
+        if (existing) existing.remove();
+
+        const sortField = cfg.sortField || summary.field;
+        const rows = this.getSummaryDetailRows(summary, summaryValue);
+        const maxVal = Number(summaryValue);
+        const maxCount = !isNaN(maxVal)
+            ? rows.filter(d => Number(this.getRowValue(d, sortField)) === maxVal).length
+            : 0;
+
+        let subtitle = `${rows.length} kayıt — gün sayısına göre azalan sırada`;
+        if (!isNaN(maxVal) && summary.type === 'max') {
+            subtitle = `En yüksek: ${maxVal} gün`;
+            if (maxCount) subtitle += ` (${maxCount} kayıt)`;
+            if (cfg.nearMaxMargin != null) {
+                subtitle += ` · Son ${cfg.nearMaxMargin} gün aralığındaki kayıtlar`;
+            }
+            subtitle += ` · Toplam ${rows.length} kayıt`;
+        }
+
+        const backdrop = document.createElement('div');
+        backdrop.id = 'summaryDetailModal';
+        backdrop.className = 'chart-modal-backdrop';
+        backdrop.innerHTML = `
+            <div class="chart-modal-panel summary-detail-panel">
+                <button type="button" class="chart-modal-close" id="summaryDetailCloseBtn">Kapat</button>
+                <h2 class="chart-modal-title">${cfg.title || 'Detay'}</h2>
+                <p class="summary-detail-subtitle">${subtitle}</p>
+                <div id="summaryDetailGrid"></div>
+            </div>
+        `;
+        document.body.appendChild(backdrop);
+
+        const close = () => {
+            const gridHost = $('#summaryDetailGrid');
+            if (gridHost.data('dxDataGrid')) gridHost.dxDataGrid('dispose');
+            backdrop.remove();
+        };
+        backdrop.querySelector('#summaryDetailCloseBtn').onclick = close;
+        backdrop.addEventListener('click', (e) => { if (e.target === backdrop) close(); });
+
+        const self = this;
+        const modalColumns = this.buildSummaryModalColumns(cfg);
+        $('#summaryDetailGrid').dxDataGrid({
+            dataSource: rows,
+            columns: modalColumns,
+            showBorders: true,
+            filterRow: { visible: true },
+            searchPanel: { visible: true, width: 240, placeholder: 'Ara...' },
+            paging: { pageSize: 10 },
+            pager: {
+                showPageSizeSelector: true,
+                allowedPageSizes: [10, 20, 50, 100],
+                showInfo: true
+            },
+            sorting: { mode: 'multiple' },
+            columnAutoWidth: true,
+            allowColumnResizing: true,
+            rowAlternationEnabled: true,
+            height: 'min(60vh, 520px)',
+            onRowPrepared: cfg.highlightMax && !isNaN(maxVal)
+                ? (e) => {
+                    if (e.rowType !== 'data') return;
+                    const v = Number(self.getRowValue(e.data, sortField));
+                    if (!isNaN(v) && v === maxVal) {
+                        e.rowElement.addClass('summary-detail-row-max');
+                    }
+                }
+                : undefined
+        });
     }
 
     renderSummaries() {
@@ -478,88 +944,51 @@ class RaporModul {
             if (summary.type === 'count') {
                 value = data.length;
             } else if (summary.type === 'max') {
-                const vals = data.map(d => Number(d[summary.field])).filter(x => !isNaN(x));
+                const vals = data.map(d => Number(this.getRowValue(d, summary.field))).filter(x => !isNaN(x));
                 value = vals.length ? Math.max(...vals) : '-';
             } else if (summary.type === 'avg') {
-                const vals = data.map(d => Number(d[summary.field])).filter(x => !isNaN(x));
+                const vals = data.map(d => Number(this.getRowValue(d, summary.field))).filter(x => !isNaN(x));
                 value = vals.length ? (vals.reduce((a, b) => a + b, 0) / vals.length).toFixed(1) : '-';
             } else if (typeof summary.calc === 'function') {
                 value = summary.calc(data);
             }
-            $(summary.elementId).text(value);
+            const $el = $(summary.elementId);
+            $el.text(value);
+
+            const $card = $el.closest('.stat-card');
+            let $icon = $card.find('.stat-card-detail-icon');
+            if (summary.detailModal && value !== '-') {
+                if (!$icon.length) {
+                    $icon = $(`<span class="stat-card-detail-icon" aria-hidden="true">
+                        <svg viewBox="0 0 24 24" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
+                            <circle cx="12" cy="12" r="3"></circle>
+                        </svg>
+                    </span>`);
+                    $card.append($icon);
+                }
+                $icon.show();
+                $card.addClass('stat-card-clickable').attr('title', 'Detay için tıklayın');
+                $card.off('click.summaryDetail').on('click.summaryDetail', () => {
+                    this.openSummaryDetailModal(summary, value);
+                });
+            } else {
+                if ($icon.length) $icon.hide();
+                $card.removeClass('stat-card-clickable').removeAttr('title').off('click.summaryDetail');
+            }
         });
     }
 
     renderCharts() {
-        const chartSource = (this.filteredWithCalculated && this.filteredWithCalculated.length)
-            ? this.filteredWithCalculated
-            : this.filtered;
+        const chartSource = this.getChartSource();
         (this.schema.charts || []).forEach(chart => {
             try {
-            let chartData = [];
-            const useBuckets = chart.useBuckets || chart.field === 'BekleyenGun';
-            if (useBuckets && Array.isArray(this.schema.beklemeSuresiBuckets)) {
-                const buckets = this.schema.beklemeSuresiBuckets;
-                const grouped = buckets.map(b => ({ bucket: b.key, count: 0, min: b.min, max: b.max }));
-                (chartSource || []).forEach(d => {
-                    const gun = Number(d[chart.field] ?? d.BekleyenGun ?? d.BeklemeGun) || 0;
-                    const bucket = grouped.find(b => gun >= b.min && gun <= b.max);
-                    if (bucket) bucket.count++;
-                });
-                chartData = grouped.map(g => ({ argument: g.bucket + ' gün', value: g.count }));
-            } else {
-                const grouped = {};
-                (chartSource || []).forEach(d => {
-                    const key = d[chart.field];
-                    if (!key) return;
-                    grouped[key] = (grouped[key] || 0) + 1;
-                });
-                const limit = chart.limit || 15;
-                chartData = Object.entries(grouped)
-                    .map(([argument, value]) => ({ argument, value }))
-                    .sort((a, b) => b.value - a.value)
-                    .slice(0, limit);
-            }
-            const chartType = $(chart.typeSelector).val() || chart.defaultType || 'pie';
-            this.disposeChartElement(chart.elementId);
-            const palette = chart.palette || undefined;
-            const legend = this.cloneLegend(chart.legend);
-            const handleChartClick = (e) => {
-                let secilen = e.target.originalArgument;
-                if (useBuckets) secilen = secilen.replace(' gün', '');
-                if (typeof secilen === 'string') secilen = secilen.trim();
-                this.filterState[chart.field] = secilen;
-                const filterField = (this.schema.filters || []).find(f => f.field === chart.field);
-                if (filterField) {
-                    this.filterState[filterField.field] = secilen;
-                    const filterElem = document.getElementById(filterField.elementId);
-                    if (filterElem) filterElem.value = secilen;
-                }
-                if (chart.filterElementId) {
-                    const elem = document.querySelector(chart.filterElementId);
-                    if (elem) elem.value = secilen;
-                }
-                this.updateAll();
-            };
-            if (chartType === 'pie') {
-                $(chart.elementId).dxPieChart({
-                    dataSource: chartData,
-                    palette: palette,
-                    series: [{ argumentField: 'argument', valueField: 'value', label: { visible: true, connector: { visible: true }, customizeText: function(point) { return point.valueText; } } }],
-                    tooltip: { enabled: true, contentTemplate: d => `${d.argumentText}: ${d.value}` },
-                    legend: legend,
-                    onPointClick: handleChartClick
-                });
-            } else {
-                $(chart.elementId).dxChart({
-                    dataSource: chartData,
-                    palette: palette,
-                    series: [{ argumentField: 'argument', valueField: 'value', name: chart.field, type: chartType }],
-                    tooltip: { enabled: true, contentTemplate: d => `${d.argumentText}: ${d.value}` },
-                    legend: legend,
-                    onPointClick: handleChartClick
-                });
-            }
+                const chartData = this.buildChartData(chart, chartSource);
+                const chartType = this.getChartType(chart);
+                const useBuckets = chart.useBuckets || chart.field === 'BekleyenGun';
+                const handleChartClick = this.createChartClickHandler(chart, useBuckets);
+                this.disposeChartElement(chart.elementId);
+                this.renderDxChart($(chart.elementId), chart, chartData, chartType, 'compact', handleChartClick);
             } catch (err) {
                 console.error('Grafik render hatasi:', chart.elementId, err);
             }
@@ -606,7 +1035,9 @@ class RaporModul {
             if (chart.typeSelector) {
                 const el = document.querySelector(chart.typeSelector);
                 if (el) el.addEventListener('change', () => {
-                    this.filterState[chart.typeSelector.replace('#','')] = el.value;
+                    const key = chart.typeSelector.replace('#', '');
+                    const resolved = this.setChartTypeSelectValue(el, el.value, chart.defaultType);
+                    this.filterState[key] = resolved;
                     this.renderCharts();
                 });
             }
@@ -669,7 +1100,7 @@ class RaporModul {
                 } else if (d[f.dataField] !== undefined) {
                     val = d[f.dataField];
                 }
-                const dateField = d.SurecBaslangicTarihi || d.BaslamaTarihi;
+                const dateField = d.SurecBaslangicTarihi || d.BaslamaTarihi || d['Başlama Tarihi'];
                 if (val == null && f.dataField === 'Yil' && dateField) {
                     const dt = new Date(dateField);
                     if (!isNaN(dt)) val = dt.getFullYear();

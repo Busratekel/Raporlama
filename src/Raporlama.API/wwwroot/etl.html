@@ -5,7 +5,7 @@
     <title>ETL Görev Yönetimi</title>
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <link href="lib/css/bootstrap.min.css" rel="stylesheet">
-    <link rel="stylesheet" href="../raporlar/rapor-ortak.css">
+    <link rel="stylesheet" href="raporlar/rapor-ortak.css">
     <style>
         body { background: #181a1b; color: #f5f6fa; }
         h1 { margin-top: 32px; margin-bottom: 24px; font-weight: bold; }
@@ -74,10 +74,10 @@
                 <div class="mb-2">
                     <label class="form-label">Çalışma Zamanı</label>
                     <div class="row g-2">
-                        <div class="col-md-2">
+                        <div class="col-md-3">
                             <input type="number" min="0" max="59" class="form-control" id="cronMinute" placeholder="Dakika" title="Dakika">
                         </div>
-                        <div class="col-md-2">
+                        <div class="col-md-3">
                             <input type="number" min="0" max="23" class="form-control" id="cronHour" placeholder="Saat" title="Saat">
                         </div>
                         <div class="col-md-2">
@@ -92,7 +92,7 @@
                                 <option value="0">Pazar</option>
                             </select>
                         </div>
-                        <div class="col-md-6">
+                        <div class="col-md-8">
                             <input class="form-control" id="schedule" placeholder="Cron ifadesi (otomatik doldurulur)">
                         </div>
                     </div>
@@ -113,14 +113,41 @@
 
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
-    <script src="../raporlar/toast.js"></script>
+    <script src="raporlar/toast.js"></script>
     <script>
     const api = '/api/etlgorevleri';
+    const fetchOpts = { credentials: 'same-origin' };
     let editingId = null;
     let gorevModal = null;
+    let logPollTimer = null;
+
+    async function ensureAdmin() {
+        const r = await fetch('/api/authorization/is-admin', fetchOpts);
+        if (!r.ok) {
+            window.location.href = '/menu.html';
+            return false;
+        }
+        const data = await r.json();
+        if (!data.isAdmin) {
+            alert('ETL yönetimi için yönetici yetkisi gerekir.');
+            window.location.href = '/menu.html';
+            return false;
+        }
+        return true;
+    }
+
+    async function apiFetch(url, options) {
+        const r = await fetch(url, { ...fetchOpts, ...options });
+        if (r.status === 401 || r.status === 403) {
+            throw new Error(r.status === 401
+                ? 'Oturum açmanız gerekiyor. Menüden giriş yapın.'
+                : 'Bu sayfa için yönetici yetkisi gerekir.');
+        }
+        return r;
+    }
 
     function fetchGorevler() {
-        fetch(api)
+        apiFetch(api)
             .then(r => r.json())
             .then(data => {
                 const tbody = document.querySelector('#gorevTable tbody');
@@ -143,7 +170,8 @@
                     ].join('');
                     tbody.appendChild(tr);
                 });
-            });
+            })
+            .catch(err => showToast(err.message, 'error'));
     }
 
     function showAddForm() {
@@ -160,7 +188,7 @@
     }
 
     function editGorev(id) {
-        fetch(api + '/' + id)
+        apiFetch(api + '/' + id)
             .then(r => r.json())
             .then(gorev => {
                 editingId = id;
@@ -201,51 +229,67 @@
             fetch(api + '/' + (editingId || id), {
                 method: 'PUT',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(gorev)
+                body: JSON.stringify(gorev),
+                credentials: 'same-origin'
             }).then(() => { closeModal(); fetchGorevler(); });
         } else {
             fetch(api, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(gorev)
+                body: JSON.stringify(gorev),
+                credentials: 'same-origin'
             }).then(() => { closeModal(); fetchGorevler(); });
         }
     }
 
     function deleteGorev(id) {
         if (!confirm('Silmek istediğinize emin misiniz?')) return;
-        fetch(api + '/' + id, { method: 'DELETE' })
+        fetch(api + '/' + id, { method: 'DELETE', credentials: 'same-origin' })
             .then(() => fetchGorevler());
     }
 
     function runGorev(id) {
         showToast('ETL başlatıldı...', 'info');
-        fetch(api + '/run/' + id, { method: 'POST' })
+        apiFetch(api + '/run/' + id, { method: 'POST' })
             .then(r => r.text())
             .then(msg => {
+                fetchLogs();
                 const lowerMsg = msg.toLowerCase();
-                if (lowerMsg.includes('başarı') || lowerMsg.includes('çalıştırıldı') || lowerMsg.includes('etkilenen kayıt')) {
-                    showToast('ETL' + msg + 'başarıyla tamamlandı!', 'success');
-                } else if (lowerMsg.includes('hata')) {
-                    showToast('ETL sırasında hata oluştu!', 'error');
+                if (lowerMsg.includes('çalıştırıldı') || lowerMsg.includes('etkilenen kayıt') || lowerMsg.includes('kayıt:')) {
+                    showToast(msg, 'success');
+                } else if (lowerMsg.includes('hata') || lowerMsg.includes('ulaşılamadı') || lowerMsg.includes('çalıştırılamadı')) {
+                    showToast(msg, 'error');
+                } else {
+                    showToast(msg, 'info');
                 }
+            })
+            .catch(err => showToast('ETL isteği başarısız: ' + err.message, 'error'));
+    }
+
+    function fetchLogs() {
+        apiFetch('/api/etlgorevleri/logs?raw=1')
+            .then(r => r.text())
+            .then(text => {
+                document.getElementById('logText').textContent = text || '(Log dosyası boş)';
+            })
+            .catch(err => {
+                document.getElementById('logText').textContent =
+                    'Loglar okunamadı.\n' + err.message +
+                    '\n\nKontrol listesi:' +
+                    '\n1. Portala giriş yaptınız mı? (yönetici olmalısınız)' +
+                    '\n2. Raporlama.API çalışıyor mu?' +
+                    '\n3. appsettings.json → ETL:LogDirectory = ETL servisinin log klasörü' +
+                    '\n   Örnek: C:\\Services\\Raporlama.ETL\\logs' +
+                    '\n   veya geliştirme: src\\Raporlama.ETL\\bin\\Debug\\net10.0\\logs';
             });
     }
 
-    window.onload = fetchGorevler;
-        // ETL Loglarını çek ve göster
-        function fetchLogs() {
-            fetch('/api/etlgorevleri/logs?raw=1')
-                .then(r => r.ok ? r.text() : '')
-                .then(text => {
-                    document.getElementById('logText').textContent = text;
-                });
-        }
-        window.onload = function() {
-            fetchGorevler();
-            fetchLogs();
-            setInterval(fetchLogs, 5000); // 5 sn'de bir logları güncelle
-        }
+    window.onload = async function() {
+        if (!(await ensureAdmin())) return;
+        fetchGorevler();
+        fetchLogs();
+        logPollTimer = setInterval(fetchLogs, 10000);
+    };
     </script>
 </body>
 </html>

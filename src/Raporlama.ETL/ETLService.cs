@@ -24,14 +24,21 @@ namespace Raporlama.ETL
             _connectionString = _configuration.GetConnectionString("BellonaRapor");
         }
 
-        public static string GetLogDirectory() =>
-            Path.Combine(AppContext.BaseDirectory, "logs");
+        public string GetLogDirectory() => ResolveLogDirectory(_configuration);
 
-        public static void CleanupOldLogs()
+        public static string ResolveLogDirectory(IConfiguration? configuration = null)
+        {
+            var configured = configuration?["ETL:LogDirectory"];
+            if (!string.IsNullOrWhiteSpace(configured))
+                return configured.Trim();
+            return Path.Combine(AppContext.BaseDirectory, "logs");
+        }
+
+        public static void CleanupOldLogs(IConfiguration? configuration = null)
         {
             try
             {
-                var logDir = GetLogDirectory();
+                var logDir = ResolveLogDirectory(configuration);
                 Directory.CreateDirectory(logDir);
                 var today = DateTime.Now.ToString("yyyyMMdd");
                 var files = Directory.GetFiles(logDir, "etl-*.txt");
@@ -81,6 +88,34 @@ namespace Raporlama.ETL
             return value;
         }
 
+        private static string QuoteSqlIdentifier(string name) =>
+            $"[{name.Replace("]", "]]")}]";
+
+        private static string NormalizeTableName(string tablo) =>
+            tablo.Trim().Trim('[', ']');
+
+        private static async Task InsertRowAsync(
+            SqlConnection conn,
+            IDbTransaction tx,
+            string tablo,
+            Dictionary<string, object> dict)
+        {
+            var dp = new DynamicParameters();
+            var columns = new List<string>();
+            var parameters = new List<string>();
+            var i = 0;
+            foreach (var kv in dict)
+            {
+                var paramName = "p" + i++;
+                columns.Add(QuoteSqlIdentifier(kv.Key));
+                parameters.Add("@" + paramName);
+                dp.Add(paramName, kv.Value);
+            }
+
+            var sql = $"INSERT INTO {QuoteSqlIdentifier(NormalizeTableName(tablo))} ({string.Join(",", columns)}) VALUES ({string.Join(",", parameters)})";
+            await conn.ExecuteAsync(sql, dp, transaction: tx);
+        }
+
         public async Task<int> RunCustomETLWithResultAsync(string sorgu, string tablo)
         {
             CleanupOldLogs();
@@ -96,8 +131,9 @@ namespace Raporlama.ETL
             await using var tx = await conn.BeginTransactionAsync();
             try
             {
-                await conn.ExecuteAsync($"DELETE FROM {tablo}", transaction: tx);
+                await conn.ExecuteAsync($"DELETE FROM {QuoteSqlIdentifier(NormalizeTableName(tablo))}", transaction: tx);
                 int count = 0;
+                string? loggedColumns = null;
                 foreach (var row in data)
                 {
                     var source = (IDictionary<string, object>)row;
@@ -105,10 +141,13 @@ namespace Raporlama.ETL
                     foreach (var kv in source)
                         dict[kv.Key] = NormalizeCellValue(kv.Value);
 
-                    var columns = string.Join(",", dict.Keys);
-                    var parameters = string.Join(",", dict.Keys.Select(k => "@" + k));
-                    var sql = $"INSERT INTO {tablo} ({columns}) VALUES ({parameters})";
-                    await conn.ExecuteAsync(sql, dict, transaction: tx);
+                    if (loggedColumns == null)
+                    {
+                        loggedColumns = string.Join(", ", dict.Keys);
+                        _logger.LogInformation("[DEBUG] ETL kolonları: {Columns}", loggedColumns);
+                    }
+
+                    await InsertRowAsync(conn, tx, tablo, dict);
                     count++;
                 }
 

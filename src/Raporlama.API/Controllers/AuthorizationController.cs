@@ -15,6 +15,7 @@ namespace Raporlama.API.Controllers
         private readonly ICustomAuthorizationService _authorizationService;
         private readonly IDatabaseService _databaseService;
         private readonly IAdminService _adminService;
+        private readonly IDepartmentOptionsService _departmentOptionsService;
         private readonly PortalAuthOptions _portalOptions;
         private readonly ILogger<AuthorizationController> _logger;
 
@@ -22,12 +23,14 @@ namespace Raporlama.API.Controllers
             ICustomAuthorizationService authorizationService,
             IDatabaseService databaseService,
             IAdminService adminService,
+            IDepartmentOptionsService departmentOptionsService,
             IOptions<PortalAuthOptions> portalOptions,
             ILogger<AuthorizationController> logger)
         {
             _authorizationService = authorizationService;
             _databaseService = databaseService;
             _adminService = adminService;
+            _departmentOptionsService = departmentOptionsService;
             _portalOptions = portalOptions.Value;
             _logger = logger;
         }
@@ -100,6 +103,22 @@ namespace Raporlama.API.Controllers
             }
         }
 
+        [HttpGet("mudurluk-options")]
+        public async Task<IActionResult> GetMudurlukOptions()
+        {
+            if (!RequireAdmin(out var denied)) return denied!;
+            try
+            {
+                var options = await _departmentOptionsService.GetMudurlukAdlariAsync();
+                return Ok(options);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error getting mudurluk options");
+                return StatusCode(500, new { error = ex.Message });
+            }
+        }
+
         [HttpGet("users")]
         public async Task<IActionResult> GetAllUsers()
         {
@@ -108,7 +127,7 @@ namespace Raporlama.API.Controllers
             {
                 var users = await _databaseService.QueryAsync<dynamic>(
                     "BellonaRapor",
-                    "SELECT UserKey, UserName, DisplayName, Email, Groups, Aktif as IsActive FROM [User] ORDER BY UserName"
+                    "SELECT UserKey, UserName, DisplayName, Email, Groups, MudurlukAdi, Aktif as IsActive FROM [User] ORDER BY UserName"
                 );
                 return Ok(users);
             }
@@ -185,6 +204,30 @@ namespace Raporlama.API.Controllers
             return userName;
         }
 
+        [HttpPatch("users/{userKey}/mudurluk-adi")]
+        public async Task<IActionResult> SetUserMudurlukAdi(int userKey, [FromBody] SetUserMudurlukAdiRequest request)
+        {
+            if (!RequireAdmin(out var denied)) return denied!;
+            try
+            {
+                var adi = string.IsNullOrWhiteSpace(request.MudurlukAdi)
+                    ? null
+                    : request.MudurlukAdi.Trim();
+
+                await _databaseService.QueryAsync<int>(
+                    "BellonaRapor",
+                    "UPDATE [User] SET MudurlukAdi = @MudurlukAdi WHERE UserKey = @UserKey",
+                    new { UserKey = userKey, MudurlukAdi = adi }
+                );
+                return Ok(new { message = "Müdürlük adı güncellendi", mudurlukAdi = adi });
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error updating user mudurluk adi");
+                return StatusCode(500, new { error = ex.Message });
+            }
+        }
+
         [HttpPatch("users/{userKey}/active")]
         public async Task<IActionResult> SetUserActive(int userKey, [FromBody] SetUserActiveRequest request)
         {
@@ -258,9 +301,16 @@ namespace Raporlama.API.Controllers
                     await _databaseService.QueryAsync<int>(
                         "BellonaRapor",
                         @"UPDATE UserReportPermission 
-                          SET RowFilter = @RowFilter, Aktif = @Aktif 
+                          SET RowFilter = @RowFilter, Aktif = @Aktif, DepartmentFilterEnabled = @DepartmentFilterEnabled
                           WHERE UserKey = @UserKey AND ReportKey = @ReportKey",
-                        new { UserKey = request.UserKey, ReportKey = request.ReportKey, RowFilter = request.RowFilter ?? "", Aktif = request.Aktif }
+                        new
+                        {
+                            UserKey = request.UserKey,
+                            ReportKey = request.ReportKey,
+                            RowFilter = request.RowFilter ?? "",
+                            Aktif = request.Aktif,
+                            DepartmentFilterEnabled = request.DepartmentFilterEnabled
+                        }
                     );
 
                     var permissionKey = await _databaseService.QueryAsync<int>(
@@ -280,10 +330,17 @@ namespace Raporlama.API.Controllers
                 {
                     var permissionKey = await _databaseService.QueryAsync<int>(
                         "BellonaRapor",
-                        @"INSERT INTO UserReportPermission (UserKey, ReportKey, RowFilter, Aktif) 
+                        @"INSERT INTO UserReportPermission (UserKey, ReportKey, RowFilter, Aktif, DepartmentFilterEnabled) 
                           OUTPUT INSERTED.PermissionKey
-                          VALUES (@UserKey, @ReportKey, @RowFilter, @Aktif)",
-                        new { UserKey = request.UserKey, ReportKey = request.ReportKey, RowFilter = request.RowFilter ?? "", Aktif = request.Aktif }
+                          VALUES (@UserKey, @ReportKey, @RowFilter, @Aktif, @DepartmentFilterEnabled)",
+                        new
+                        {
+                            UserKey = request.UserKey,
+                            ReportKey = request.ReportKey,
+                            RowFilter = request.RowFilter ?? "",
+                            Aktif = request.Aktif,
+                            DepartmentFilterEnabled = request.DepartmentFilterEnabled
+                        }
                     );
                     permissionKeyId = permissionKey.First();
                 }
@@ -317,14 +374,14 @@ namespace Raporlama.API.Controllers
             {
                 var permissions = await _databaseService.QueryAsync<dynamic>(
                     "BellonaRapor",
-                    @"SELECT p.PermissionKey, p.UserKey, p.ReportKey, p.RowFilter, p.Aktif,
+                    @"SELECT p.PermissionKey, p.UserKey, p.ReportKey, p.RowFilter, p.Aktif, p.DepartmentFilterEnabled,
                              r.ReportCode, r.ReportName,
                              STRING_AGG(c.ColumnName, ',') as Columns
                       FROM UserReportPermission p
                       INNER JOIN [Report] r ON p.ReportKey = r.ReportKey
                       LEFT JOIN PermissionColumn c ON p.PermissionKey = c.PermissionKey
                       WHERE p.UserKey = @UserKey
-                      GROUP BY p.PermissionKey, p.UserKey, p.ReportKey, p.RowFilter, p.Aktif, r.ReportCode, r.ReportName
+                      GROUP BY p.PermissionKey, p.UserKey, p.ReportKey, p.RowFilter, p.Aktif, p.DepartmentFilterEnabled, r.ReportCode, r.ReportName
                       ORDER BY r.ReportName",
                     new { UserKey = userKey }
                 );
@@ -393,6 +450,11 @@ namespace Raporlama.API.Controllers
             public object? Filters { get; set; }
         }
 
+        public class SetUserMudurlukAdiRequest
+        {
+            public string? MudurlukAdi { get; set; }
+        }
+
         public class SetUserActiveRequest
         {
             public bool Aktif { get; set; }
@@ -404,6 +466,7 @@ namespace Raporlama.API.Controllers
             public int ReportKey { get; set; }
             public string? RowFilter { get; set; }
             public bool Aktif { get; set; } = true;
+            public bool DepartmentFilterEnabled { get; set; } = true;
             public List<string>? Columns { get; set; }
         }
     }

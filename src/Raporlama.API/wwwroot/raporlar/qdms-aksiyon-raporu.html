@@ -10,9 +10,13 @@
 
     <title>QDMS Aksiyon Raporu</title>
 
-    <link rel="stylesheet" href="../lib/css/dx.dark.css" />
+    <link id="dxThemeCss" rel="stylesheet" href="../lib/css/dx.dark.css" />
 
     <link rel="stylesheet" href="rapor-ortak.css" />
+
+    <script src="theme.js"></script>
+
+    <script>RaporTheme.init({ dxBase: '../lib/css/' });</script>
 
 </head>
 
@@ -23,6 +27,8 @@
     <div class="header">
 
         <h1>📋 QDMS Aksiyon Raporu</h1>
+
+        <button type="button" id="themeToggle" class="theme-toggle">☀️ Açık Tema</button>
 
     </div>
 
@@ -42,7 +48,7 @@
 
             <div class="filter-group">
 
-                <label class="filter-label">Müdürlük</label>
+                <label class="filter-label">Sisteme Girenin Müdürlük/Direktörlüğü</label>
 
                 <select id="filterMudurluk"><option value="">Tümü</option></select>
 
@@ -58,7 +64,7 @@
 
             <div class="filter-group">
 
-                <label class="filter-label">Şirket</label>
+                <label class="filter-label">Sorumlu Birim</label>
 
                 <select id="filterSirket"><option value="">Tümü</option></select>
 
@@ -74,7 +80,7 @@
 
             <div class="filter-group">
 
-                <label class="filter-label">Bekleten Kişi</label>
+                <label class="filter-label">Sisteme Giren Kişi</label>
 
                 <select id="filterKisi"><option value="">Tümü</option></select>
 
@@ -82,9 +88,9 @@
 
             <div class="filter-group">
 
-                <label class="filter-label">Yönetici</label>
+                <label class="filter-label">İşi Yapacak Kişi</label>
 
-                <select id="filterYonetici"><option value="">Tümü</option></select>
+                <select id="filterIsiYapacak"><option value="">Tümü</option></select>
 
             </div>
 
@@ -118,11 +124,11 @@
 
                 <div class="stats">
 
-                    <div class="stat-card stat-card-blue"><h3 id="ortalamaBekleme">-</h3><p>Ortalama Bekleme (gün)</p></div>
+                    <div class="stat-card stat-card-blue"><h3 id="ortalamaBekleme">-</h3><p>Ortalama Gün Sayısı</p></div>
 
-                    <div class="stat-card stat-card-green"><h3 id="bekleyenSurec">-</h3><p>Bekleyen Süreç</p></div>
+                    <div class="stat-card stat-card-green"><h3 id="bekleyenSurec">-</h3><p>Toplam Kayıt</p></div>
 
-                    <div class="stat-card stat-card-red"><h3 id="enUzunBekleme">-</h3><p>En Uzun Bekleme (gün)</p></div>
+                    <div class="stat-card stat-card-red"><h3 id="enUzunBekleme">-</h3><p>En Uzun Gün Sayısı</p></div>
 
                 </div>
 
@@ -136,7 +142,7 @@
 
                     <div class="chart-container">
 
-                        <h4>Durum Dağılımı</h4>
+                        <h4>FORM DURUMU GRAFİĞİ</h4>
 
                         <select id="chartTypeDurum" style="margin-bottom:8px;width:120px">
 
@@ -166,7 +172,7 @@
 
                     <div class="chart-container">
 
-                        <h4>Tip Dağılımı</h4>
+                        <h4>FORM TİPİ GRAFİĞİ</h4>
 
                         <select id="chartTypeTip" style="margin-bottom:8px;width:120px">
 
@@ -196,7 +202,7 @@
 
                     <div class="chart-container">
 
-                        <h4>Müdürlük Dağılımı</h4>
+                        <h4>SİSTEME GİREN KİŞİNİN MÜDÜRLÜĞÜNE GÖRE DAĞILIM GRAFİĞİ</h4>
 
                         <select id="chartTypeMudurluk" style="margin-bottom:8px;width:120px">
 
@@ -226,7 +232,7 @@
 
                     <div class="chart-container">
 
-                        <h4>Şirket Dağılımı</h4>
+                        <h4>SORUMLU BİRİMLERE GÖRE DAĞILIM GRAFİĞİ</h4>
 
                         <select id="chartTypeSirket" style="margin-bottom:8px;width:120px">
 
@@ -242,9 +248,9 @@
 
                             <div style="position:absolute;top:-40px;right:8px;display:flex;gap:8px;z-index:2;">
 
-                                <span style="cursor:pointer;font-size:20px;" onclick="RaporModul.enlargeChart('sirketChart', 'Şirket Dağılımı')" title="Büyüt">🔍</span>
+                                <span style="cursor:pointer;font-size:20px;" onclick="RaporModul.enlargeChart('sirketChart', 'Sorumlu Birim Dağılımı')" title="Büyüt">🔍</span>
 
-                                <span style="cursor:pointer;font-size:20px;" onclick="RaporModul.downloadSVG('sirketChart', 'Şirket Dağılımı')" title="İndir">⬇️</span>
+                                <span style="cursor:pointer;font-size:20px;" onclick="RaporModul.downloadSVG('sirketChart', 'Sorumlu Birim Dağılımı')" title="İndir">⬇️</span>
 
                             </div>
 
@@ -256,7 +262,7 @@
 
                     <div class="chart-container">
 
-                        <h4>Bekleten Kişi</h4>
+                        <h4>SİSTEME GİREN KİŞİ GRAFİĞİ</h4>
 
                         <select id="chartTypeKisi" style="margin-bottom:8px;width:120px">
 
@@ -272,9 +278,9 @@
 
                             <div style="position:absolute;top:-40px;right:8px;display:flex;gap:8px;z-index:2;">
 
-                                <span style="cursor:pointer;font-size:20px;" onclick="RaporModul.enlargeChart('kisiChart', 'Bekleten Kişi')" title="Büyüt">🔍</span>
+                                <span style="cursor:pointer;font-size:20px;" onclick="RaporModul.enlargeChart('kisiChart', 'Sisteme Giren Kişi')" title="Büyüt">🔍</span>
 
-                                <span style="cursor:pointer;font-size:20px;" onclick="RaporModul.downloadSVG('kisiChart', 'Bekleten Kişi')" title="İndir">⬇️</span>
+                                <span style="cursor:pointer;font-size:20px;" onclick="RaporModul.downloadSVG('kisiChart', 'Sisteme Giren Kişi')" title="İndir">⬇️</span>
 
                             </div>
 
@@ -286,7 +292,7 @@
 
                     <div class="chart-container">
 
-                        <h4>Yönetici Dağılımı</h4>
+                        <h4>İŞİ YAPACAK KİŞİYE GÖRE DAĞILIM GRAFİĞİ</h4>
 
                         <select id="chartTypeYonetici" style="margin-bottom:8px;width:120px">
 
@@ -302,9 +308,9 @@
 
                             <div style="position:absolute;top:-40px;right:8px;display:flex;gap:8px;z-index:2;">
 
-                                <span style="cursor:pointer;font-size:20px;" onclick="RaporModul.enlargeChart('yoneticiChart', 'Yönetici Dağılımı')" title="Büyüt">🔍</span>
+                                <span style="cursor:pointer;font-size:20px;" onclick="RaporModul.enlargeChart('yoneticiChart', 'İşi Yapacak Dağılımı')" title="Büyüt">🔍</span>
 
-                                <span style="cursor:pointer;font-size:20px;" onclick="RaporModul.downloadSVG('yoneticiChart', 'Yönetici Dağılımı')" title="İndir">⬇️</span>
+                                <span style="cursor:pointer;font-size:20px;" onclick="RaporModul.downloadSVG('yoneticiChart', 'İşi Yapacak Dağılımı')" title="İndir">⬇️</span>
 
                             </div>
 
@@ -316,7 +322,7 @@
 
                     <div class="chart-container">
 
-                        <h4>Gecikti mi?</h4>
+                        <h4>SÜREÇ GECİKTİ Mİ?</h4>
 
                         <select id="chartTypeGecikti" style="margin-bottom:8px;width:120px">
 
@@ -346,7 +352,7 @@
 
                     <div class="chart-container">
 
-                        <h4>Bekleme Süresi Dağılımı (Gün)</h4>
+                        <h4>GÜN SAYISI DAĞILIM GRAFİĞİ</h4>
 
                         <select id="chartTypeBekleme" style="margin-bottom:8px;width:120px">
 
@@ -362,9 +368,9 @@
 
                             <div style="position:absolute;top:-40px;right:8px;display:flex;gap:8px;z-index:2;">
 
-                                <span style="cursor:pointer;font-size:20px;" onclick="RaporModul.enlargeChart('beklemeChart', 'Bekleme Süresi Dağılımı')" title="Büyüt">🔍</span>
+                                <span style="cursor:pointer;font-size:20px;" onclick="RaporModul.enlargeChart('beklemeChart', 'Gün Sayısı Dağılımı')" title="Büyüt">🔍</span>
 
-                                <span style="cursor:pointer;font-size:20px;" onclick="RaporModul.downloadSVG('beklemeChart', 'Bekleme Süresi Dağılımı')" title="İndir">⬇️</span>
+                                <span style="cursor:pointer;font-size:20px;" onclick="RaporModul.downloadSVG('beklemeChart', 'Gün Sayısı Dağılımı')" title="İndir">⬇️</span>
 
                             </div>
 
@@ -382,7 +388,7 @@
 
             <div id="gridContainer" class="card"></div>
 
-            <h2 style="margin-top:32px;">📑 Aksiyon No Dağılımı</h2>
+            <h2 style="margin-top:32px;">📑 Ana Aksiyon No Dağılımı</h2>
             <div id="aksiyonPivotGridContainer" class="card"></div>
             <h2 style="margin-top:32px;">📑 Aksiyon Detay Verisi (Haftalık/Yıllık Dağılım)</h2>
 
@@ -409,6 +415,8 @@
     <script src="raporModul.js"></script>
 
     <script src="qdms-schema.js"></script>
+
+    <script>RaporTheme.bindToggle();</script>
 
 </body>
 

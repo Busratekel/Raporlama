@@ -16,8 +16,15 @@ namespace Raporlama.ETL
         [HttpPost("run/{id}")]
         public async Task<IActionResult> RunManually(int id)
         {
-            var result = await _etlService.RunTaskManuallyAsync(id);
-            return Ok(result);
+            try
+            {
+                var result = await _etlService.RunTaskManuallyAsync(id);
+                return Ok(result);
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { error = ex.Message });
+            }
         }
     }
 }

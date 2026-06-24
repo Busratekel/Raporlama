@@ -4,20 +4,22 @@ public class ETLWorker : BackgroundService
 {
     private readonly ILogger<ETLWorker> _logger;
     private readonly ETLService _etlService;
+    private readonly IConfiguration _configuration;
 
-    public ETLWorker(ILogger<ETLWorker> logger, ETLService etlService)
+    public ETLWorker(ILogger<ETLWorker> logger, ETLService etlService, IConfiguration configuration)
     {
         _logger = logger;
         _etlService = etlService;
+        _configuration = configuration;
     }
 
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
-        var logDir = ETLService.GetLogDirectory();
+        var logDir = _etlService.GetLogDirectory();
         Directory.CreateDirectory(logDir);
         _logger.LogInformation("Log klasörü: {LogDir}", logDir);
 
-        ETLService.CleanupOldLogs();
+        ETLService.CleanupOldLogs(_configuration);
         _logger.LogInformation("ETL Worker başlatıldı");
 
         // Dinamik görev zamanlama

@@ -2,7 +2,8 @@ using Raporlama.ETL;
 using Serilog;
 using Microsoft.AspNetCore.Builder;
 
-var logDir = ETLService.GetLogDirectory();
+var builder = WebApplication.CreateBuilder(args);
+var logDir = ETLService.ResolveLogDirectory(builder.Configuration);
 Directory.CreateDirectory(logDir);
 
 Log.Logger = new LoggerConfiguration()
@@ -12,9 +13,7 @@ Log.Logger = new LoggerConfiguration()
 
 try
 {
-    Log.Information("Raporlama.ETL başlatılıyor...");
-
-    var builder = WebApplication.CreateBuilder(args);
+    Log.Information("Raporlama.ETL başlatılıyor... Log klasörü: {LogDir}", logDir);
     builder.Host.UseSerilog();
     builder.Host.UseWindowsService(options => options.ServiceName = "Raporlama.ETL");
 

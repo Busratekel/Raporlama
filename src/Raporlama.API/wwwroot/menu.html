@@ -4,7 +4,9 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Rapor Seçimi</title>
-    <link rel="stylesheet" href="style.css" />
+    <link rel="stylesheet" href="raporlar/rapor-ortak.css" />
+    <script src="raporlar/theme.js"></script>
+    <script>RaporTheme.init({ dxBase: 'lib/css/' });</script>
     <style>
                 .top-buttons {
                     position: absolute;
@@ -30,24 +32,39 @@
                     background: #1565c0;
                 }
         body {
-            background: #181A20;
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
             margin: 0;
             padding: 20px;
+        }
+        html[data-theme="light"] .user-info h3,
+        html[data-theme="light"] h2 {
+            color: #1976d2;
+        }
+        html[data-theme="light"] .report-button {
+            color: #1976d2;
+            border-color: #1976d2;
+        }
+        html[data-theme="light"] .report-button:hover {
+            background: #1976d2;
+            color: #fff;
+            box-shadow: 0 4px 12px rgba(25, 118, 210, 0.25);
+        }
+        html[data-theme="light"] .loading {
+            color: #1976d2;
         }
         .container {
             max-width: 800px;
             margin: 0 auto;
         }
         .user-info {
-            background: #23242a;
+            background: var(--bg-panel);
             padding: 20px;
             border-radius: 12px;
             margin-bottom: 20px;
-            color: #e0e0e0;
+            color: var(--text-main);
         }
         .user-info h3 {
-            color: #00eaff;
+            color: var(--text-accent);
             margin-top: 0;
         }
         .user-info p {
@@ -60,11 +77,11 @@
         }
         .report-button {
             padding: 24px 20px;
-            background: #23242a;
-            color: #00eaff;
+            background: var(--bg-panel);
+            color: var(--text-accent);
             font-size: 1.2rem;
             font-weight: 600;
-            border: 3px solid #00eaff;
+            border: 3px solid var(--text-accent);
             border-radius: 12px;
             cursor: pointer;
             transition: all 0.3s;
@@ -118,7 +135,7 @@
             margin-bottom: 20px;
         }
         h2 {
-            color: #00eaff;
+            color: var(--text-accent);
             text-align: center;
             margin-bottom: 20px;
         }
@@ -126,7 +143,9 @@
 </head>
 <body>
     <div class="top-buttons">
+        <button type="button" id="themeToggle" class="theme-toggle">☀️ Açık Tema</button>
         <button class="mini-btn" id="adminBtn" style="display:none;" onclick="window.location.href='yetki-yonetimi.html'">🔐 Yetki Yönetimi</button>
+        <button class="mini-btn" id="etlBtn" style="display:none;" onclick="window.location.href='etl.html'">⚙️ ETL Yönetimi</button>
         <!--<button class="mini-btn" onclick="window.location.href='rapor-olustur.html'">➕ Rapor Oluştur</button>-->
         <!--<button class="mini-btn" onclick="window.location.href='kendi-raporlarim.html'">👤 Kendi Raporlarım</button>-->
     </div>
@@ -146,21 +165,37 @@
         const API_BASE = window.location.origin + '/api';
 
         window.onload = async function() {
-            await loadUserInfo();
-            await checkAdminAccess();
-            await loadReports();
+            const isAuthenticated = await loadUserInfo();
+            if (isAuthenticated) {
+                await checkAdminAccess();
+                await loadReports();
+            }
         };
+
+        function isLocalDev() {
+            const h = window.location.hostname;
+            return h === 'localhost' || h === '127.0.0.1';
+        }
+
+        function devLoginUrl(userName) {
+            const q = userName ? '?userName=' + encodeURIComponent(userName) : '';
+            return window.location.origin + '/Auth/dev-login' + q;
+        }
         async function checkAdminAccess() {
             try {
                 const resp = await fetch(`${API_BASE}/authorization/is-admin`, { credentials: 'include' });
                 if (resp.ok) {
                     const data = await resp.json();
-                    if (data.isAdmin) document.getElementById('adminBtn').style.display = 'inline-block';
+                    if (data.isAdmin) {
+                        document.getElementById('adminBtn').style.display = 'inline-block';
+                        document.getElementById('etlBtn').style.display = 'inline-block';
+                    }
                 }
             } catch (_) { /* ignore */ }
         }
         async function showNotLoggedIn() {
             let portalLink = '';
+            let devLink = '';
             try {
                 const portalResp = await fetch(window.location.origin + '/auth/portal-url', { credentials: 'include' });
                 if (portalResp.ok) {
@@ -170,29 +205,44 @@
                     }
                 }
             } catch (_) { /* ignore */ }
+            if (isLocalDev()) {
+                devLink = `
+                    <p style="margin-top:16px;padding:12px;background:#1a3a1a;border-radius:8px;">
+                        <strong>Local geliştirme:</strong><br>
+                        <a href="${devLoginUrl('busra.tekel')}" style="color:#7fff7f;font-weight:600;">Dev giriş (busra.tekel) →</a>
+                    </p>`;
+            }
             document.getElementById('userInfo').innerHTML = `
                 <div class="error">
                     <h3>⚠️ Giriş Yapılmamış</h3>
                     <p>Raporlara erişmek için kurumsal portaldan giriş yapıp <strong>Raporlar</strong> linkine tıklayın.</p>
                     ${portalLink}
+                    ${devLink}
                 </div>
             `;
+            document.getElementById('reportsContainer').innerHTML = `
+                <div style="grid-column:1/-1;text-align:center;color:#888;padding:40px;">
+                    Rapor listesi için önce giriş yapın.
+                </div>`;
         }
         async function loadUserInfo() {
             try {
                 const authStatusResponse = await fetch(`${API_BASE}/authtest/status`, { credentials: 'include' });
                 if (!authStatusResponse.ok) {
                     await showNotLoggedIn();
-                    return;
+                    return false;
                 }
                 const authStatus = await authStatusResponse.json();
                 if (!authStatus.isAuthenticated) {
                     await showNotLoggedIn();
-                    return;
+                    return false;
                 }
                 const response = await fetch(`${API_BASE}/authorization/current-user`, { credentials: 'include' });
                 if (!response.ok) {
-                    if (response.status === 401) throw new Error('Yetkilendirme hatası. Lütfen tekrar giriş yapın.');
+                    if (response.status === 401) {
+                        await showNotLoggedIn();
+                        return false;
+                    }
                     const errorText = await response.text();
                     throw new Error(`HTTP ${response.status}: ${errorText}`);
                 }
@@ -201,13 +251,16 @@
                     <h3>👤 Kullanıcı Bilgileri</h3>
                     <p><strong>Kullanıcı Adı:</strong> ${escapeHtml(userInfo.userName || 'Bilinmiyor')}</p>
                 `;
+                return true;
             } catch (error) {
                 document.getElementById('userInfo').innerHTML = `
                     <div class="error">
                         <h3>❌ Hata</h3>
                         <p>Kullanıcı bilgileri yüklenemedi: ${escapeHtml(error.message)}</p>
+                        ${isLocalDev() ? `<p><a href="${devLoginUrl('busra.tekel')}" style="color:#7fff7f;">Dev giriş dene →</a></p>` : ''}
                     </div>
                 `;
+                return false;
             }
         }
         function getReportLogo(report) {
@@ -245,7 +298,11 @@
             try {
                 const response = await fetch(`${API_BASE}/reports`, { credentials: 'include' });
                 if (!response.ok) {
-                    if (response.status === 401 || response.status === 403) throw new Error('Yetkilendirme hatası. Lütfen tekrar giriş yapın.');
+                    if (response.status === 401) {
+                        await showNotLoggedIn();
+                        return;
+                    }
+                    if (response.status === 403) throw new Error('Rapor yetkiniz yok. Yetki yönetiminden kullanıcıya rapor atayın.');
                     throw new Error('Raporlar yüklenemedi');
                 }
                 const reports = await response.json();
@@ -298,5 +355,6 @@
             return div.innerHTML;
         }
     </script>
+    <script>RaporTheme.bindToggle();</script>
 </body>
 </html>

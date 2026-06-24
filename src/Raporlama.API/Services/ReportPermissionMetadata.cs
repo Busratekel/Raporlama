@@ -6,7 +6,8 @@ public record ReportPermissionMeta(
     string[] FilterFields,
     Dictionary<string, string> FilterLabels,
     string[] Columns,
-    Dictionary<string, string> ColumnLabels);
+    Dictionary<string, string> ColumnLabels,
+    string? DepartmentNameField = null);
 
 public static class ReportPermissionMetadata
 {
@@ -33,32 +34,46 @@ public static class ReportPermissionMetadata
             ["FormuDolduran"] = "Formu Dolduran",
             ["FormuBekleten"] = "Formu Bekleten",
             ["BekleyenGun"] = "Bekleyen Gün"
-        });
+        },
+        DepartmentNameField: "MudurlukAdi");
 
     private static readonly ReportPermissionMeta Qdms = new(
-        FilterFields: ["Durum", "MudurlukAdi", "Tip", "BekletenSirket", "GeciktiMi", "BekletenAdSoyad", "SorumluAdSoyad"],
+        FilterFields:
+        [
+            "Durum",
+            "Sisteme Girenin Müdürlük/Direktörlüğü",
+            "Tip",
+            "Sorumlu Birim",
+            "Gecikti mi?",
+            "Sisteme Giren Kişi",
+            "İşi Yapacak"
+        ],
         FilterLabels: new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
         {
             ["Durum"] = "Durum",
-            ["MudurlukAdi"] = "Müdürlük",
+            ["Sisteme Girenin Müdürlük/Direktörlüğü"] = "Müdürlük",
             ["Tip"] = "Tip",
-            ["BekletenSirket"] = "Şirket",
-            ["GeciktiMi"] = "Gecikti mi?",
-            ["BekletenAdSoyad"] = "Bekleten Kişi",
-            ["SorumluAdSoyad"] = "Yönetici"
+            ["Sorumlu Birim"] = "Sorumlu Birim",
+            ["Gecikti mi?"] = "Gecikti mi?",
+            ["Sisteme Giren Kişi"] = "Sisteme Giren Kişi",
+            ["İşi Yapacak"] = "İşi Yapacak"
         },
         Columns:
         [
-            "SurecNo", "Durum", "Tip", "MudurlukAdi", "BekletenSirket", "BekletenAdSoyad",
-            "SorumluAdSoyad", "BaslamaTarihi", "BitisTarihi", "BeklemeGun", "GeciktiMi"
+            "Ana Aksiyon No", "Kalem No", "Sisteme Giren", "Sisteme Giren Kişi",
+            "Sisteme Girenin Müdürlük/Direktörlük Kodu", "Sisteme Girenin Müdürlük/Direktörlüğü",
+            "İşi Yapacak", "Sorumlu Birim", "Başlama Tarihi", "Bitiş Tarihi",
+            "Tip", "Tanım", "Durum", "Görevlendirme Sebebi", "Gün Sayısı", "Gecikti mi?"
         ],
         ColumnLabels: new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
         {
-            ["SurecNo"] = "Süreç No",
+            ["Ana Aksiyon No"] = "Ana Aksiyon No",
+            ["Kalem No"] = "Kalem No",
             ["Durum"] = "Durum",
-            ["BeklemeGun"] = "Bekleme Gün",
-            ["GeciktiMi"] = "Gecikti mi?"
-        });
+            ["Gün Sayısı"] = "Gün Sayısı",
+            ["Gecikti mi?"] = "Gecikti mi?"
+        },
+        DepartmentNameField: "Sisteme Girenin Müdürlük/Direktörlüğü");
 
     public static ReportPermissionMeta? Resolve(string? reportCode, string? reportName, string? url)
     {

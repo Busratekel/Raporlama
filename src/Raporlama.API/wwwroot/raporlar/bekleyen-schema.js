@@ -113,7 +113,27 @@ window.bekleyenSchema = {
 
         { type: 'avg', field: 'BekleyenGun', elementId: '#avgDays' },
 
-        { type: 'max', field: 'BekleyenGun', elementId: '#maxDays' },
+        {
+            type: 'max',
+            field: 'BekleyenGun',
+            elementId: '#maxDays',
+            detailModal: {
+                title: 'En Uzun Bekleme (Gün) — Kayıt Detayı',
+                sortField: 'BekleyenGun',
+                sortOrder: 'desc',
+                nearMaxMargin: null,
+                highlightMax: true,
+                columns: [
+                    'SurecNo',
+                    'FormAdi',
+                    'FormuDolduran',
+                    'FormuBekleten',
+                    'SurecBaslangicTarihi',
+                    'SurecBekleteneGelisTarihi',
+                    'BekleyenGun'
+                ]
+            }
+        },
 
         { type: 'count', elementId: '#acilGun', calc: function(data) {
 
@@ -135,9 +155,9 @@ window.bekleyenSchema = {
 
         { dataField: "FormuBekleten", caption: "Formu Bekleten Kişi" },
 
-        { dataField: "FormuGonderenBolum", caption: "Formu Dolduran Bölüm" },
+        { dataField: "FormuGonderenBolum", caption: "Formu Dolduran Bölüm",visible: false },
 
-        { dataField: "FormuBekletenBolum", caption: "Formu Bekleten Bölüm" },
+        { dataField: "FormuBekletenBolum", caption: "Formu Bekleten Bölüm", visible: false },
 
         { dataField: "FormuDolduranSirketi", caption: "Formu Dolduran Şirket", visible: false },
 

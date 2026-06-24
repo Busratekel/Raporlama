@@ -16,6 +16,7 @@ namespace Raporlama.API.Services
         private readonly IDatabaseService _databaseService;
         private readonly IReportService _reportService;
         private readonly ICustomAuthorizationService _authorizationService;
+        private readonly IAdminService _adminService;
         private readonly IMemoryCache _cache;
         private readonly ILogger<DataSourceService> _logger;
 
@@ -23,12 +24,14 @@ namespace Raporlama.API.Services
             IDatabaseService databaseService,
             IReportService reportService,
             ICustomAuthorizationService authorizationService,
+            IAdminService adminService,
             IMemoryCache cache,
             ILogger<DataSourceService> logger)
         {
             _databaseService = databaseService;
             _reportService = reportService;
             _authorizationService = authorizationService;
+            _adminService = adminService;
             _cache = cache;
             _logger = logger;
         }
@@ -55,28 +58,44 @@ namespace Raporlama.API.Services
             // Yetki tablosundan satır/kolon yetkilerini çek
             var permission = await _databaseService.QueryAsync<dynamic>(
                 "BellonaRapor",
-                "SELECT p.RowFilter, c.ColumnName FROM UserReportPermission p LEFT JOIN PermissionColumn c ON p.PermissionKey = c.PermissionKey WHERE p.Aktif = 1 AND p.UserKey = @UserKey AND p.ReportKey = @ReportKey",
+                @"SELECT p.RowFilter, p.DepartmentFilterEnabled, c.ColumnName
+                  FROM UserReportPermission p
+                  LEFT JOIN PermissionColumn c ON p.PermissionKey = c.PermissionKey
+                  WHERE p.Aktif = 1 AND p.UserKey = @UserKey AND p.ReportKey = @ReportKey",
                 new { UserKey = userInfo.UserKey, ReportKey = reportId }
             );
 
-            // Satır filtresi ve kolon listesi
+            // Satır filtresi ve kolon yetkileri
             string rowFilter = "";
-            List<string> columns = new();
+            var columnSet = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+            var departmentFilterEnabled = true;
             foreach (var item in permission)
             {
                 if (item.RowFilter != null) rowFilter = item.RowFilter;
-                if (item.ColumnName != null) columns.Add(item.ColumnName);
+                if (item.ColumnName != null) columnSet.Add((string)item.ColumnName);
+                if (item.DepartmentFilterEnabled != null)
+                    departmentFilterEnabled = Convert.ToBoolean(item.DepartmentFilterEnabled);
             }
 
-            // Kolon yetkisi varsa, sadece izinli kolonları seç
-            string selectColumns = columns.Count > 0 ? string.Join(",", columns) : "*";
-
-            // Satır yetkisi varsa, WHERE/AND ekle ORDER BY, GROUP BY, HAVING'den önce
-            string query = report.Query;
-            if (selectColumns != "*")
+            var meta = ReportPermissionMetadata.Resolve(report.ReportCode, report.ReportName, report.Url);
+            if (meta != null)
             {
-                // SELECT * yerine izinli kolonlar
-                query = query.Replace("SELECT *", $"SELECT {selectColumns}");
+                foreach (var col in meta.FilterFields.Concat(meta.Columns))
+                    columnSet.Add(col);
+            }
+
+            rowFilter = AppendDepartmentNameFilter(
+                rowFilter,
+                meta,
+                userInfo.MudurlukAdi,
+                departmentFilterEnabled,
+                _adminService.IsAdmin(userName));
+
+            string query = report.Query;
+            if (columnSet.Count > 0)
+            {
+                var selectColumns = string.Join(",", columnSet.Select(QuoteSqlColumn));
+                query = ReplaceSelectStar(query, selectColumns);
             }
 
             if (!string.IsNullOrWhiteSpace(rowFilter))
@@ -136,6 +155,49 @@ namespace Raporlama.API.Services
             }
 
             return data;
+        }
+
+        private static string AppendDepartmentNameFilter(
+            string rowFilter,
+            ReportPermissionMeta? meta,
+            string? mudurlukAdi,
+            bool departmentFilterEnabled,
+            bool isAdmin)
+        {
+            if (isAdmin || !departmentFilterEnabled || string.IsNullOrWhiteSpace(mudurlukAdi))
+                return rowFilter;
+
+            var field = meta?.DepartmentNameField;
+            if (string.IsNullOrWhiteSpace(field))
+                return rowFilter;
+
+            var deptClause = $"{QuoteSqlColumn(field)} = {SqlLiteral(mudurlukAdi.Trim())}";
+            if (string.IsNullOrWhiteSpace(rowFilter))
+                return deptClause;
+
+            return $"({rowFilter}) AND ({deptClause})";
+        }
+
+        private static string SqlLiteral(string value) =>
+            "N'" + value.Replace("'", "''") + "'";
+
+        private static string QuoteSqlColumn(string name)
+        {
+            var trimmed = name.Trim();
+            if (trimmed.Length == 0) return trimmed;
+            if (trimmed.StartsWith('[')) return trimmed;
+            return $"[{trimmed.Replace("]", "]]")}]";
+        }
+
+        private static string ReplaceSelectStar(string query, string selectColumns)
+        {
+            var idx = query.IndexOf("SELECT", StringComparison.OrdinalIgnoreCase);
+            if (idx < 0) return query;
+            var starIdx = query.IndexOf('*', idx);
+            if (starIdx < 0) return query;
+            var fromIdx = query.IndexOf("FROM", starIdx, StringComparison.OrdinalIgnoreCase);
+            if (fromIdx < 0) return query;
+            return query[..idx] + "SELECT " + selectColumns + " " + query[fromIdx..];
         }
 
         private string GenerateCacheKey(string databaseName, string query, Dictionary<string, object>? parameters, string userName, int reportId)

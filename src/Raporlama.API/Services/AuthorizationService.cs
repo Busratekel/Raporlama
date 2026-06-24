@@ -20,6 +20,7 @@ namespace Raporlama.API.Services
         public string DisplayName { get; set; } = string.Empty;
         public string Email { get; set; } = string.Empty;
         public string Groups { get; set; } = string.Empty;
+        public string? MudurlukAdi { get; set; }
         public bool IsActive { get; set; }
     }
     public class AuthorizationService : ICustomAuthorizationService
@@ -105,7 +106,7 @@ namespace Raporlama.API.Services
 
             var users = await _databaseService.QueryAsync<UserInfo>(
                 "BellonaRapor",
-                $@"SELECT TOP 1 UserKey, UserName, DisplayName, Email, Groups, Aktif as IsActive
+                $@"SELECT TOP 1 UserKey, UserName, DisplayName, Email, Groups, MudurlukAdi, Aktif as IsActive
                    FROM [User]
                    WHERE (
                        UserName COLLATE SQL_Latin1_General_CP1_CI_AS = @UserName

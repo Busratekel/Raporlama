@@ -53,18 +53,20 @@ namespace Raporlama.API.Services
 
         public async Task<string> RunManuallyAsync(int id)
         {
-            using var http = new System.Net.Http.HttpClient();
-            var etlUrl = $"http://localhost:5010/api/etl/run/{id}";
-            var response = await http.PostAsync(etlUrl, null);
-            var msg = await response.Content.ReadAsStringAsync();
-            if (response.IsSuccessStatusCode)
+            using var http = new System.Net.Http.HttpClient { Timeout = TimeSpan.FromMinutes(30) };
+            var etlUrl = $"{EtlPathHelper.GetEtlServiceUrl(_config)}/api/etl/run/{id}";
+            try
             {
-                // ETL servisi string mesaj döndürüyor, onu ilet
-                return msg;
+                var response = await http.PostAsync(etlUrl, null);
+                var msg = await response.Content.ReadAsStringAsync();
+                if (response.IsSuccessStatusCode)
+                    return msg;
+
+                return $"ETL çalıştırılamadı ({(int)response.StatusCode}): {msg}. ETL servisi ayakta mı? (ETL:ServiceUrl)";
             }
-            else
+            catch (Exception ex)
             {
-                return $"ETL çalıştırılamadı: {msg}";
+                return $"ETL servisine ulaşılamadı ({etlUrl}): {ex.Message}";
             }
         }
     }

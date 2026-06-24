@@ -66,6 +66,7 @@
         }
         textarea { min-height: 70px; resize: vertical; font-family: Consolas, monospace; }
         label { display: block; margin: 10px 0 4px; font-size: 0.9rem; color: #aaa; }
+        label.check-row { display: flex; margin: 0; color: #e0e0e0; }
         .user-list { max-height: 65vh; overflow-y: auto; }
         .user-item {
             padding: 10px 12px;
@@ -108,8 +109,8 @@
             margin-bottom: 16px;
         }
         .form-grid { display: grid; gap: 4px; }
-        .form-actions { margin-top: 14px; display: flex; gap: 10px; flex-wrap: wrap; }
-        .hint { font-size: 0.8rem; color: #888; margin-top: 4px; }
+        .form-actions { margin-top: 16px; display: flex; gap: 10px; flex-wrap: wrap; }
+        .hint { font-size: 0.82rem; color: #888; line-height: 1.45; margin: 0; }
         .add-user-box {
             margin: 12px 0 16px;
             padding: 12px;
@@ -118,6 +119,172 @@
             border: 1px solid #333;
         }
         .add-user-box input { margin-bottom: 8px; }
+        .user-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            gap: 12px;
+            margin-bottom: 20px;
+            padding: 14px 16px;
+            background: #181A20;
+            border-radius: 10px;
+            border: 1px solid #333;
+        }
+        .user-header .name { color: #00eaff; font-size: 1.15rem; font-weight: 600; }
+        .user-header .meta { font-size: 0.85rem; color: #888; margin-top: 4px; }
+        .user-mudurluk-badge {
+            display: inline-block;
+            margin-top: 6px;
+            padding: 3px 10px;
+            border-radius: 12px;
+            background: #2a2b32;
+            border: 1px solid #444;
+            font-size: 0.8rem;
+            color: #ccc;
+        }
+        .step-card {
+            background: #181A20;
+            border: 1px solid #333;
+            border-radius: 10px;
+            padding: 16px 18px;
+            margin-bottom: 16px;
+        }
+        .step-head {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 8px;
+            font-size: 1rem;
+            font-weight: 600;
+            color: #fff;
+        }
+        .step-num {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 26px;
+            height: 26px;
+            border-radius: 50%;
+            background: #00eaff;
+            color: #181A20;
+            font-size: 0.85rem;
+            font-weight: 700;
+            flex-shrink: 0;
+        }
+        .step-desc { margin: 0 0 12px 36px; }
+        .field-block { margin-bottom: 14px; }
+        .field-block label {
+            margin: 0 0 6px;
+            color: #bbb;
+            font-size: 0.88rem;
+        }
+        .mudurluk-row {
+            display: flex;
+            gap: 8px;
+            align-items: flex-start;
+        }
+        .options-box {
+            background: #23242a;
+            border: 1px solid #3a3a3a;
+            border-radius: 8px;
+            padding: 12px 14px;
+            margin-bottom: 14px;
+        }
+        .check-row {
+            display: flex;
+            align-items: flex-start;
+            gap: 10px;
+            margin: 0;
+            padding: 8px 0;
+            cursor: pointer;
+            font-size: 0.92rem;
+            color: #e0e0e0;
+        }
+        .check-row + .check-row { border-top: 1px solid #333; }
+        .check-row input { width: auto; margin-top: 3px; flex-shrink: 0; cursor: pointer; }
+        .check-row span { flex: 1; }
+        .check-row small { display: block; color: #888; font-size: 0.78rem; margin-top: 2px; font-weight: normal; }
+        .optional-block {
+            border: 1px solid #333;
+            border-radius: 8px;
+            margin-bottom: 10px;
+            background: #23242a;
+        }
+        .optional-block summary {
+            padding: 10px 14px;
+            cursor: pointer;
+            color: #ccc;
+            font-size: 0.9rem;
+            user-select: none;
+            list-style: none;
+        }
+        .optional-block summary::-webkit-details-marker { display: none; }
+        .optional-block summary::before { content: '▸ '; color: #00eaff; }
+        .optional-block[open] summary::before { content: '▾ '; }
+        .optional-block .optional-body { padding: 0 14px 14px; }
+        .perm-table-wrap { overflow-x: auto; }
+        .perm-table-wrap table { font-size: 0.88rem; }
+        .perm-summary { color: #aaa; font-size: 0.85rem; max-width: 280px; }
+        .mudurluk-combobox {
+            position: relative;
+            flex: 1;
+            min-width: 220px;
+        }
+        .mudurluk-combobox input {
+            width: 100%;
+            margin: 0;
+            padding-right: 32px;
+            box-sizing: border-box;
+        }
+        .mudurluk-clear {
+            position: absolute;
+            right: 6px;
+            top: 50%;
+            transform: translateY(-50%);
+            background: none;
+            border: none;
+            color: #888;
+            font-size: 1.2rem;
+            cursor: pointer;
+            line-height: 1;
+            padding: 2px 6px;
+        }
+        .mudurluk-clear:hover { color: #e74c3c; }
+        .mudurluk-dropdown {
+            display: none;
+            position: absolute;
+            top: calc(100% + 2px);
+            left: 0;
+            right: 0;
+            max-height: 220px;
+            overflow-y: auto;
+            background: #181A20;
+            border: 1px solid #444;
+            border-radius: 8px;
+            z-index: 20;
+            list-style: none;
+            margin: 0;
+            padding: 4px 0;
+            box-shadow: 0 8px 24px rgba(0, 0, 0, 0.35);
+        }
+        .mudurluk-dropdown li {
+            padding: 8px 12px;
+            cursor: pointer;
+            font-size: 0.92rem;
+        }
+        .mudurluk-dropdown li:hover,
+        .mudurluk-dropdown li.active {
+            background: #2a2b32;
+            color: #00eaff;
+        }
+        .mudurluk-dropdown li.empty-item {
+            color: #888;
+            cursor: default;
+        }
+        .mudurluk-dropdown li.empty-item:hover {
+            background: transparent;
+            color: #888;
+        }
         .filter-row {
             display: grid;
             grid-template-columns: 1fr 1fr auto;
@@ -156,28 +323,12 @@
             color: #ccc;
             display: flex;
             align-items: center;
-            gap: 6px;
+            gap: 8px;
             cursor: pointer;
+            padding: 4px 0;
         }
-        .advanced-toggle {
-            color: #00eaff;
-            cursor: pointer;
-            font-size: 0.9rem;
-            margin: 12px 0 8px;
-            user-select: none;
-        }
-        #advancedSection { display: none; }
-        .section-label { color: #00eaff; font-weight: 600; margin: 14px 0 6px; font-size: 0.95rem; }
-        .selected-user-bar {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            flex-wrap: wrap;
-            gap: 10px;
-            margin-bottom: 16px;
-            padding-bottom: 12px;
-            border-bottom: 1px solid #333;
-        }
+        #advancedSection { padding-top: 4px; }
+        #advancedSection label { margin-top: 10px; }
     </style>
 </head>
 <body>
@@ -204,72 +355,121 @@
         </div>
 
         <div class="panel">
-            <div id="noUserSelected" class="empty">Soldan bir kullanıcı seçin.</div>
+            <div id="noUserSelected" class="empty">
+                <p style="margin:0 0 8px;font-size:1rem;color:#ccc;">Kullanıcı seçin</p>
+                <p class="hint">Soldan bir kullanıcı seçerek müdürlük ataması ve rapor yetkilerini yönetebilirsiniz.</p>
+            </div>
             <div id="permissionPanel" style="display:none;">
-                <div class="selected-user-bar">
+
+                <div class="user-header">
                     <div>
-                        <strong id="selectedUserName" style="color:#00eaff;font-size:1.1rem;"></strong>
-                        <div id="selectedUserMeta" style="font-size:0.85rem;color:#888;margin-top:4px;"></div>
+                        <div class="name" id="selectedUserName"></div>
+                        <div class="meta" id="selectedUserMeta"></div>
+                        <div class="user-mudurluk-badge" id="userMudurlukBadge">Müdürlük: atanmadı</div>
                     </div>
                     <button class="btn btn-sm btn-danger" id="toggleUserBtn" onclick="toggleUserActive()">Pasifleştir</button>
                 </div>
 
-                <h2>Mevcut Yetkiler</h2>
-                <div style="overflow-x:auto;margin-bottom:20px;">
-                    <table>
-                        <thead>
-                            <tr>
-                                <th>Rapor</th>
-                                <th>Satır Filtresi</th>
-                                <th>Kolonlar</th>
-                                <th>Durum</th>
-                                <th></th>
-                            </tr>
-                        </thead>
-                        <tbody id="permTableBody"></tbody>
-                    </table>
-                </div>
-
-                <h2 id="formTitle">Yeni Yetki Ekle</h2>
-                <div class="form-grid">
-                    <label for="reportSelect">Rapor</label>
-                    <select id="reportSelect" onchange="onReportChange()"></select>
-
-                    <div class="section-label">Veri kısıtı (opsiyonel)</div>
-                    <div class="hint" style="margin-bottom:8px;">Boş bırakılırsa kullanıcı rapordaki tüm satırları görür.</div>
-                    <div class="filter-row">
-                        <div>
-                            <label for="filterField">Alan</label>
-                            <select id="filterField"><option value="">— Alan seçin —</option></select>
+                <!-- Adım 1 -->
+                <section class="step-card">
+                    <div class="step-head"><span class="step-num">1</span> Kullanıcının müdürlüğü</div>
+                    <p class="step-desc hint">Bu kullanıcı raporlarda hangi müdürlüğün verisini görecek? Listeden arayıp seçin.</p>
+                    <div class="mudurluk-row">
+                        <div class="mudurluk-combobox" id="mudurlukCombobox">
+                            <input type="text" id="userMudurlukAdiInput" placeholder="Müdürlük ara ve seç..." autocomplete="off"
+                                onfocus="openMudurlukDropdown()" oninput="onMudurlukInput()" onkeydown="mudurlukKeydown(event)">
+                            <button type="button" class="mudurluk-clear" onclick="clearMudurlukSelection()" title="Temizle" aria-label="Temizle">×</button>
+                            <ul id="mudurlukDropdown" class="mudurluk-dropdown"></ul>
                         </div>
-                        <div>
-                            <label for="filterValue">Değer</label>
-                            <input type="text" id="filterValue" placeholder="Örn: Satış">
+                        <button class="btn btn-success btn-sm" type="button" onclick="saveUserMudurlukAdi()">Kaydet</button>
+                    </div>
+                </section>
+
+                <!-- Adım 2 -->
+                <section class="step-card">
+                    <div class="step-head"><span class="step-num">2</span> Mevcut rapor yetkileri</div>
+                    <p class="step-desc hint">Kullanıcının erişebildiği raporlar. Düzenlemek için tablodan seçin.</p>
+                    <div class="perm-table-wrap">
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>Rapor</th>
+                                    <th>Özet</th>
+                                    <th>Müd. filtresi</th>
+                                    <th>Durum</th>
+                                    <th></th>
+                                </tr>
+                            </thead>
+                            <tbody id="permTableBody"></tbody>
+                        </table>
+                    </div>
+                </section>
+
+                <!-- Adım 3 -->
+                <section class="step-card">
+                    <div class="step-head"><span class="step-num">3</span> <span id="formTitle">Rapor yetkisi ekle</span></div>
+                    <p class="step-desc hint">Hangi rapora erişsin, müdürlük filtresi uygulansın mı — temel ayarlar burada.</p>
+
+                    <div class="field-block">
+                        <label for="reportSelect">Rapor</label>
+                        <select id="reportSelect" onchange="onReportChange()"></select>
+                    </div>
+
+                    <div class="options-box">
+                        <label class="check-row">
+                            <input type="checkbox" id="permActive" checked>
+                            <span>Yetki aktif<small>Kapalıysa kullanıcı bu raporu menüde görmez.</small></span>
+                        </label>
+                        <label class="check-row">
+                            <input type="checkbox" id="permDepartmentFilter" checked>
+                            <span>Müdürlük filtresi uygula<small>Açıksa yalnızca 1. adımdaki müdürlüğün kayıtları görünür. Kapalıysa tüm departmanlar.</small></span>
+                        </label>
+                    </div>
+
+                    <details class="optional-block">
+                        <summary>Ek veri filtresi (isteğe bağlı)</summary>
+                        <div class="optional-body">
+                            <p class="hint" style="margin-bottom:10px;">Belirli alan = değer koşulu ekleyin. Boş bırakılırsa rapordaki tüm satırlar gelir.</p>
+                            <div class="filter-row">
+                                <div>
+                                    <label for="filterField">Alan</label>
+                                    <select id="filterField"><option value="">— Seçin —</option></select>
+                                </div>
+                                <div>
+                                    <label for="filterValue">Değer</label>
+                                    <input type="text" id="filterValue" placeholder="Örn: Satış">
+                                </div>
+                                <button class="btn btn-primary btn-sm" type="button" onclick="addFilterRule()">Ekle</button>
+                            </div>
+                            <div class="filter-tags" id="filterTags"></div>
                         </div>
-                        <button class="btn btn-primary btn-sm" type="button" onclick="addFilterRule()">Ekle</button>
-                    </div>
-                    <div class="filter-tags" id="filterTags"></div>
+                    </details>
 
-                    <div class="section-label">Görünecek kolonlar (opsiyonel)</div>
-                    <div class="hint" style="margin-bottom:8px;">Hiçbiri seçilmezse tüm kolonlar görünür.</div>
-                    <div class="column-grid" id="columnGrid">
-                        <span class="hint">Rapor seçin...</span>
-                    </div>
+                    <details class="optional-block">
+                        <summary>Görünecek kolonlar (isteğe bağlı)</summary>
+                        <div class="optional-body">
+                            <p class="hint" style="margin-bottom:10px;">Seçilmezse tüm kolonlar görünür.</p>
+                            <div class="column-grid" id="columnGrid">
+                                <span class="hint">Rapor seçin...</span>
+                            </div>
+                        </div>
+                    </details>
 
-                    <label><input type="checkbox" id="permActive" checked> Yetki aktif</label>
+                    <details class="optional-block" id="advancedDetails">
+                        <summary>Gelişmiş — SQL / manuel kolon</summary>
+                        <div class="optional-body" id="advancedSection">
+                            <label for="rowFilter">Satır filtresi (SQL)</label>
+                            <textarea id="rowFilter" placeholder="Otomatik oluşturulur veya elle yazın"></textarea>
+                            <label for="columns">Kolon kısıtı (virgülle)</label>
+                            <input type="text" id="columns" placeholder="FormAdi,Durum">
+                        </div>
+                    </details>
 
-                    <div class="advanced-toggle" onclick="toggleAdvanced()">▸ Gelişmiş (SQL / manuel kolon)</div>
-                    <div id="advancedSection">
-                        <label for="rowFilter">Satır filtresi (SQL)</label>
-                        <textarea id="rowFilter" placeholder="Otomatik oluşturulur veya elle yazın"></textarea>
-                        <label for="columns">Kolon kısıtı (virgülle)</label>
-                        <input type="text" id="columns" placeholder="FormAdi,Durum">
+                    <div class="form-actions">
+                        <button class="btn btn-success" onclick="savePermission()">Yetkiyi kaydet</button>
+                        <button class="btn btn-primary" onclick="resetForm()">Formu temizle</button>
                     </div>
-                </div>
-                <div class="form-actions">
-                    <button class="btn btn-success" onclick="savePermission()">Kaydet</button>
-                    <button class="btn btn-primary" onclick="resetForm()">Formu Temizle</button>
-                </div>
+                </section>
             </div>
         </div>
     </div>
@@ -283,6 +483,9 @@
         let currentPermissions = [];
         let filterRules = [];
         let reportMetadata = null;
+        let mudurlukOptions = [];
+        let pendingMudurlukSelection = '';
+        let mudurlukHighlightIndex = -1;
 
         window.onload = init;
 
@@ -293,15 +496,20 @@
                     showError('Bu sayfaya erişim yetkiniz yok.');
                     return;
                 }
-                const [users, reports] = await Promise.all([
+                const [users, reports, mudurlukler] = await Promise.all([
                     api('/users'),
-                    api('/reports')
+                    api('/reports'),
+                    api('/mudurluk-options')
                 ]);
                 allUsers = users;
                 allReports = reports.filter(r => r.aktif !== false && r.Aktif !== false);
+                mudurlukOptions = Array.isArray(mudurlukler) ? mudurlukler : [];
                 fillReportSelect();
                 renderUsers();
                 await onReportChange();
+                document.addEventListener('click', (e) => {
+                    if (!e.target.closest('.mudurluk-combobox')) closeMudurlukDropdown();
+                });
             } catch (e) {
                 showError(e.message);
             }
@@ -329,11 +537,31 @@
             }
         }
 
-        function toggleAdvanced() {
-            const sec = document.getElementById('advancedSection');
-            const open = sec.style.display === 'block';
-            sec.style.display = open ? 'none' : 'block';
-            document.querySelector('.advanced-toggle').textContent = open ? '▸ Gelişmiş (SQL / manuel kolon)' : '▾ Gelişmiş (SQL / manuel kolon)';
+        function isAdvancedOpen() {
+            return document.getElementById('advancedDetails')?.open === true;
+        }
+
+        function updateMudurlukBadge(val) {
+            const badge = document.getElementById('userMudurlukBadge');
+            if (!badge) return;
+            badge.textContent = val
+                ? `Müdürlük: ${val}`
+                : 'Müdürlük: atanmadı (tüm departmanlar)';
+        }
+
+        function buildPermSummary(filter, cols) {
+            const parts = [];
+            if (filter) {
+                const short = filter.length > 55 ? filter.slice(0, 52) + '…' : filter;
+                parts.push(short);
+            } else {
+                parts.push('Ek filtre yok');
+            }
+            if (cols) {
+                const shortCols = cols.length > 40 ? cols.slice(0, 37) + '…' : cols;
+                parts.push('Kolon: ' + shortCols);
+            }
+            return parts.join(' · ');
         }
 
         async function onReportChange() {
@@ -346,7 +574,7 @@
                 reportMetadata = { hasMetadata: false, filterFields: [], columns: [] };
             }
             const fieldSel = document.getElementById('filterField');
-            fieldSel.innerHTML = '<option value="">— Alan seçin —</option>';
+            fieldSel.innerHTML = '<option value="">— Seçin —</option>';
             (reportMetadata.filterFields || []).forEach(f => {
                 fieldSel.innerHTML += `<option value="${esc(f.field)}">${esc(f.label)}</option>`;
             });
@@ -359,10 +587,7 @@
                     `<label><input type="checkbox" class="col-check" value="${esc(c.field)}"> ${esc(c.label)}</label>`
                 ).join('');
             }
-            if (!document.getElementById('advancedSection').style.display ||
-                document.getElementById('advancedSection').style.display === 'none') {
-                syncRowFilterFromRules();
-            }
+            if (!isAdvancedOpen()) syncRowFilterFromRules();
         }
 
         function addFilterRule() {
@@ -391,14 +616,14 @@
         }
 
         function syncRowFilterFromRules() {
-            if (document.getElementById('advancedSection').style.display === 'block') return;
+            if (isAdvancedOpen()) return;
             document.getElementById('rowFilter').value = filterRules.map(r =>
                 `${r.field} = '${r.value.replace(/'/g, "''")}'`
             ).join(' AND ');
         }
 
         function getSelectedColumns() {
-            if (document.getElementById('advancedSection').style.display === 'block') {
+            if (isAdvancedOpen()) {
                 const raw = document.getElementById('columns').value.trim();
                 return raw ? raw.split(',').map(c => c.trim()).filter(Boolean) : [];
             }
@@ -479,6 +704,9 @@
             document.getElementById('selectedUserName').textContent = selectedUser.userName ?? selectedUser.UserName;
             document.getElementById('selectedUserMeta').textContent =
                 `UserKey: ${userKey} · ${selectedUser.displayName ?? selectedUser.DisplayName ?? ''}`;
+            pendingMudurlukSelection = selectedUser.mudurlukAdi ?? selectedUser.MudurlukAdi ?? '';
+            setMudurlukValue(pendingMudurlukSelection);
+            updateMudurlukBadge(pendingMudurlukSelection);
             const active = selectedUser.isActive ?? selectedUser.IsActive;
             const btn = document.getElementById('toggleUserBtn');
             btn.textContent = active ? 'Pasifleştir' : 'Aktifleştir';
@@ -500,17 +728,17 @@
                 }
                 tbody.innerHTML = perms.map((p, i) => {
                     const pk = p.permissionKey ?? p.PermissionKey;
-                    const rk = p.reportKey ?? p.ReportKey;
                     const name = p.reportName ?? p.ReportName;
                     const filter = p.rowFilter ?? p.RowFilter ?? '';
                     const cols = p.columns ?? p.Columns ?? '';
                     const aktif = p.aktif ?? p.Aktif;
+                    const deptFilter = p.departmentFilterEnabled ?? p.DepartmentFilterEnabled;
                     return `<tr>
                         <td>${esc(name)}</td>
-                        <td><code style="color:#ccc;">${esc(filter) || '—'}</code></td>
-                        <td>${esc(cols) || '—'}</td>
+                        <td class="perm-summary">${esc(buildPermSummary(filter, cols))}</td>
+                        <td><span class="badge ${deptFilter !== false ? 'badge-ok' : 'badge-off'}">${deptFilter !== false ? 'Açık' : 'Kapalı'}</span></td>
                         <td><span class="badge ${aktif ? 'badge-ok' : 'badge-off'}">${aktif ? 'Aktif' : 'Pasif'}</span></td>
-                        <td>
+                        <td style="white-space:nowrap;">
                             <button class="btn btn-sm btn-primary" onclick="editPermissionByIndex(${i})">Düzenle</button>
                             <button class="btn btn-sm btn-danger" onclick="deletePermission(${pk})">Sil</button>
                         </td>
@@ -528,22 +756,25 @@
                 p.reportKey ?? p.ReportKey,
                 p.rowFilter ?? p.RowFilter ?? '',
                 p.columns ?? p.Columns ?? '',
-                !!(p.aktif ?? p.Aktif)
+                !!(p.aktif ?? p.Aktif),
+                p.departmentFilterEnabled ?? p.DepartmentFilterEnabled
             );
         }
 
-        function editPermission(reportKey, rowFilter, columns, aktif) {
+        function editPermission(reportKey, rowFilter, columns, aktif, departmentFilterEnabled) {
             editingReportKey = reportKey;
-            document.getElementById('formTitle').textContent = 'Yetki Düzenle';
+            document.getElementById('formTitle').textContent = 'Rapor yetkisini düzenle';
             document.getElementById('reportSelect').value = reportKey;
             filterRules = [];
             document.getElementById('rowFilter').value = rowFilter || '';
             document.getElementById('columns').value = columns || '';
             document.getElementById('permActive').checked = aktif;
+            document.getElementById('permDepartmentFilter').checked = departmentFilterEnabled !== false;
             onReportChange().then(() => {
                 parseRowFilterToRules(rowFilter);
                 setSelectedColumns(columns || '');
             });
+            document.getElementById('formTitle').closest('.step-card')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
         }
 
         function parseRowFilterToRules(rowFilter) {
@@ -558,12 +789,15 @@
 
         function resetForm() {
             editingReportKey = null;
-            document.getElementById('formTitle').textContent = 'Yeni Yetki Ekle';
+            document.getElementById('formTitle').textContent = 'Rapor yetkisi ekle';
+            const adv = document.getElementById('advancedDetails');
+            if (adv) adv.open = false;
             filterRules = [];
             renderFilterTags();
             document.getElementById('rowFilter').value = '';
             document.getElementById('columns').value = '';
             document.getElementById('permActive').checked = true;
+            document.getElementById('permDepartmentFilter').checked = true;
             if (allReports.length) {
                 document.getElementById('reportSelect').selectedIndex = 0;
                 onReportChange();
@@ -578,12 +812,13 @@
             const rowFilter = document.getElementById('rowFilter').value.trim();
             const columns = getSelectedColumns();
             const aktif = document.getElementById('permActive').checked;
+            const departmentFilterEnabled = document.getElementById('permDepartmentFilter').checked;
 
             try {
                 await api('/permissions', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ userKey, reportKey, rowFilter, aktif, columns })
+                    body: JSON.stringify({ userKey, reportKey, rowFilter, aktif, departmentFilterEnabled, columns })
                 });
                 resetForm();
                 await loadPermissions(userKey);
@@ -599,6 +834,145 @@
                 await api(`/permissions/${permissionKey}`, { method: 'DELETE' });
                 const userKey = selectedUser.userKey ?? selectedUser.UserKey;
                 await loadPermissions(userKey);
+            } catch (e) {
+                alert('Hata: ' + e.message);
+            }
+        }
+
+        function getMudurlukInput() {
+            return document.getElementById('userMudurlukAdiInput');
+        }
+
+        function setMudurlukValue(val) {
+            pendingMudurlukSelection = val || '';
+            const input = getMudurlukInput();
+            if (input) input.value = val || '';
+            updateMudurlukBadge(val || '');
+            closeMudurlukDropdown();
+        }
+
+        function clearMudurlukSelection() {
+            setMudurlukValue('');
+        }
+
+        function openMudurlukDropdown() {
+            renderMudurlukDropdown(true);
+        }
+
+        function closeMudurlukDropdown() {
+            const dd = document.getElementById('mudurlukDropdown');
+            if (dd) dd.style.display = 'none';
+            mudurlukHighlightIndex = -1;
+        }
+
+        function onMudurlukInput() {
+            const typed = (getMudurlukInput()?.value || '').trim();
+            const exact = mudurlukOptions.find(o =>
+                String(o).toLocaleLowerCase('tr-TR') === typed.toLocaleLowerCase('tr-TR')
+            );
+            pendingMudurlukSelection = exact || '';
+            renderMudurlukDropdown(true);
+        }
+
+        function renderMudurlukDropdown(forceOpen) {
+            const input = getMudurlukInput();
+            const dd = document.getElementById('mudurlukDropdown');
+            if (!input || !dd) return;
+
+            const q = input.value.trim().toLocaleLowerCase('tr-TR');
+            const items = [{ value: '', label: '— Filtre yok (tüm departmanlar) —' }];
+
+            mudurlukOptions
+                .filter(o => !q || String(o).toLocaleLowerCase('tr-TR').includes(q))
+                .forEach(o => items.push({ value: o, label: o }));
+
+            if (pendingMudurlukSelection && !items.some(i => i.value === pendingMudurlukSelection)) {
+                if (!q || pendingMudurlukSelection.toLocaleLowerCase('tr-TR').includes(q)) {
+                    items.push({ value: pendingMudurlukSelection, label: pendingMudurlukSelection + ' (kayıtlı)' });
+                }
+            }
+
+            if (items.length === 1 && q) {
+                dd.innerHTML = '<li class="empty-item">Sonuç bulunamadı</li>';
+            } else {
+                dd.innerHTML = items.map((item, i) =>
+                    `<li data-value="${esc(item.value)}" class="${i === mudurlukHighlightIndex ? 'active' : ''}">${esc(item.label)}</li>`
+                ).join('');
+                dd.querySelectorAll('li[data-value]').forEach(li => {
+                    li.addEventListener('mousedown', (e) => {
+                        e.preventDefault();
+                        setMudurlukValue(li.dataset.value);
+                    });
+                });
+            }
+
+            if (forceOpen || q) dd.style.display = 'block';
+        }
+
+        function mudurlukKeydown(e) {
+            const dd = document.getElementById('mudurlukDropdown');
+            if (!dd || dd.style.display === 'none') {
+                if (e.key === 'ArrowDown') {
+                    e.preventDefault();
+                    openMudurlukDropdown();
+                }
+                return;
+            }
+            const items = [...dd.querySelectorAll('li[data-value]')];
+            if (!items.length) return;
+
+            if (e.key === 'ArrowDown') {
+                e.preventDefault();
+                mudurlukHighlightIndex = Math.min(mudurlukHighlightIndex + 1, items.length - 1);
+                renderMudurlukDropdown(true);
+            } else if (e.key === 'ArrowUp') {
+                e.preventDefault();
+                mudurlukHighlightIndex = Math.max(mudurlukHighlightIndex - 1, 0);
+                renderMudurlukDropdown(true);
+            } else if (e.key === 'Enter') {
+                e.preventDefault();
+                const pick = items[mudurlukHighlightIndex >= 0 ? mudurlukHighlightIndex : 0];
+                if (pick) setMudurlukValue(pick.dataset.value);
+            } else if (e.key === 'Escape') {
+                closeMudurlukDropdown();
+            }
+        }
+
+        function resolveMudurlukForSave() {
+            if (pendingMudurlukSelection) return pendingMudurlukSelection;
+            const typed = (getMudurlukInput()?.value || '').trim();
+            if (!typed) return '';
+            const match = mudurlukOptions.find(o =>
+                String(o).toLocaleLowerCase('tr-TR') === typed.toLocaleLowerCase('tr-TR')
+            );
+            return match || null;
+        }
+
+        async function saveUserMudurlukAdi() {
+            if (!selectedUser) return;
+            const userKey = selectedUser.userKey ?? selectedUser.UserKey;
+            const resolved = resolveMudurlukForSave();
+            if (resolved === null) {
+                alert('Lütfen listeden bir müdürlük seçin.');
+                return;
+            }
+            const mudurlukAdi = resolved;
+            try {
+                await api(`/users/${userKey}/mudurluk-adi`, {
+                    method: 'PATCH',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ mudurlukAdi: mudurlukAdi || null })
+                });
+                selectedUser.mudurlukAdi = mudurlukAdi || null;
+                selectedUser.MudurlukAdi = mudurlukAdi || null;
+                pendingMudurlukSelection = mudurlukAdi || '';
+                const idx = allUsers.findIndex(u => (u.userKey ?? u.UserKey) === userKey);
+                if (idx >= 0) {
+                    allUsers[idx].mudurlukAdi = mudurlukAdi || null;
+                    allUsers[idx].MudurlukAdi = mudurlukAdi || null;
+                }
+                updateMudurlukBadge(mudurlukAdi || '');
+                alert('Müdürlük adı kaydedildi.');
             } catch (e) {
                 alert('Hata: ' + e.message);
             }
