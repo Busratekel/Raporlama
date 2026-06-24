@@ -87,7 +87,7 @@ namespace Raporlama.API.Services
             rowFilter = AppendDepartmentNameFilter(
                 rowFilter,
                 meta,
-                userInfo.MudurlukAdi,
+                ResolveDepartmentNames(userInfo),
                 departmentFilterEnabled,
                 _adminService.IsAdmin(userName));
 
@@ -157,21 +157,48 @@ namespace Raporlama.API.Services
             return data;
         }
 
+        private static IReadOnlyList<string> ResolveDepartmentNames(UserInfo userInfo)
+        {
+            if (userInfo.MudurlukAdlari != null && userInfo.MudurlukAdlari.Count > 0)
+            {
+                return userInfo.MudurlukAdlari
+                    .Where(x => !string.IsNullOrWhiteSpace(x))
+                    .Select(x => x.Trim())
+                    .Distinct(StringComparer.OrdinalIgnoreCase)
+                    .ToList();
+            }
+
+            if (!string.IsNullOrWhiteSpace(userInfo.MudurlukAdi))
+                return new List<string> { userInfo.MudurlukAdi.Trim() };
+
+            return Array.Empty<string>();
+        }
+
         private static string AppendDepartmentNameFilter(
             string rowFilter,
             ReportPermissionMeta? meta,
-            string? mudurlukAdi,
+            IReadOnlyList<string> mudurlukAdlari,
             bool departmentFilterEnabled,
             bool isAdmin)
         {
-            if (isAdmin || !departmentFilterEnabled || string.IsNullOrWhiteSpace(mudurlukAdi))
+            if (isAdmin || !departmentFilterEnabled || mudurlukAdlari.Count == 0)
                 return rowFilter;
 
             var field = meta?.DepartmentNameField;
             if (string.IsNullOrWhiteSpace(field))
                 return rowFilter;
 
-            var deptClause = $"{QuoteSqlColumn(field)} = {SqlLiteral(mudurlukAdi.Trim())}";
+            string deptClause;
+            if (mudurlukAdlari.Count == 1)
+            {
+                deptClause = $"{QuoteSqlColumn(field)} = {SqlLiteral(mudurlukAdlari[0])}";
+            }
+            else
+            {
+                var literals = string.Join(", ", mudurlukAdlari.Select(SqlLiteral));
+                deptClause = $"{QuoteSqlColumn(field)} IN ({literals})";
+            }
+
             if (string.IsNullOrWhiteSpace(rowFilter))
                 return deptClause;
 

@@ -31,6 +31,7 @@
                         <th>Sorgu Metni</th>
                         <th>Hedef Tablo</th>
                         <th>Zamanlama (Cron)</th>
+                        <th>Son Başarılı Çalışma</th>
                         <th>Aktif</th>
                         <th>Oluşturma Tarihi</th>
                         <th>İşlemler</th>
@@ -73,16 +74,27 @@
                 </div>
                 <div class="mb-2">
                     <label class="form-label">Çalışma Zamanı</label>
-                    <div class="row g-2">
-                        <div class="col-md-3">
-                            <input type="number" min="0" max="59" class="form-control" id="cronMinute" placeholder="Dakika" title="Dakika">
+                    <select class="form-select mb-2" id="cronPreset" onchange="onCronPresetChange()">
+                        <option value="daily">Her gün (belirli saatte)</option>
+                        <option value="weekly">Haftanın belirli günü</option>
+                        <option value="monthly">Ayda bir (belirli gün)</option>
+                        <option value="hourly">Saatlik</option>
+                        <option value="every_30min">Yarım saatte bir</option>
+                        <option value="every_minute">Dakikada bir</option>
+                        <option value="custom">Özel cron ifadesi</option>
+                    </select>
+                    <div id="cronPresetFields" class="row g-2 mb-2">
+                        <div class="col-md-3 cron-field cron-field-time">
+                            <label class="form-label small text-muted mb-0">Saat</label>
+                            <input type="number" min="0" max="23" class="form-control" id="cronHour" value="8" oninput="buildCronFromForm()">
                         </div>
-                        <div class="col-md-3">
-                            <input type="number" min="0" max="23" class="form-control" id="cronHour" placeholder="Saat" title="Saat">
+                        <div class="col-md-3 cron-field cron-field-time">
+                            <label class="form-label small text-muted mb-0">Dakika</label>
+                            <input type="number" min="0" max="59" class="form-control" id="cronMinute" value="0" oninput="buildCronFromForm()">
                         </div>
-                        <div class="col-md-2">
-                            <select class="form-select" id="cronDay">
-                                <option value="*">Her gün</option>
+                        <div class="col-md-4 cron-field cron-field-weekly" style="display:none;">
+                            <label class="form-label small text-muted mb-0">Gün</label>
+                            <select class="form-select" id="cronDayOfWeek" onchange="buildCronFromForm()">
                                 <option value="1">Pazartesi</option>
                                 <option value="2">Salı</option>
                                 <option value="3">Çarşamba</option>
@@ -92,10 +104,14 @@
                                 <option value="0">Pazar</option>
                             </select>
                         </div>
-                        <div class="col-md-8">
-                            <input class="form-control" id="schedule" placeholder="Cron ifadesi (otomatik doldurulur)">
+                        <div class="col-md-4 cron-field cron-field-monthly" style="display:none;">
+                            <label class="form-label small text-muted mb-0">Ayın günü</label>
+                            <input type="number" min="1" max="31" class="form-control" id="cronDayOfMonth" value="1" oninput="buildCronFromForm()">
                         </div>
                     </div>
+                    <label class="form-label small text-muted mb-0">Cron ifadesi</label>
+                    <input class="form-control" id="schedule" placeholder="0 8 * * *" oninput="onScheduleManualEdit()">
+                    <div class="form-text" id="cronHint">Her gün 08:00</div>
                 </div>
                 <div class="form-check mb-2">
                     <input class="form-check-input" type="checkbox" id="aktif">
@@ -120,6 +136,141 @@
     let editingId = null;
     let gorevModal = null;
     let logPollTimer = null;
+    let scheduleManualEdit = false;
+    let suppressScheduleInput = false;
+
+    const CRON_HINTS = {
+        daily: 'Her gün belirtilen saatte çalışır',
+        weekly: 'Haftanın seçilen gününde çalışır',
+        monthly: 'Her ayın seçilen gününde çalışır',
+        hourly: 'Her saat, seçilen dakikada çalışır (ör. dakika 0 → 08:00, 09:00, 10:00…)',
+        every_30min: '30 dakikada bir çalışır',
+        every_minute: 'Her dakika çalışır',
+        custom: 'Cron ifadesini elle yazın (dakika saat gün ay haftanın_günü)'
+    };
+
+    function formatDateTime(val) {
+        if (val == null || val === '') return '—';
+        const d = new Date(val);
+        if (!isNaN(d.getTime())) return d.toLocaleString('tr-TR');
+        const parsed = Date.parse(String(val));
+        return isNaN(parsed) ? '—' : new Date(parsed).toLocaleString('tr-TR');
+    }
+
+    function readSonBasariliCalisma(gorev) {
+        const metin = gorev.sonBasariliCalismaMetin ?? gorev.SonBasariliCalismaMetin;
+        if (metin) return metin;
+        return gorev.sonBasariliCalisma ?? gorev.SonBasariliCalisma ?? null;
+    }
+
+    function displaySonBasariliCalisma(gorev) {
+        const metin = gorev.sonBasariliCalismaMetin ?? gorev.SonBasariliCalismaMetin;
+        if (metin) return metin;
+        return formatDateTime(readSonBasariliCalisma(gorev));
+    }
+
+    function onCronPresetChange() {
+        scheduleManualEdit = false;
+        updateCronFieldVisibility();
+        buildCronFromForm();
+    }
+
+    function updateCronFieldVisibility() {
+        const preset = document.getElementById('cronPreset').value;
+        const showTime = ['daily', 'weekly', 'monthly', 'hourly'].includes(preset);
+        document.querySelectorAll('.cron-field-time').forEach(el => {
+            el.style.display = showTime ? '' : 'none';
+        });
+        const hourField = document.getElementById('cronHour')?.closest('.cron-field-time');
+        if (hourField) hourField.style.display = (preset === 'hourly') ? 'none' : (showTime ? '' : 'none');
+        document.querySelector('.cron-field-weekly').style.display = preset === 'weekly' ? '' : 'none';
+        document.querySelector('.cron-field-monthly').style.display = preset === 'monthly' ? '' : 'none';
+        document.getElementById('schedule').readOnly = preset !== 'custom';
+        document.getElementById('cronHint').textContent = CRON_HINTS[preset] || '';
+    }
+
+    function buildCronFromForm() {
+        if (scheduleManualEdit) return;
+        const preset = document.getElementById('cronPreset').value;
+        const minute = document.getElementById('cronMinute').value || '0';
+        const hour = document.getElementById('cronHour').value || '8';
+        const dow = document.getElementById('cronDayOfWeek').value || '1';
+        const dom = document.getElementById('cronDayOfMonth').value || '1';
+        let cron = '';
+        switch (preset) {
+            case 'every_minute': cron = '* * * * *'; break;
+            case 'every_30min': cron = '*/30 * * * *'; break;
+            case 'hourly': cron = `${minute} * * * *`; break;
+            case 'daily': cron = `${minute} ${hour} * * *`; break;
+            case 'weekly': cron = `${minute} ${hour} * * ${dow}`; break;
+            case 'monthly': cron = `${minute} ${hour} ${dom} * *`; break;
+            default: return;
+        }
+        suppressScheduleInput = true;
+        document.getElementById('schedule').value = cron;
+        suppressScheduleInput = false;
+    }
+
+    function onScheduleManualEdit() {
+        if (suppressScheduleInput) return;
+        if (document.getElementById('cronPreset').value === 'custom') return;
+        scheduleManualEdit = true;
+        document.getElementById('cronPreset').value = 'custom';
+        updateCronFieldVisibility();
+    }
+
+    function parseCronToForm(schedule) {
+        scheduleManualEdit = false;
+        const parts = (schedule || '').trim().split(/\s+/);
+        const presetEl = document.getElementById('cronPreset');
+        if (parts.length !== 5) {
+            presetEl.value = 'custom';
+            document.getElementById('schedule').value = schedule || '';
+            updateCronFieldVisibility();
+            return;
+        }
+        const [min, hr, dom, , dow] = parts;
+        if (min === '*' && hr === '*' && dom === '*' && dow === '*') {
+            presetEl.value = 'every_minute';
+        } else if (min === '*/30' && hr === '*' && dom === '*' && dow === '*') {
+            presetEl.value = 'every_30min';
+        } else if (hr === '*' && dom === '*' && dow === '*') {
+            presetEl.value = 'hourly';
+            document.getElementById('cronMinute').value = min;
+        } else if (dom !== '*' && dow === '*') {
+            presetEl.value = 'monthly';
+            document.getElementById('cronMinute').value = min;
+            document.getElementById('cronHour').value = hr;
+            document.getElementById('cronDayOfMonth').value = dom;
+        } else if (dom === '*' && dow !== '*') {
+            presetEl.value = 'weekly';
+            document.getElementById('cronMinute').value = min;
+            document.getElementById('cronHour').value = hr;
+            document.getElementById('cronDayOfWeek').value = dow;
+        } else if (dom === '*' && dow === '*') {
+            presetEl.value = 'daily';
+            document.getElementById('cronMinute').value = min;
+            document.getElementById('cronHour').value = hr;
+        } else {
+            presetEl.value = 'custom';
+        }
+        document.getElementById('schedule').value = schedule || '';
+        suppressScheduleInput = true;
+        updateCronFieldVisibility();
+        if (presetEl.value !== 'custom') buildCronFromForm();
+        else suppressScheduleInput = false;
+    }
+
+    function resetCronForm() {
+        document.getElementById('cronPreset').value = 'daily';
+        document.getElementById('cronHour').value = '8';
+        document.getElementById('cronMinute').value = '0';
+        document.getElementById('cronDayOfWeek').value = '1';
+        document.getElementById('cronDayOfMonth').value = '1';
+        scheduleManualEdit = false;
+        updateCronFieldVisibility();
+        buildCronFromForm();
+    }
 
     async function ensureAdmin() {
         const r = await fetch('/api/authorization/is-admin', fetchOpts);
@@ -148,7 +299,10 @@
 
     function fetchGorevler() {
         apiFetch(api)
-            .then(r => r.json())
+            .then(async r => {
+                if (!r.ok) throw new Error(await r.text());
+                return r.json();
+            })
             .then(data => {
                 const tbody = document.querySelector('#gorevTable tbody');
                 tbody.innerHTML = '';
@@ -160,6 +314,7 @@
                         `<td><pre style="max-width:200px;white-space:pre-wrap;background:none;color:#bfc7d5;">${gorev.sorguMetni}</pre></td>`,
                         `<td>${gorev.hedefTablo}</td>`,
                         `<td>${gorev.schedule || ''}</td>`,
+                        `<td>${displaySonBasariliCalisma(gorev)}</td>`,
                         `<td>${gorev.aktif ? '<span class="badge bg-success">Evet</span>' : '<span class="badge bg-secondary">Hayır</span>'}</td>`,
                         `<td>${gorev.olusturmaTarihi ? new Date(gorev.olusturmaTarihi).toLocaleString() : ''}</td>`,
                         `<td>
@@ -181,8 +336,8 @@
         document.getElementById('gorevAdi').value = '';
         document.getElementById('sorguMetni').value = '';
         document.getElementById('hedefTablo').value = '';
-        document.getElementById('schedule').value = '';
         document.getElementById('aktif').checked = true;
+        resetCronForm();
         if (!gorevModal) gorevModal = new bootstrap.Modal(document.getElementById('gorevModal'));
         gorevModal.show();
     }
@@ -197,11 +352,7 @@
                 document.getElementById('gorevAdi').value = gorev.gorevAdi;
                 document.getElementById('sorguMetni').value = gorev.sorguMetni;
                 document.getElementById('hedefTablo').value = gorev.hedefTablo;
-                document.getElementById('schedule').value = gorev.schedule || '';
-                const parts = (gorev.schedule || '').split(' ');
-                document.getElementById('cronMinute').value = parts[0] || '';
-                document.getElementById('cronHour').value = parts[1] || '';
-                document.getElementById('cronDay').value = parts[4] || '*';
+                parseCronToForm(gorev.schedule || '');
                 document.getElementById('aktif').checked = gorev.aktif;
                 if (!gorevModal) gorevModal = new bootstrap.Modal(document.getElementById('gorevModal'));
                 gorevModal.show();
@@ -210,12 +361,9 @@
 
     function submitForm(e) {
         e.preventDefault();
-        // Cron ifadesi oluştur
-        const minute = document.getElementById('cronMinute').value || '*';
-        const hour = document.getElementById('cronHour').value || '*';
-        const dayOfWeek = document.getElementById('cronDay').value || '*';
-        let cron = `${minute} ${hour} * * ${dayOfWeek}`;
-        document.getElementById('schedule').value = cron;
+        if (document.getElementById('cronPreset').value !== 'custom') {
+            buildCronFromForm();
+        }
         const gorev = {
             gorevAdi: document.getElementById('gorevAdi').value,
             sorguMetni: document.getElementById('sorguMetni').value,
@@ -257,6 +405,7 @@
                 const lowerMsg = msg.toLowerCase();
                 if (lowerMsg.includes('çalıştırıldı') || lowerMsg.includes('etkilenen kayıt') || lowerMsg.includes('kayıt:')) {
                     showToast(msg, 'success');
+                    fetchGorevler();
                 } else if (lowerMsg.includes('hata') || lowerMsg.includes('ulaşılamadı') || lowerMsg.includes('çalıştırılamadı')) {
                     showToast(msg, 'error');
                 } else {

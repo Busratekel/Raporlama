@@ -21,20 +21,24 @@ namespace Raporlama.API.Services
         public string Email { get; set; } = string.Empty;
         public string Groups { get; set; } = string.Empty;
         public string? MudurlukAdi { get; set; }
+        public List<string> MudurlukAdlari { get; set; } = new();
         public bool IsActive { get; set; }
     }
     public class AuthorizationService : ICustomAuthorizationService
     {
         private readonly IDatabaseService _databaseService;
+        private readonly IUserMudurlukService _userMudurlukService;
         private readonly IHttpContextAccessor _httpContextAccessor;
         private readonly ILogger<AuthorizationService> _logger;
 
         public AuthorizationService(
             IDatabaseService databaseService,
+            IUserMudurlukService userMudurlukService,
             IHttpContextAccessor httpContextAccessor,
             ILogger<AuthorizationService> logger)
         {
             _databaseService = databaseService;
+            _userMudurlukService = userMudurlukService;
             _httpContextAccessor = httpContextAccessor;
             _logger = logger;
         }
@@ -122,8 +126,13 @@ namespace Raporlama.API.Services
 
             var found = users.FirstOrDefault();
             if (found != null)
+            {
+                var mudurlukAdlari = await _userMudurlukService.GetMudurlukAdlariAsync(found.UserKey, found.MudurlukAdi);
+                found.MudurlukAdlari = mudurlukAdlari.ToList();
+                found.MudurlukAdi = mudurlukAdlari.Count > 0 ? mudurlukAdlari[0] : found.MudurlukAdi;
                 _logger.LogInformation("Kullanıcı eşleşti: aranan={Searched}, bulunan={Found}, UserKey={UserKey}",
                     userName, found.UserName, found.UserKey);
+            }
 
             return found;
         }

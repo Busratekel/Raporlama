@@ -45,11 +45,7 @@ namespace Raporlama.ETL
                 foreach (var file in files)
                 {
                     var fileName = Path.GetFileNameWithoutExtension(file);
-                    if (fileName == $"etl-{today}")
-                    {
-                        try { File.WriteAllText(file, string.Empty); } catch { }
-                    }
-                    else
+                    if (fileName != $"etl-{today}")
                     {
                         try { File.Delete(file); } catch { }
                     }
@@ -116,10 +112,8 @@ namespace Raporlama.ETL
             await conn.ExecuteAsync(sql, dp, transaction: tx);
         }
 
-        public async Task<int> RunCustomETLWithResultAsync(string sorgu, string tablo)
+        public async Task<int> RunCustomETLWithResultAsync(string sorgu, string tablo, int? gorevId = null)
         {
-            CleanupOldLogs();
-
             var start = DateTime.Now;
             _logger.LogInformation($"ETL Görevi Başladı: {tablo} ({tablo}) | Başlangıç: {start:yyyy-MM-dd HH:mm:ss}");
             _logger.LogInformation($"[DEBUG] ETL başlatılıyor: {tablo} için sorgu: {sorgu}");
@@ -155,6 +149,8 @@ namespace Raporlama.ETL
                 var end = DateTime.Now;
                 _logger.LogInformation($"ETL Görevi Bitti: {tablo} ({tablo}) | Bitiş: {end:yyyy-MM-dd HH:mm:ss} | Çekilen Kayıt: {count}");
                 _logger.LogInformation($"[DEBUG] ETL tamamlandı: {tablo}, kayıt: {count}");
+                if (gorevId.HasValue)
+                    await MarkSuccessfulRunAsync(gorevId.Value);
                 return count;
             }
             catch (Exception ex)
@@ -176,10 +172,32 @@ namespace Raporlama.ETL
                 return $"Görev bulunamadı: {gorevId}";
             var start = DateTime.Now;
             _logger.LogInformation($"ETL Görevi Başladı: {gorev.GorevAdi} ({gorev.HedefTablo}) | Başlangıç: {start:yyyy-MM-dd HH:mm:ss}");
-            var affected = await RunCustomETLWithResultAsync(gorev.SorguMetni, gorev.HedefTablo);
+            var affected = await RunCustomETLWithResultAsync(gorev.SorguMetni, gorev.HedefTablo, gorevId);
             var end = DateTime.Now;
             _logger.LogInformation($"ETL Görevi Bitti: {gorev.GorevAdi} ({gorev.HedefTablo}) | Bitiş: {end:yyyy-MM-dd HH:mm:ss} | Çekilen Kayıt: {affected}");
             return $"Görev {gorev.GorevAdi} ({gorevId}) çalıştırıldı. Etkilenen kayıt: {affected}";
+        }
+
+        private async Task MarkSuccessfulRunAsync(int gorevId)
+        {
+            try
+            {
+                await using var conn = new SqlConnection(_connectionString);
+                var rows = await conn.ExecuteAsync(
+                    "UPDATE ETLGorevleri SET SonBasariliCalisma = GETDATE() WHERE GorevId = @GorevId",
+                    new { GorevId = gorevId });
+                if (rows > 0)
+                    _logger.LogInformation("SonBasariliCalisma güncellendi: GorevId={GorevId}", gorevId);
+                else
+                    _logger.LogWarning("SonBasariliCalisma güncellenemedi (kayıt yok): GorevId={GorevId}", gorevId);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex,
+                    "SonBasariliCalisma güncellenemedi (GorevId={GorevId}). " +
+                    "BellonaRapor'da database/13_ETLGorev_SonBasariliCalisma.sql çalıştırıldı mı?",
+                    gorevId);
+            }
         }
     }
 

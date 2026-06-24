@@ -11,5 +11,6 @@ namespace Raporlama.API.Models
         public string? Schedule { get; set; }
         public bool Aktif { get; set; }
         public DateTime OlusturmaTarihi { get; set; }
+        public DateTime? SonBasariliCalisma { get; set; }
     }
 }

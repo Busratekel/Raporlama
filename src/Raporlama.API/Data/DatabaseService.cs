@@ -8,8 +8,6 @@ namespace Raporlama.API.Data
     {
         Task<IEnumerable<T>> QueryAsync<T>(string databaseName, string query, object? parameters = null);
         Task<DataTable> QueryDataTableAsync(string databaseName, string query, object? parameters = null);
-        Task<bool> TestConnectionAsync(string databaseName);
-        Task<IEnumerable<string>> GetTableNamesAsync(string databaseName);
     }
 
     public class DatabaseService : IDatabaseService
@@ -31,23 +29,6 @@ namespace Raporlama.API.Data
                 throw new Exception($"Connection string not found for database: {databaseName}");
             }
             return connectionString;
-        }
-
-        public async Task<bool> TestConnectionAsync(string databaseName)
-        {
-            try
-            {
-                var connectionString = GetConnectionString(databaseName);
-                using var connection = new SqlConnection(connectionString);
-                await connection.OpenAsync();
-                await connection.QueryAsync("SELECT 1");
-                return true;
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Database connection test failed for {DatabaseName}", databaseName);
-                return false;
-            }
         }
 
         public async Task<IEnumerable<T>> QueryAsync<T>(string databaseName, string query, object? parameters = null)
@@ -100,26 +81,6 @@ namespace Raporlama.API.Data
             catch (Exception ex)
             {
                 _logger.LogError(ex, "QueryDataTable failed for database {DatabaseName}: {Query}", databaseName, query);
-                throw;
-            }
-        }
-
-        public async Task<IEnumerable<string>> GetTableNamesAsync(string databaseName)
-        {
-            try
-            {
-                var query = @"
-                    SELECT TABLE_NAME 
-                    FROM INFORMATION_SCHEMA.TABLES 
-                    WHERE TABLE_TYPE = 'BASE TABLE'
-                    ORDER BY TABLE_NAME";
-                
-                var tables = await QueryAsync<string>(databaseName, query);
-                return tables;
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "GetTableNames failed for database {DatabaseName}", databaseName);
                 throw;
             }
         }

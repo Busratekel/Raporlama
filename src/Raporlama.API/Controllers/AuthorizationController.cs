@@ -16,6 +16,7 @@ namespace Raporlama.API.Controllers
         private readonly IDatabaseService _databaseService;
         private readonly IAdminService _adminService;
         private readonly IDepartmentOptionsService _departmentOptionsService;
+        private readonly IUserMudurlukService _userMudurlukService;
         private readonly PortalAuthOptions _portalOptions;
         private readonly ILogger<AuthorizationController> _logger;
 
@@ -24,6 +25,7 @@ namespace Raporlama.API.Controllers
             IDatabaseService databaseService,
             IAdminService adminService,
             IDepartmentOptionsService departmentOptionsService,
+            IUserMudurlukService userMudurlukService,
             IOptions<PortalAuthOptions> portalOptions,
             ILogger<AuthorizationController> logger)
         {
@@ -31,6 +33,7 @@ namespace Raporlama.API.Controllers
             _databaseService = databaseService;
             _adminService = adminService;
             _departmentOptionsService = departmentOptionsService;
+            _userMudurlukService = userMudurlukService;
             _portalOptions = portalOptions.Value;
             _logger = logger;
         }
@@ -87,22 +90,6 @@ namespace Raporlama.API.Controllers
             }
         }
 
-        [HttpGet("accessible-reports")]
-        public async Task<IActionResult> GetAccessibleReports()
-        {
-            try
-            {
-                var userName = GetCurrentUserName();
-                var reportIds = await _authorizationService.GetUserAccessibleReportIdsAsync(userName);
-                return Ok(reportIds);
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Error getting accessible reports");
-                return StatusCode(500, new { error = ex.Message });
-            }
-        }
-
         [HttpGet("mudurluk-options")]
         public async Task<IActionResult> GetMudurlukOptions()
         {
@@ -125,10 +112,25 @@ namespace Raporlama.API.Controllers
             if (!RequireAdmin(out var denied)) return denied!;
             try
             {
-                var users = await _databaseService.QueryAsync<dynamic>(
+                var users = (await _databaseService.QueryAsync<UserInfo>(
                     "BellonaRapor",
                     "SELECT UserKey, UserName, DisplayName, Email, Groups, MudurlukAdi, Aktif as IsActive FROM [User] ORDER BY UserName"
-                );
+                )).ToList();
+
+                var mudurlukMap = await _userMudurlukService.GetMudurlukAdlariByUserKeysAsync(users.Select(u => u.UserKey));
+                foreach (var user in users)
+                {
+                    if (mudurlukMap.TryGetValue(user.UserKey, out var adlari) && adlari.Count > 0)
+                    {
+                        user.MudurlukAdlari = adlari;
+                        user.MudurlukAdi = adlari[0];
+                    }
+                    else if (!string.IsNullOrWhiteSpace(user.MudurlukAdi))
+                    {
+                        user.MudurlukAdlari = new List<string> { user.MudurlukAdi.Trim() };
+                    }
+                }
+
                 return Ok(users);
             }
             catch (Exception ex)
@@ -210,22 +212,38 @@ namespace Raporlama.API.Controllers
             if (!RequireAdmin(out var denied)) return denied!;
             try
             {
-                var adi = string.IsNullOrWhiteSpace(request.MudurlukAdi)
-                    ? null
-                    : request.MudurlukAdi.Trim();
+                var adlari = ResolveMudurlukAdlari(request);
+                await _userMudurlukService.SetMudurlukAdlariAsync(userKey, adlari);
 
-                await _databaseService.QueryAsync<int>(
-                    "BellonaRapor",
-                    "UPDATE [User] SET MudurlukAdi = @MudurlukAdi WHERE UserKey = @UserKey",
-                    new { UserKey = userKey, MudurlukAdi = adi }
-                );
-                return Ok(new { message = "Müdürlük adı güncellendi", mudurlukAdi = adi });
+                return Ok(new
+                {
+                    message = "Müdürlük atamaları güncellendi",
+                    mudurlukAdlari = adlari,
+                    mudurlukAdi = adlari.Count > 0 ? adlari[0] : null
+                });
             }
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error updating user mudurluk adi");
                 return StatusCode(500, new { error = ex.Message });
             }
+        }
+
+        private static List<string> ResolveMudurlukAdlari(SetUserMudurlukAdiRequest request)
+        {
+            if (request.MudurlukAdlari != null)
+            {
+                return request.MudurlukAdlari
+                    .Where(x => !string.IsNullOrWhiteSpace(x))
+                    .Select(x => x.Trim())
+                    .Distinct(StringComparer.OrdinalIgnoreCase)
+                    .ToList();
+            }
+
+            if (string.IsNullOrWhiteSpace(request.MudurlukAdi))
+                return new List<string>();
+
+            return new List<string> { request.MudurlukAdi.Trim() };
         }
 
         [HttpPatch("users/{userKey}/active")]
@@ -453,6 +471,7 @@ namespace Raporlama.API.Controllers
         public class SetUserMudurlukAdiRequest
         {
             public string? MudurlukAdi { get; set; }
+            public List<string>? MudurlukAdlari { get; set; }
         }
 
         public class SetUserActiveRequest

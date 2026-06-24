@@ -182,6 +182,7 @@
             display: flex;
             gap: 8px;
             align-items: flex-start;
+            flex-wrap: wrap;
         }
         .options-box {
             background: #23242a;
@@ -372,16 +373,21 @@
 
                 <!-- Adım 1 -->
                 <section class="step-card">
-                    <div class="step-head"><span class="step-num">1</span> Kullanıcının müdürlüğü</div>
-                    <p class="step-desc hint">Bu kullanıcı raporlarda hangi müdürlüğün verisini görecek? Listeden arayıp seçin.</p>
+                    <div class="step-head"><span class="step-num">1</span> Kullanıcının müdürlükleri</div>
+                    <p class="step-desc hint">Birden fazla müdürlük atayabilirsiniz. Listeden arayıp ekleyin, sonra kaydedin.</p>
                     <div class="mudurluk-row">
                         <div class="mudurluk-combobox" id="mudurlukCombobox">
-                            <input type="text" id="userMudurlukAdiInput" placeholder="Müdürlük ara ve seç..." autocomplete="off"
+                            <input type="text" id="userMudurlukAdiInput" placeholder="Müdürlük ara ve ekle..." autocomplete="off"
                                 onfocus="openMudurlukDropdown()" oninput="onMudurlukInput()" onkeydown="mudurlukKeydown(event)">
-                            <button type="button" class="mudurluk-clear" onclick="clearMudurlukSelection()" title="Temizle" aria-label="Temizle">×</button>
+                            <button type="button" class="mudurluk-clear" onclick="clearMudurlukInput()" title="Aramayı temizle" aria-label="Aramayı temizle">×</button>
                             <ul id="mudurlukDropdown" class="mudurluk-dropdown"></ul>
                         </div>
+                        <button class="btn btn-primary btn-sm" type="button" onclick="addMudurlukFromInput()">Ekle</button>
                         <button class="btn btn-success btn-sm" type="button" onclick="saveUserMudurlukAdi()">Kaydet</button>
+                    </div>
+                    <div class="filter-tags mudurluk-tags" id="mudurlukTags"></div>
+                    <div style="margin-top:8px;">
+                        <button class="btn btn-sm btn-primary" type="button" onclick="clearAllMudurluk()">Tüm müdürlükleri temizle</button>
                     </div>
                 </section>
 
@@ -422,7 +428,7 @@
                         </label>
                         <label class="check-row">
                             <input type="checkbox" id="permDepartmentFilter" checked>
-                            <span>Müdürlük filtresi uygula<small>Açıksa yalnızca 1. adımdaki müdürlüğün kayıtları görünür. Kapalıysa tüm departmanlar.</small></span>
+                            <span>Müdürlük filtresi uygula<small>Açıksa yalnızca 1. adımda atanan müdürlüklerin kayıtları görünür. Kapalıysa tüm departmanlar.</small></span>
                         </label>
                     </div>
 
@@ -484,7 +490,7 @@
         let filterRules = [];
         let reportMetadata = null;
         let mudurlukOptions = [];
-        let pendingMudurlukSelection = '';
+        let selectedMudurlukList = [];
         let mudurlukHighlightIndex = -1;
 
         window.onload = init;
@@ -541,12 +547,92 @@
             return document.getElementById('advancedDetails')?.open === true;
         }
 
-        function updateMudurlukBadge(val) {
+        function getUserMudurlukList(user) {
+            if (!user) return [];
+            const arr = user.mudurlukAdlari ?? user.MudurlukAdlari;
+            if (Array.isArray(arr) && arr.length) return arr.map(x => String(x).trim()).filter(Boolean);
+            const single = user.mudurlukAdi ?? user.MudurlukAdi;
+            return single ? [String(single).trim()] : [];
+        }
+
+        function updateMudurlukBadge(list) {
             const badge = document.getElementById('userMudurlukBadge');
             if (!badge) return;
-            badge.textContent = val
-                ? `Müdürlük: ${val}`
-                : 'Müdürlük: atanmadı (tüm departmanlar)';
+            if (!list || !list.length) {
+                badge.textContent = 'Müdürlük: atanmadı (tüm departmanlar)';
+                return;
+            }
+            if (list.length === 1) {
+                badge.textContent = `Müdürlük: ${list[0]}`;
+                return;
+            }
+            badge.textContent = `Müdürlük: ${list.length} adet (${list.slice(0, 2).join(', ')}${list.length > 2 ? '…' : ''})`;
+        }
+
+        function setMudurlukList(list) {
+            selectedMudurlukList = (list || [])
+                .map(x => String(x).trim())
+                .filter(Boolean)
+                .filter((v, i, a) => a.findIndex(x => x.toLocaleLowerCase('tr-TR') === v.toLocaleLowerCase('tr-TR')) === i);
+            renderMudurlukTags();
+            updateMudurlukBadge(selectedMudurlukList);
+        }
+
+        function renderMudurlukTags() {
+            const box = document.getElementById('mudurlukTags');
+            if (!box) return;
+            if (!selectedMudurlukList.length) {
+                box.innerHTML = '<span class="hint">Henüz müdürlük eklenmedi.</span>';
+                return;
+            }
+            box.innerHTML = selectedMudurlukList.map((name, i) =>
+                `<span class="filter-tag">${esc(name)} <button type="button" onclick="removeMudurluk(${i})" title="Kaldır">×</button></span>`
+            ).join('');
+        }
+
+        function addMudurluk(value) {
+            const val = (value || '').trim();
+            if (!val) return false;
+            const exists = selectedMudurlukList.some(x =>
+                x.toLocaleLowerCase('tr-TR') === val.toLocaleLowerCase('tr-TR')
+            );
+            if (exists) return false;
+            selectedMudurlukList.push(val);
+            renderMudurlukTags();
+            updateMudurlukBadge(selectedMudurlukList);
+            clearMudurlukInput();
+            return true;
+        }
+
+        function removeMudurluk(index) {
+            selectedMudurlukList.splice(index, 1);
+            renderMudurlukTags();
+            updateMudurlukBadge(selectedMudurlukList);
+        }
+
+        function clearAllMudurluk() {
+            setMudurlukList([]);
+        }
+
+        function clearMudurlukInput() {
+            const input = getMudurlukInput();
+            if (input) input.value = '';
+            closeMudurlukDropdown();
+        }
+
+        function addMudurlukFromInput() {
+            const typed = (getMudurlukInput()?.value || '').trim();
+            if (!typed) return;
+            const match = mudurlukOptions.find(o =>
+                String(o).toLocaleLowerCase('tr-TR') === typed.toLocaleLowerCase('tr-TR')
+            );
+            if (!match) {
+                alert('Lütfen listeden geçerli bir müdürlük seçin.');
+                return;
+            }
+            if (!addMudurluk(match)) {
+                alert('Bu müdürlük zaten eklendi.');
+            }
         }
 
         function buildPermSummary(filter, cols) {
@@ -704,9 +790,8 @@
             document.getElementById('selectedUserName').textContent = selectedUser.userName ?? selectedUser.UserName;
             document.getElementById('selectedUserMeta').textContent =
                 `UserKey: ${userKey} · ${selectedUser.displayName ?? selectedUser.DisplayName ?? ''}`;
-            pendingMudurlukSelection = selectedUser.mudurlukAdi ?? selectedUser.MudurlukAdi ?? '';
-            setMudurlukValue(pendingMudurlukSelection);
-            updateMudurlukBadge(pendingMudurlukSelection);
+            setMudurlukList(getUserMudurlukList(selectedUser));
+            clearMudurlukInput();
             const active = selectedUser.isActive ?? selectedUser.IsActive;
             const btn = document.getElementById('toggleUserBtn');
             btn.textContent = active ? 'Pasifleştir' : 'Aktifleştir';
@@ -828,12 +913,37 @@
             }
         }
 
+        function selectReportForAddForm() {
+            const sel = document.getElementById('reportSelect');
+            if (!sel || !sel.options.length) return;
+            const assigned = new Set(currentPermissions.map(p => p.reportKey ?? p.ReportKey));
+            for (let i = 0; i < sel.options.length; i++) {
+                const rk = parseInt(sel.options[i].value, 10);
+                if (!assigned.has(rk)) {
+                    sel.selectedIndex = i;
+                    onReportChange();
+                    return;
+                }
+            }
+            sel.selectedIndex = 0;
+            onReportChange();
+        }
+
         async function deletePermission(permissionKey) {
             if (!confirm('Bu yetkiyi silmek istediğinize emin misiniz?')) return;
+            const deleted = currentPermissions.find(p => (p.permissionKey ?? p.PermissionKey) === permissionKey);
+            const deletedReportKey = deleted?.reportKey ?? deleted?.ReportKey;
             try {
                 await api(`/permissions/${permissionKey}`, { method: 'DELETE' });
                 const userKey = selectedUser.userKey ?? selectedUser.UserKey;
                 await loadPermissions(userKey);
+
+                const formReportKey = parseInt(document.getElementById('reportSelect').value, 10);
+                if (deletedReportKey != null &&
+                    (deletedReportKey === formReportKey || deletedReportKey === editingReportKey)) {
+                    resetForm();
+                    selectReportForAddForm();
+                }
             } catch (e) {
                 alert('Hata: ' + e.message);
             }
@@ -841,18 +951,6 @@
 
         function getMudurlukInput() {
             return document.getElementById('userMudurlukAdiInput');
-        }
-
-        function setMudurlukValue(val) {
-            pendingMudurlukSelection = val || '';
-            const input = getMudurlukInput();
-            if (input) input.value = val || '';
-            updateMudurlukBadge(val || '');
-            closeMudurlukDropdown();
-        }
-
-        function clearMudurlukSelection() {
-            setMudurlukValue('');
         }
 
         function openMudurlukDropdown() {
@@ -866,11 +964,6 @@
         }
 
         function onMudurlukInput() {
-            const typed = (getMudurlukInput()?.value || '').trim();
-            const exact = mudurlukOptions.find(o =>
-                String(o).toLocaleLowerCase('tr-TR') === typed.toLocaleLowerCase('tr-TR')
-            );
-            pendingMudurlukSelection = exact || '';
             renderMudurlukDropdown(true);
         }
 
@@ -880,20 +973,17 @@
             if (!input || !dd) return;
 
             const q = input.value.trim().toLocaleLowerCase('tr-TR');
-            const items = [{ value: '', label: '— Filtre yok (tüm departmanlar) —' }];
-
-            mudurlukOptions
+            const items = mudurlukOptions
+                .filter(o => !selectedMudurlukList.some(s =>
+                    s.toLocaleLowerCase('tr-TR') === String(o).toLocaleLowerCase('tr-TR')
+                ))
                 .filter(o => !q || String(o).toLocaleLowerCase('tr-TR').includes(q))
-                .forEach(o => items.push({ value: o, label: o }));
+                .map(o => ({ value: o, label: o }));
 
-            if (pendingMudurlukSelection && !items.some(i => i.value === pendingMudurlukSelection)) {
-                if (!q || pendingMudurlukSelection.toLocaleLowerCase('tr-TR').includes(q)) {
-                    items.push({ value: pendingMudurlukSelection, label: pendingMudurlukSelection + ' (kayıtlı)' });
-                }
-            }
-
-            if (items.length === 1 && q) {
+            if (!items.length && q) {
                 dd.innerHTML = '<li class="empty-item">Sonuç bulunamadı</li>';
+            } else if (!items.length) {
+                dd.innerHTML = '<li class="empty-item">Eklenecek müdürlük kalmadı</li>';
             } else {
                 dd.innerHTML = items.map((item, i) =>
                     `<li data-value="${esc(item.value)}" class="${i === mudurlukHighlightIndex ? 'active' : ''}">${esc(item.label)}</li>`
@@ -901,7 +991,7 @@
                 dd.querySelectorAll('li[data-value]').forEach(li => {
                     li.addEventListener('mousedown', (e) => {
                         e.preventDefault();
-                        setMudurlukValue(li.dataset.value);
+                        addMudurluk(li.dataset.value);
                     });
                 });
             }
@@ -915,11 +1005,20 @@
                 if (e.key === 'ArrowDown') {
                     e.preventDefault();
                     openMudurlukDropdown();
+                } else if (e.key === 'Enter') {
+                    e.preventDefault();
+                    addMudurlukFromInput();
                 }
                 return;
             }
             const items = [...dd.querySelectorAll('li[data-value]')];
-            if (!items.length) return;
+            if (!items.length) {
+                if (e.key === 'Enter') {
+                    e.preventDefault();
+                    addMudurlukFromInput();
+                }
+                return;
+            }
 
             if (e.key === 'ArrowDown') {
                 e.preventDefault();
@@ -932,47 +1031,36 @@
             } else if (e.key === 'Enter') {
                 e.preventDefault();
                 const pick = items[mudurlukHighlightIndex >= 0 ? mudurlukHighlightIndex : 0];
-                if (pick) setMudurlukValue(pick.dataset.value);
+                if (pick) addMudurluk(pick.dataset.value);
             } else if (e.key === 'Escape') {
                 closeMudurlukDropdown();
             }
         }
 
-        function resolveMudurlukForSave() {
-            if (pendingMudurlukSelection) return pendingMudurlukSelection;
-            const typed = (getMudurlukInput()?.value || '').trim();
-            if (!typed) return '';
-            const match = mudurlukOptions.find(o =>
-                String(o).toLocaleLowerCase('tr-TR') === typed.toLocaleLowerCase('tr-TR')
-            );
-            return match || null;
-        }
-
         async function saveUserMudurlukAdi() {
             if (!selectedUser) return;
             const userKey = selectedUser.userKey ?? selectedUser.UserKey;
-            const resolved = resolveMudurlukForSave();
-            if (resolved === null) {
-                alert('Lütfen listeden bir müdürlük seçin.');
-                return;
-            }
-            const mudurlukAdi = resolved;
+            const mudurlukAdlari = [...selectedMudurlukList];
             try {
-                await api(`/users/${userKey}/mudurluk-adi`, {
+                const result = await api(`/users/${userKey}/mudurluk-adi`, {
                     method: 'PATCH',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ mudurlukAdi: mudurlukAdi || null })
+                    body: JSON.stringify({ mudurlukAdlari })
                 });
-                selectedUser.mudurlukAdi = mudurlukAdi || null;
-                selectedUser.MudurlukAdi = mudurlukAdi || null;
-                pendingMudurlukSelection = mudurlukAdi || '';
+                const saved = result.mudurlukAdlari ?? mudurlukAdlari;
+                selectedUser.mudurlukAdlari = saved;
+                selectedUser.MudurlukAdlari = saved;
+                selectedUser.mudurlukAdi = saved.length ? saved[0] : null;
+                selectedUser.MudurlukAdi = selectedUser.mudurlukAdi;
                 const idx = allUsers.findIndex(u => (u.userKey ?? u.UserKey) === userKey);
                 if (idx >= 0) {
-                    allUsers[idx].mudurlukAdi = mudurlukAdi || null;
-                    allUsers[idx].MudurlukAdi = mudurlukAdi || null;
+                    allUsers[idx].mudurlukAdlari = saved;
+                    allUsers[idx].MudurlukAdlari = saved;
+                    allUsers[idx].mudurlukAdi = selectedUser.mudurlukAdi;
+                    allUsers[idx].MudurlukAdi = selectedUser.mudurlukAdi;
                 }
-                updateMudurlukBadge(mudurlukAdi || '');
-                alert('Müdürlük adı kaydedildi.');
+                setMudurlukList(saved);
+                alert('Müdürlük atamaları kaydedildi.');
             } catch (e) {
                 alert('Hata: ' + e.message);
             }

@@ -61,7 +61,7 @@ public class ETLWorker : BackgroundService
                         _logger.LogInformation($"[Otomatik] ETL Görevi Başladı: {gorev.GorevAdi} ({gorev.HedefTablo}) | Başlangıç: {start:yyyy-MM-dd HH:mm:ss}");
                         try
                         {
-                            int kayitSayisi = await _etlService.RunCustomETLWithResultAsync(gorev.SorguMetni!, gorev.HedefTablo!);
+                            int kayitSayisi = await _etlService.RunCustomETLWithResultAsync(gorev.SorguMetni!, gorev.HedefTablo!, gorev.GorevId);
                             var end = DateTime.Now;
                             _logger.LogInformation($"[Otomatik] ETL Görevi Bitti: {gorev.GorevAdi} ({gorev.HedefTablo}) | Bitiş: {end:yyyy-MM-dd HH:mm:ss} | Çekilen Kayıt: {kayitSayisi}");
                         }

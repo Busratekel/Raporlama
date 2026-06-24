@@ -5,7 +5,7 @@ using Raporlama.API.Models;
 using Raporlama.API.Services;
 
 using System.Collections.Generic;
-
+using System.Linq;
 using System.Threading.Tasks;
 
 
@@ -182,7 +182,7 @@ namespace Raporlama.API.Controllers
 
         [HttpGet]
 
-        public async Task<ActionResult<IEnumerable<ETLGorev>>> GetAll()
+        public async Task<ActionResult<IEnumerable<EtlGorevListDto>>> GetAll()
 
         {
 
@@ -190,7 +190,7 @@ namespace Raporlama.API.Controllers
 
             var result = await _service.GetAllAsync();
 
-            return Ok(result);
+            return Ok(result.Select(EtlGorevListDto.From));
 
         }
 
@@ -198,7 +198,7 @@ namespace Raporlama.API.Controllers
 
         [HttpGet("{id}")]
 
-        public async Task<ActionResult<ETLGorev>> Get(int id)
+        public async Task<ActionResult<EtlGorevListDto>> Get(int id)
 
         {
 
@@ -208,7 +208,7 @@ namespace Raporlama.API.Controllers
 
             if (gorev == null) return NotFound();
 
-            return Ok(gorev);
+            return Ok(EtlGorevListDto.From(gorev));
 
         }
 

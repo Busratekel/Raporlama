@@ -146,8 +146,6 @@
         <button type="button" id="themeToggle" class="theme-toggle">☀️ Açık Tema</button>
         <button class="mini-btn" id="adminBtn" style="display:none;" onclick="window.location.href='yetki-yonetimi.html'">🔐 Yetki Yönetimi</button>
         <button class="mini-btn" id="etlBtn" style="display:none;" onclick="window.location.href='etl.html'">⚙️ ETL Yönetimi</button>
-        <!--<button class="mini-btn" onclick="window.location.href='rapor-olustur.html'">➕ Rapor Oluştur</button>-->
-        <!--<button class="mini-btn" onclick="window.location.href='kendi-raporlarim.html'">👤 Kendi Raporlarım</button>-->
     </div>
     <div class="container">
         <h2>📊 Rapor Seçimi</h2>
@@ -227,16 +225,6 @@
         }
         async function loadUserInfo() {
             try {
-                const authStatusResponse = await fetch(`${API_BASE}/authtest/status`, { credentials: 'include' });
-                if (!authStatusResponse.ok) {
-                    await showNotLoggedIn();
-                    return false;
-                }
-                const authStatus = await authStatusResponse.json();
-                if (!authStatus.isAuthenticated) {
-                    await showNotLoggedIn();
-                    return false;
-                }
                 const response = await fetch(`${API_BASE}/authorization/current-user`, { credentials: 'include' });
                 if (!response.ok) {
                     if (response.status === 401) {
