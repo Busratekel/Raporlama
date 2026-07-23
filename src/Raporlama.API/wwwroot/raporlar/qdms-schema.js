@@ -23,6 +23,7 @@ const qdmsF = {
     isiYapacak: 'İşi Yapacak',
     baslamaTarihi: 'Başlama Tarihi',
     bitisTarihi: 'Bitiş Tarihi',
+    gerceklestirmeTarihi: 'Gerçekleştirme Tarihi',
     anaAksiyonNo: 'Ana Aksiyon No',
     kalemNo: 'Kalem No',
     gunSayisi: 'Gün Sayısı',
@@ -31,6 +32,16 @@ const qdmsF = {
     tanim: 'Tanım',
     gorevlendirmeSebebi: 'Görevlendirme Sebebi'
 };
+
+function qdmsFormatDateDisplay(value) {
+    if (value == null || value === '') return value;
+    const s = String(value).trim();
+    if (/^\d{4}-\d{2}-\d{2}/.test(s)) {
+        const [y, m, d] = s.substring(0, 10).split('-');
+        return `${d}.${m}.${y}`;
+    }
+    return value;
+}
 
 function qdmsFindFieldValue(row, field) {
     if (!row || !field) return undefined;
@@ -84,6 +95,12 @@ function qdmsEnrichRow(row) {
 
     normalized[qdmsF.geciktiMi] = gecikti;
     normalized[qdmsF.gunSayisi] = gunSayisi;
+
+    const gerceklestirme = qdmsFindFieldValue(normalized, qdmsF.gerceklestirmeTarihi);
+    if (gerceklestirme != null && String(gerceklestirme).trim() !== '') {
+        normalized[qdmsF.gerceklestirmeTarihi] = qdmsFormatDateDisplay(gerceklestirme);
+    }
+
     return normalized;
 }
 
@@ -138,7 +155,8 @@ const qdmsSchema = {
         { field: qdmsF.sistemeGirenKisi, elementId: 'filterKisi', label: 'Sisteme Giren Kişi' },
         { field: qdmsF.isiYapacak, elementId: 'filterIsiYapacak', label: 'İşi Yapacak' },
         { field: qdmsF.baslamaTarihi, elementId: 'filterBaslangic', label: 'Başlama Tarihi', type: 'date', compare: '>=' },
-        { field: qdmsF.bitisTarihi, elementId: 'filterBitis', label: 'Bitiş Tarihi', type: 'date', compare: '<=' }
+        { field: qdmsF.bitisTarihi, elementId: 'filterBitis', label: 'Bitiş Tarihi', type: 'date', compare: '<=' },
+        { field: qdmsF.gerceklestirmeTarihi, elementId: 'filterGerceklestirme', label: 'Gerçekleştirme Tarihi', type: 'date', compare: '=' }
     ],
     columns: [
         { dataField: qdmsF.anaAksiyonNo, caption: 'Ana Aksiyon No', dataType: 'string', forceText: true },
@@ -153,6 +171,7 @@ const qdmsSchema = {
         { dataField: qdmsF.tip, caption: 'Tip' },
         { dataField: qdmsF.baslamaTarihi, caption: 'Başlama Tarihi' },
         { dataField: qdmsF.bitisTarihi, caption: 'Bitiş Tarihi' },
+        { dataField: qdmsF.gerceklestirmeTarihi, caption: 'Gerçekleştirme Tarihi' },
         { dataField: qdmsF.geciktiMi, caption: 'Gecikti mi?' },
         { dataField: qdmsF.gunSayisi, caption: 'Gün Sayısı' },
         { dataField: qdmsF.gorevlendirmeSebebi, caption: 'Görevlendirme Sebebi' },

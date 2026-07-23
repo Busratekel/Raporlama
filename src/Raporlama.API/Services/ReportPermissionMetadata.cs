@@ -62,7 +62,7 @@ public static class ReportPermissionMetadata
         [
             "Ana Aksiyon No", "Kalem No", "Sisteme Giren", "Sisteme Giren Kişi",
             "Sisteme Girenin Müdürlük/Direktörlük Kodu", "Sisteme Girenin Müdürlük/Direktörlüğü",
-            "İşi Yapacak", "Sorumlu Birim", "Başlama Tarihi", "Bitiş Tarihi",
+            "İşi Yapacak", "Sorumlu Birim", "Başlama Tarihi", "Bitiş Tarihi", "Gerçekleştirme Tarihi",
             "Tip", "Tanım", "Durum", "Görevlendirme Sebebi", "Gün Sayısı", "Gecikti mi?"
         ],
         ColumnLabels: new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)

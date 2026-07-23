@@ -1,5 +1,31 @@
 window.API_BASE = window.API_BASE || (window.location.origin + '/api');
 
+function normalizeDateOnly(value) {
+    if (value == null || value === '') return null;
+    const s = String(value).trim();
+    if (!s) return null;
+    if (/^\d{4}-\d{2}-\d{2}/.test(s)) return s.substring(0, 10);
+    const tr = s.match(/^(\d{1,2})\.(\d{1,2})\.(\d{4})/);
+    if (tr) {
+        return `${tr[3]}-${tr[2].padStart(2, '0')}-${tr[1].padStart(2, '0')}`;
+    }
+    const d = new Date(s);
+    if (!isNaN(d.getTime())) {
+        const y = d.getFullYear();
+        const m = String(d.getMonth() + 1).padStart(2, '0');
+        const day = String(d.getDate()).padStart(2, '0');
+        return `${y}-${m}-${day}`;
+    }
+    return null;
+}
+
+function formatTrDate(value) {
+    const iso = normalizeDateOnly(value);
+    if (!iso) return '';
+    const [y, m, d] = iso.split('-');
+    return `${d}.${m}.${y}`;
+}
+
 async function fetchJsonSafe(url, options = {}) {
     const resp = await fetch(url, { credentials: 'include', ...options });
     const text = await resp.text();
@@ -368,6 +394,8 @@ class RaporModul {
         // Dinamik tarih filtreleri için filterState başlat
         (this.schema.filters || []).forEach(f => {
             if (f.type === 'date') {
+                const dateEl = document.getElementById(f.elementId);
+                if (dateEl) this.filterState[f.field] = dateEl.value || '';
                 if (document.getElementById(f.elementId + '_min')) this.filterState[f.field + '_min'] = '';
                 if (document.getElementById(f.elementId + '_max')) this.filterState[f.field + '_max'] = '';
             }
@@ -677,7 +705,16 @@ class RaporModul {
         return keys;
     }
 
+    syncFilterStateFromDom() {
+        (this.schema.filters || []).forEach(f => {
+            const elem = document.getElementById(f.elementId);
+            if (!elem) return;
+            this.filterState[f.field] = elem.value || '';
+        });
+    }
+
     getFilteredData() {
+        this.syncFilterStateFromDom();
         const dataFilterKeys = this.getDataFilterKeys();
         const uiStateKeys = this.getUiStateKeys();
         const sourceData = typeof this.schema.enrichRow === 'function'
@@ -694,12 +731,8 @@ class RaporModul {
                 // Tarih filtreleri
                 const filterDef = (this.schema.filters || []).find(f => f.field === key);
                 if (filterDef && filterDef.type === 'date') {
-                    const recValStr = d[key] ? String(d[key]).substring(0,10) : null;
-                    const inputValStr = String(val).substring(0,10);
-                    if (!recValStr) continue;
-                    const recVal = new Date(recValStr);
-                    const inputDate = new Date(inputValStr);
-                    if (isNaN(recVal) || isNaN(inputDate)) continue;
+                    const recValStr = normalizeDateOnly(this.getRowValue(d, key));
+                    const inputValStr = normalizeDateOnly(val);
                     let compare = filterDef.compare;
                     if (!compare) {
                         const id = (filterDef.elementId || '').toLowerCase();
@@ -712,12 +745,14 @@ class RaporModul {
                             compare = '=';
                         }
                     }
-                    if (compare === '>=') {
-                        if (recVal < inputDate) match = false;
+                    if (!recValStr || !inputValStr) {
+                        if (compare === '=') match = false;
+                    } else if (compare === '>=') {
+                        if (recValStr < inputValStr) match = false;
                     } else if (compare === '<=') {
-                        if (recVal > inputDate) match = false;
+                        if (recValStr > inputValStr) match = false;
                     } else if (compare === '=') {
-                        if (recVal.getTime() !== inputDate.getTime()) match = false;
+                        if (recValStr !== inputValStr) match = false;
                     }
                 } else if (this.schema.bucketFilters && this.schema.bucketFilters[key]) {
                     const cfg = this.schema.bucketFilters[key];
@@ -792,6 +827,7 @@ class RaporModul {
             gridElem.dxDataGrid({
                 dataSource: gridData,
                 columns: gridColumns,
+                noDataText: 'Kayıt bulunamadı. Filtreleri temizleyip tekrar deneyin.',
                 showBorders: true,
                 filterRow: { visible: true },
                 searchPanel: { visible: true, width: 240, placeholder: "Ara..." },
@@ -1016,7 +1052,7 @@ class RaporModul {
         (this.schema.filters || []).forEach(f => {
             const elem = document.getElementById(f.elementId);
             if (!elem) return;
-            elem.addEventListener('change', () => {
+            const applyFilter = () => {
                 this.filterState[f.field] = elem.value;
                 if (f.type === 'date') {
                     if (document.getElementById(f.elementId + '_min')) {
@@ -1027,7 +1063,9 @@ class RaporModul {
                     }
                 }
                 this.updateAll();
-            });
+            };
+            elem.addEventListener('change', applyFilter);
+            if (f.type === 'date') elem.addEventListener('input', applyFilter);
         });
 
         // Grafik tipi değişiklikleri

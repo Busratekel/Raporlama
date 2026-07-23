@@ -72,6 +72,36 @@ html[data-theme="light"] .filter-group {
     letter-spacing: 0.5px;
 }
 
+.filter-hint {
+    display: block;
+    margin: 6px 0 0;
+    padding: 10px 12px;
+    font-size: 12px;
+    line-height: 1.5;
+    color: var(--text-main);
+    background: color-mix(in srgb, var(--text-accent) 8%, var(--bg-card));
+    border-left: 3px solid var(--text-accent);
+    border-radius: 0 6px 6px 0;
+}
+
+.filter-hint strong {
+    color: var(--text-accent);
+    font-weight: 600;
+}
+
+.filter-hint-icon {
+    margin-right: 6px;
+}
+
+.filter-hint-text {
+    display: inline;
+}
+
+html[data-theme="light"] .filter-hint {
+    background: #e8f4fd;
+    border-left-color: var(--text-accent);
+}
+
 .sidebar select, .sidebar input[type="date"] {
     width: 100%;
     min-width: 0;
