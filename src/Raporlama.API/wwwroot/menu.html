@@ -259,6 +259,11 @@
                 return 'images/eba.png';
             if (code.includes('qdms') || name.includes('qdms') || url.includes('qdms'))
                 return 'images/qdms.png';
+            if (code.includes('satinalma') || code.includes('kabuller')
+                || name.includes('satinalma') || name.includes('kabuller')
+                || name.includes('satınalma') || name.includes('kabul')
+                || url.includes('satinalma') || url.includes('kabuller'))
+                return 'images/satinalma-kabuller.png';
             return null;
         }
         function getReportDisplayName(report) {
@@ -267,6 +272,10 @@
             const url = (report.url || '').toLowerCase();
             if (code.includes('bekleyen') || name.includes('bekleyen') || url.includes('bekleyen'))
                 return 'EBA Bekleyen Süreçler';
+            if (code.includes('satinalma') || code.includes('kabuller')
+                || name.includes('satinalma') || name.includes('kabuller')
+                || name.includes('satınalma') || url.includes('satinalma-kabuller'))
+                return 'Satınalma Kabuller Dökümü';
             return report.reportName || 'Rapor';
         }
         function renderReportButton(report, url) {

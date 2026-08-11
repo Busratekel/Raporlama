@@ -1,8 +1,6 @@
-using System;
-using System.Collections.Generic;
+using System.Collections.Concurrent;
 using System.Data;
 using System.Globalization;
-using System.Threading.Tasks;
 using Dapper;
 using Microsoft.Data.SqlClient;
 using Microsoft.Extensions.Configuration;
@@ -12,7 +10,10 @@ namespace Raporlama.ETL
 {
     public class ETLService
     {
-        
+        public const int SkippedAlreadyRunning = -1;
+
+        private static readonly ConcurrentDictionary<string, byte> RunningTables = new(StringComparer.OrdinalIgnoreCase);
+
         private readonly ILogger<ETLService> _logger;
         private readonly IConfiguration _configuration;
         private readonly string _connectionString;
@@ -21,7 +22,8 @@ namespace Raporlama.ETL
         {
             _logger = logger;
             _configuration = configuration;
-            _connectionString = _configuration.GetConnectionString("BellonaRapor");
+            _connectionString = _configuration.GetConnectionString("BellonaRapor")
+                ?? throw new InvalidOperationException("BellonaRapor connection string bulunamadı.");
         }
 
         public string GetLogDirectory() => ResolveLogDirectory(_configuration);
@@ -54,34 +56,27 @@ namespace Raporlama.ETL
             catch { }
         }
 
-        // Aktif görevleri veritabanından çeker
         public async Task<List<ETLGorev>> GetActiveTasksAsync()
         {
             using var conn = new SqlConnection(_connectionString);
-            var sql = "SELECT GorevId, GorevAdi, SorguMetni, HedefTablo, Schedule FROM ETLGorevleri WHERE Aktif = 1";
-            var result = await conn.QueryAsync<ETLGorev>(sql);
-            return result.AsList();
-        }
-
-        private static object NormalizeCellValue(object value)
-        {
-            if (value == null || value == DBNull.Value) return null;
-
-            if (value is string s)
+            const string sqlWithRunMode = @"SELECT GorevId, GorevAdi, SorguMetni, HedefTablo, Schedule,
+                                                   ISNULL(RunMode, N'ReplaceAll') AS RunMode
+                                            FROM ETLGorevleri WHERE Aktif = 1";
+            const string sqlLegacy = @"SELECT GorevId, GorevAdi, SorguMetni, HedefTablo, Schedule
+                                       FROM ETLGorevleri WHERE Aktif = 1";
+            try
             {
-                s = s.Trim();
-                if (s.Length == 0) return null;
-
-                // View'den gelen dd.MM.yyyy tarihleri (örn. 08.04.2026) datetime kolonuna yazılabilsin.
-                if (DateTime.TryParseExact(s, "dd.MM.yyyy", CultureInfo.InvariantCulture, DateTimeStyles.None, out var trDate))
-                    return trDate;
-                if (DateTime.TryParseExact(s, "d.M.yyyy", CultureInfo.InvariantCulture, DateTimeStyles.None, out trDate))
-                    return trDate;
-
-                return s;
+                var result = await conn.QueryAsync<ETLGorev>(sqlWithRunMode);
+                return result.AsList();
             }
-
-            return value;
+            catch (SqlException ex) when (ex.Message.Contains("RunMode", StringComparison.OrdinalIgnoreCase))
+            {
+                _logger.LogWarning("ETLGorevleri.RunMode kolonu yok — ReplaceAll kullanılıyor. database/18_Satinalma_Incremental_ETL.sql çalıştırın.");
+                var legacy = await conn.QueryAsync<ETLGorev>(sqlLegacy);
+                foreach (var g in legacy)
+                    g.RunMode = "ReplaceAll";
+                return legacy.AsList();
+            }
         }
 
         private static string QuoteSqlIdentifier(string name) =>
@@ -90,91 +85,270 @@ namespace Raporlama.ETL
         private static string NormalizeTableName(string tablo) =>
             tablo.Trim().Trim('[', ']');
 
-        private static async Task InsertRowAsync(
-            SqlConnection conn,
-            IDbTransaction tx,
-            string tablo,
-            Dictionary<string, object> dict)
+        private static string NormalizeRunMode(string? runMode)
         {
-            var dp = new DynamicParameters();
-            var columns = new List<string>();
-            var parameters = new List<string>();
-            var i = 0;
-            foreach (var kv in dict)
-            {
-                var paramName = "p" + i++;
-                columns.Add(QuoteSqlIdentifier(kv.Key));
-                parameters.Add("@" + paramName);
-                dp.Add(paramName, kv.Value);
-            }
-
-            var sql = $"INSERT INTO {QuoteSqlIdentifier(NormalizeTableName(tablo))} ({string.Join(",", columns)}) VALUES ({string.Join(",", parameters)})";
-            await conn.ExecuteAsync(sql, dp, transaction: tx);
+            if (string.IsNullOrWhiteSpace(runMode)) return "ReplaceAll";
+            return runMode.Trim();
         }
 
-        public async Task<int> RunCustomETLWithResultAsync(string sorgu, string tablo, int? gorevId = null)
+        public async Task<int> RunCustomETLWithResultAsync(string sorgu, string tablo, int? gorevId = null, string? runMode = null)
         {
+            var mode = NormalizeRunMode(runMode);
+            if (string.Equals(mode, "Merge", StringComparison.OrdinalIgnoreCase)
+                || string.Equals(mode, "ExecuteSql", StringComparison.OrdinalIgnoreCase))
+            {
+                return await RunSqlScriptAsync(sorgu, tablo, gorevId);
+            }
+
+            if (string.Equals(mode, "InsertSelect", StringComparison.OrdinalIgnoreCase))
+            {
+                return await RunInsertSelectAsync(sorgu, tablo, gorevId);
+            }
+
+            return await RunReplaceAllAsync(sorgu, tablo, gorevId);
+        }
+
+        private async Task<int> RunInsertSelectAsync(string sorgu, string tablo, int? gorevId)
+        {
+            var tableName = NormalizeTableName(tablo);
+            var selectSql = sorgu.Trim();
+            if (!selectSql.StartsWith("SELECT", StringComparison.OrdinalIgnoreCase))
+                throw new InvalidOperationException("InsertSelect modunda SorguMetni SELECT ile başlamalı.");
+
+            if (!RunningTables.TryAdd(tableName, 0))
+            {
+                _logger.LogWarning("ETL atlandı — {Tablo} için zaten çalışan bir görev var.", tableName);
+                return SkippedAlreadyRunning;
+            }
+
             var start = DateTime.Now;
-            _logger.LogInformation($"ETL Görevi Başladı: {tablo} ({tablo}) | Başlangıç: {start:yyyy-MM-dd HH:mm:ss}");
-            _logger.LogInformation($"[DEBUG] ETL başlatılıyor: {tablo} için sorgu: {sorgu}");
+            _logger.LogInformation("ETL (InsertSelect) başladı: {Tablo} | {Start:yyyy-MM-dd HH:mm:ss}", tableName, start);
 
-            await using var conn = new SqlConnection(_connectionString);
-            await conn.OpenAsync();
-            var data = (await conn.QueryAsync(sorgu)).AsList();
-
-            await using var tx = await conn.BeginTransactionAsync();
             try
             {
-                await conn.ExecuteAsync($"DELETE FROM {QuoteSqlIdentifier(NormalizeTableName(tablo))}", transaction: tx);
-                int count = 0;
-                string? loggedColumns = null;
-                foreach (var row in data)
+                await using var conn = new SqlConnection(_connectionString);
+                await conn.OpenAsync();
+                await using var tx = (SqlTransaction)await conn.BeginTransactionAsync();
+                try
                 {
-                    var source = (IDictionary<string, object>)row;
-                    var dict = new Dictionary<string, object>();
-                    foreach (var kv in source)
-                        dict[kv.Key] = NormalizeCellValue(kv.Value);
+                    await conn.ExecuteAsync(
+                        $"DELETE FROM {QuoteSqlIdentifier(tableName)}",
+                        transaction: tx,
+                        commandTimeout: 0);
 
-                    if (loggedColumns == null)
-                    {
-                        loggedColumns = string.Join(", ", dict.Keys);
-                        _logger.LogInformation("[DEBUG] ETL kolonları: {Columns}", loggedColumns);
-                    }
+                    var inserted = await conn.ExecuteAsync(
+                        $"INSERT INTO {QuoteSqlIdentifier(tableName)} {selectSql}",
+                        transaction: tx,
+                        commandTimeout: 0);
 
-                    await InsertRowAsync(conn, tx, tablo, dict);
-                    count++;
+                    var count = await conn.ExecuteScalarAsync<int>(
+                        $"SELECT COUNT(*) FROM {QuoteSqlIdentifier(tableName)}",
+                        transaction: tx,
+                        commandTimeout: 0);
+
+                    await tx.CommitAsync();
+
+                    _logger.LogInformation(
+                        "ETL (InsertSelect) bitti: {Tablo} | INSERT etki: {Inserted} | toplam: {Count}",
+                        tableName, inserted, count);
+
+                    if (gorevId.HasValue)
+                        await MarkSuccessfulRunAsync(gorevId.Value);
+
+                    return count;
                 }
-
-                await tx.CommitAsync();
-                var end = DateTime.Now;
-                _logger.LogInformation($"ETL Görevi Bitti: {tablo} ({tablo}) | Bitiş: {end:yyyy-MM-dd HH:mm:ss} | Çekilen Kayıt: {count}");
-                _logger.LogInformation($"[DEBUG] ETL tamamlandı: {tablo}, kayıt: {count}");
-                if (gorevId.HasValue)
-                    await MarkSuccessfulRunAsync(gorevId.Value);
-                return count;
+                catch
+                {
+                    await tx.RollbackAsync();
+                    throw;
+                }
             }
             catch (Exception ex)
             {
-                await tx.RollbackAsync();
-                _logger.LogError(ex, "ETL hata verdi, DELETE geri alındı: {Tablo}", tablo);
+                _logger.LogError(ex, "ETL InsertSelect hata verdi, DELETE geri alındı: {Tablo}", tableName);
                 throw;
+            }
+            finally
+            {
+                RunningTables.TryRemove(tableName, out _);
+            }
+        }
+
+        private async Task<int> RunSqlScriptAsync(string sorgu, string tablo, int? gorevId)
+        {
+            var tableName = NormalizeTableName(tablo);
+            if (!RunningTables.TryAdd(tableName, 0))
+            {
+                _logger.LogWarning("ETL atlandı — {Tablo} için zaten çalışan bir görev var.", tableName);
+                return SkippedAlreadyRunning;
+            }
+
+            var start = DateTime.Now;
+            _logger.LogInformation("ETL (Merge/SQL) başladı: {Tablo} | {Start:yyyy-MM-dd HH:mm:ss}", tableName, start);
+
+            try
+            {
+                await using var conn = new SqlConnection(_connectionString);
+                await conn.OpenAsync();
+                var deltaRows = await conn.ExecuteAsync(sorgu, commandTimeout: 0);
+                var total = await conn.ExecuteScalarAsync<int>(
+                    $"SELECT COUNT(*) FROM {QuoteSqlIdentifier(tableName)}", commandTimeout: 0);
+
+                _logger.LogInformation(
+                    "ETL (Merge/SQL) bitti: {Tablo} | delta etki: {Delta} | fact toplam: {Total}",
+                    tableName, deltaRows, total);
+
+                if (gorevId.HasValue)
+                    await MarkSuccessfulRunAsync(gorevId.Value);
+
+                return deltaRows;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "ETL Merge/SQL hata verdi: {Tablo}", tableName);
+                throw;
+            }
+            finally
+            {
+                RunningTables.TryRemove(tableName, out _);
+            }
+        }
+
+        private async Task<int> RunReplaceAllAsync(string sorgu, string tablo, int? gorevId)
+        {
+            var tableName = NormalizeTableName(tablo);
+            var selectSql = sorgu.Trim();
+            if (selectSql.StartsWith("SELECT", StringComparison.OrdinalIgnoreCase))
+                return await RunInsertSelectAsync(selectSql, tablo, gorevId);
+
+            return await RunReplaceAllBulkAsync(selectSql, tableName, gorevId);
+        }
+
+        /// <summary>
+        /// SELECT olmayan veya istemci tarafı aktarım gerektiren senaryolar için SqlBulkCopy.
+        /// </summary>
+        private async Task<int> RunReplaceAllBulkAsync(string sorgu, string tableName, int? gorevId)
+        {
+            if (!RunningTables.TryAdd(tableName, 0))
+            {
+                _logger.LogWarning("ETL atlandı — {Tablo} için zaten çalışan bir görev var.", tableName);
+                return SkippedAlreadyRunning;
+            }
+
+            var start = DateTime.Now;
+            _logger.LogInformation("ETL görevi başladı: {Tablo} | {Start:yyyy-MM-dd HH:mm:ss}", tableName, start);
+
+            try
+            {
+                await using var destConn = new SqlConnection(_connectionString);
+                await destConn.OpenAsync();
+
+                await using var tx = (SqlTransaction)await destConn.BeginTransactionAsync();
+                try
+                {
+                    await destConn.ExecuteAsync(
+                        $"DELETE FROM {QuoteSqlIdentifier(tableName)}",
+                        transaction: tx,
+                        commandTimeout: 0);
+
+                    await using var sourceConn = new SqlConnection(_connectionString);
+                    await sourceConn.OpenAsync();
+
+                    await using var cmd = new SqlCommand(sorgu, sourceConn) { CommandTimeout = 0 };
+                    await using var reader = await cmd.ExecuteReaderAsync(CommandBehavior.SequentialAccess);
+
+                    if (!reader.HasRows)
+                    {
+                        await tx.CommitAsync();
+                        _logger.LogInformation("ETL tamamlandı: {Tablo}, kaynak boş.", tableName);
+                        if (gorevId.HasValue)
+                            await MarkSuccessfulRunAsync(gorevId.Value);
+                        return 0;
+                    }
+
+                    var columns = new List<string>();
+                    for (var i = 0; i < reader.FieldCount; i++)
+                        columns.Add(reader.GetName(i));
+                    _logger.LogInformation("ETL kolonları: {Columns}", string.Join(", ", columns));
+
+                    var batch = new DataTable { Locale = CultureInfo.GetCultureInfo("tr-TR") };
+                    for (var i = 0; i < reader.FieldCount; i++)
+                        batch.Columns.Add(reader.GetName(i), reader.GetFieldType(i));
+
+                    using var bulk = new SqlBulkCopy(destConn, SqlBulkCopyOptions.Default, tx)
+                    {
+                        DestinationTableName = tableName,
+                        BatchSize = 5000,
+                        BulkCopyTimeout = 0
+                    };
+
+                    foreach (var col in columns)
+                        bulk.ColumnMappings.Add(col, col);
+
+                    var values = new object[reader.FieldCount];
+                    while (await reader.ReadAsync())
+                    {
+                        reader.GetValues(values);
+                        batch.Rows.Add(values);
+                        if (batch.Rows.Count >= bulk.BatchSize)
+                        {
+                            await bulk.WriteToServerAsync(batch);
+                            batch.Clear();
+                        }
+                    }
+
+                    if (batch.Rows.Count > 0)
+                        await bulk.WriteToServerAsync(batch);
+
+                    var count = await destConn.ExecuteScalarAsync<int>(
+                        $"SELECT COUNT(*) FROM {QuoteSqlIdentifier(tableName)}",
+                        transaction: tx,
+                        commandTimeout: 0);
+
+                    await tx.CommitAsync();
+
+                    var end = DateTime.Now;
+                    _logger.LogInformation(
+                        "ETL görevi bitti: {Tablo} | {End:yyyy-MM-dd HH:mm:ss} | Kayıt: {Count}",
+                        tableName, end, count);
+
+                    if (gorevId.HasValue)
+                        await MarkSuccessfulRunAsync(gorevId.Value);
+
+                    return count;
+                }
+                catch
+                {
+                    await tx.RollbackAsync();
+                    throw;
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "ETL hata verdi, DELETE geri alındı: {Tablo}", tableName);
+                throw;
+            }
+            finally
+            {
+                RunningTables.TryRemove(tableName, out _);
             }
         }
 
         public async Task<string> RunTaskManuallyAsync(int gorevId)
         {
-            // Manuel ETL çalıştırmadan önce eski log dosyalarını sil
             CleanupOldLogs();
 
             using var conn = new SqlConnection(_connectionString);
-            var gorev = await conn.QueryFirstOrDefaultAsync<ETLGorev>("SELECT * FROM ETLGorevleri WHERE GorevId = @gorevId", new { gorevId });
+            var gorev = await conn.QueryFirstOrDefaultAsync<ETLGorev>(
+                "SELECT * FROM ETLGorevleri WHERE GorevId = @gorevId", new { gorevId });
             if (gorev == null)
                 return $"Görev bulunamadı: {gorevId}";
-            var start = DateTime.Now;
-            _logger.LogInformation($"ETL Görevi Başladı: {gorev.GorevAdi} ({gorev.HedefTablo}) | Başlangıç: {start:yyyy-MM-dd HH:mm:ss}");
-            var affected = await RunCustomETLWithResultAsync(gorev.SorguMetni, gorev.HedefTablo, gorevId);
-            var end = DateTime.Now;
-            _logger.LogInformation($"ETL Görevi Bitti: {gorev.GorevAdi} ({gorev.HedefTablo}) | Bitiş: {end:yyyy-MM-dd HH:mm:ss} | Çekilen Kayıt: {affected}");
+
+            var affected = await RunCustomETLWithResultAsync(
+                gorev.SorguMetni, gorev.HedefTablo, gorevId, gorev.RunMode);
+            if (affected == SkippedAlreadyRunning)
+                return $"Görev zaten çalışıyor: {gorev.GorevAdi} ({gorev.HedefTablo})";
+
             return $"Görev {gorev.GorevAdi} ({gorevId}) çalıştırıldı. Etkilenen kayıt: {affected}";
         }
 
@@ -203,11 +377,11 @@ namespace Raporlama.ETL
 
     public class ETLGorev
     {
-
         public int GorevId { get; set; }
-        public string GorevAdi { get; set; }
-        public string SorguMetni { get; set; }
-        public string HedefTablo { get; set; }
-        public string Schedule { get; set; }
+        public string GorevAdi { get; set; } = string.Empty;
+        public string SorguMetni { get; set; } = string.Empty;
+        public string HedefTablo { get; set; } = string.Empty;
+        public string Schedule { get; set; } = string.Empty;
+        public string RunMode { get; set; } = "ReplaceAll";
     }
 }

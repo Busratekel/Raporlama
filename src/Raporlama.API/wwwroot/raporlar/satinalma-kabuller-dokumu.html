@@ -1,0 +1,289 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Satınalma Kabuller Dökümü</title>
+    <link id="dxThemeCss" rel="stylesheet" href="../lib/css/dx.dark.css" />
+    <link rel="stylesheet" href="rapor-ortak.css?v=20260810k" />
+    <script src="theme.js"></script>
+    <script>RaporTheme.init({ dxBase: '../lib/css/' });</script>
+</head>
+<body>
+    <div id="reportMeta" data-report-id="3"></div>
+    <div class="header">
+        <h1>📦 Satınalma Kabuller Döküm Raporu</h1>
+        <button type="button" id="themeToggle" class="theme-toggle">☀️ Açık Tema</button>
+    </div>
+
+    <div class="main-layout">
+        <div class="sidebar">
+            <h3 style="font-size: 22px; color: #00eaff; margin-bottom: 24px;">🔍 Filtreler</h3>
+
+            <div class="filter-group">
+                <label class="filter-label">Tedarikçiler</label>
+                <select id="filterTedarikci"><option value="">Tümü</option></select>
+            </div>
+            <div class="filter-group">
+                <label class="filter-label">Satın Alma Grubu</label>
+                <select id="filterEknam"><option value="">Tümü</option></select>
+            </div>
+            <div class="filter-group">
+                <label class="filter-label">Sorumlu Kişi</label>
+                <select id="filterZzSorumlu"><option value="">Tümü</option></select>
+            </div>
+            <div class="filter-group">
+                <label class="filter-label">Malzeme Grubu</label>
+                <select id="filterMalGrubu"><option value="">Tümü</option></select>
+            </div>
+            <div class="filter-group">
+                <label class="filter-label">Malzeme Kodu</label>
+                <select id="filterMatnr"><option value="">Tümü</option></select>
+            </div>
+            <div class="filter-group">
+                <label class="filter-label">Ölçü Birimi</label>
+                <span class="filter-meta">Miktar grafiği için seçin</span>
+                <select id="filterMeins"><option value="">Tümü</option></select>
+                <p id="filterMeinsHint" class="filter-meta"></p>
+            </div>
+            <div class="filter-group">
+                <label class="filter-label">Para Birimi</label>
+                <span class="filter-meta">Tutar grafiği için seçin</span>
+                <select id="filterWaers"><option value="">Tümü</option></select>
+                <p id="filterWaersHint" class="filter-meta"></p>
+            </div>
+            <div class="filter-group">
+                <label class="filter-label">Teslim Durumu</label>
+                <select id="filterTeslimPerf"><option value="">Tümü</option></select>
+            </div>
+            <div class="filter-group">
+                <label class="filter-label">Üretim Yeri</label>
+                <select id="filterWerks"><option value="">Tümü</option></select>
+            </div>
+            <div class="filter-group">
+                <label class="filter-label">Planlanan Teslim Başlangıç Tarihi</label>
+                <input type="date" id="filterEindtBas">
+            </div>
+            <div class="filter-group">
+                <label class="filter-label">Planlanan Teslim Bitiş Tarihi</label>
+                <input type="date" id="filterEindtBit">
+            </div>
+            <div class="filter-group">
+                <label class="filter-label">Gerçekleşen Başlangıç Tarihi</label>
+                <input type="date" id="filterBudatBas">
+            </div>
+            <div class="filter-group">
+                <label class="filter-label">Gerçekleşen Bitiş Tarihi</label>
+                <input type="date" id="filterBudatBit">
+            </div>
+
+            <p class="filter-hint"><span>Sunucu son 3 ay BUDAT ile sınırlı veri gönderir.</span></p>
+
+            <button class="clear-filters">⊘ Temizle</button>
+            <button id="saveDefaultReport_satinalma" class="filter-btn" style="margin-top:12px;background:orange;color:#181A20;font-weight:bold;">⭐ Varsayılan olarak kaydet</button>
+        </div>
+
+        <div class="content">
+            <div class="card">
+                <h2>📊 Özet KPI</h2>
+                <div class="stats">
+                    <div class="stat-card" style="background: linear-gradient(135deg, #b61ca9 0%, #fe0000 100%);">
+                        <h3 id="totalKalem">-</h3>
+                        <p>Sipariş Kalemi</p>
+                    </div>
+                    <div class="stat-card" style="background: linear-gradient(135deg, #2e1670 0%, #83137d 100%);">
+                        <h3 id="totalPo">-</h3>
+                        <p>Toplam Satın Alma Siparişi</p>
+                    </div>
+                    <div class="stat-card" style="background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);">
+                        <h3 id="totalMenge" class="stat-card-blue">-</h3>
+                        <p class="stat-card-blue">Toplam Miktar</p>
+                    </div>
+                    <div class="stat-card" style="background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);">
+                        <h3 id="totalTutar" class="stat-card-pink">-</h3>
+                        <p class="stat-card-pink">Toplam Tutar (Net)</p>
+                    </div>
+                    <div class="stat-card" style="background: linear-gradient(135deg, #c43f1e 0%, #f5576c 100%);">
+                        <h3 id="totalTedarikci">-</h3>
+                        <p>Aktif Tedarikçi</p>
+                    </div>
+                    <div class="stat-card" style="background: linear-gradient(135deg, #028a2f 0%, #036150 100%);">
+                        <h3 id="zamanindaTeslim">-</h3>
+                        <p>Zamanında (0 gün)</p>
+                    </div>
+                    <div class="stat-card" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);">
+                        <h3 id="erkenTeslim">-</h3>
+                        <p>Erken Teslim</p>
+                    </div>
+                    <div class="stat-card" style="background: linear-gradient(135deg, #fa709a 0%, #fee140 100%);">
+                        <h3 id="gecikmeliTeslim" class="stat-card-yellow">-</h3>
+                        <p class="stat-card-yellow">Gecikmeli</p>
+                    </div>
+                    <div class="stat-card" style="background: linear-gradient(135deg, #199dbe 0%, #4cbd1f 100%);">
+                        <h3 id="totalMalGrubu">-</h3>
+                        <p>Malzeme Grubu Sayısı</p>
+                    </div>
+                </div>
+            </div>
+
+            <div class="card">
+                <h2>📈 Analiz Grafikleri</h2>
+                <div class="charts-grid">
+                    <div class="chart-container">
+                        <h4>SATIN ALMA GRUBUNA GÖRE TUTAR</h4>
+                        <p class="filter-hint" style="margin-top:0;margin-bottom:8px;"><span>Önce para birimi seçin (TRY, EUR, USD…).</span></p>
+                        <select id="chartTypeEknam" style="margin-bottom:8px;width:120px">
+                            <option value="bar">Çubuk</option>
+                            <option value="pie">Pasta</option>
+                            <option value="line">Çizgi</option>
+                        </select>
+                        <div style="position:relative;height:0;">
+                            <div style="position:absolute;top:-40px;right:8px;display:flex;gap:8px;z-index:2;">
+                                <span style="cursor:pointer;font-size:20px;" onclick="RaporModul.enlargeChart('eknamTutarChart', 'Satın Alma Grubuna Göre Tutar')" title="Büyüt">🔍</span>
+                                <span style="cursor:pointer;font-size:20px;" onclick="RaporModul.downloadSVG('eknamTutarChart', 'Satın Alma Grubuna Göre Tutar')" title="İndir">⬇️</span>
+                            </div>
+                        </div>
+                        <div id="eknamTutarChart" style="height:340px;min-height:340px;max-height:340px;"></div>
+                    </div>
+                    <div class="chart-container">
+                        <h4>TEDARİKÇİYE GÖRE TUTAR</h4>
+                        <p class="filter-hint" style="margin-top:0;margin-bottom:8px;"><span>Önce para birimi seçin (TRY, EUR, USD…).</span></p>
+                        <select id="chartTypeTedarikciTutar" style="margin-bottom:8px;width:120px">
+                            <option value="bar">Çubuk</option>
+                            <option value="pie">Pasta</option>
+                            <option value="line">Çizgi</option>
+                        </select>
+                        <div style="position:relative;height:0;">
+                            <div style="position:absolute;top:-40px;right:8px;display:flex;gap:8px;z-index:2;">
+                                <span style="cursor:pointer;font-size:20px;" onclick="RaporModul.enlargeChart('tedarikciTutarChart', 'Tedarikçiye Göre Tutar')" title="Büyüt">🔍</span>
+                                <span style="cursor:pointer;font-size:20px;" onclick="RaporModul.downloadSVG('tedarikciTutarChart', 'Tedarikçiye Göre Tutar')" title="İndir">⬇️</span>
+                            </div>
+                        </div>
+                        <div id="tedarikciTutarChart" style="height:340px;min-height:340px;max-height:340px;"></div>
+                    </div>
+                    <div class="chart-container">
+                        <h4>EN ÇOK ALINAN MALZEMELER (MİKTAR)</h4>
+                        <p class="filter-hint" style="margin-top:0;margin-bottom:8px;"><span>Önce sol panelden birim seçin (ör. ADT — adet). Çubuk ve pasta aynı birimde karşılaştırır.</span></p>
+                        <select id="chartTypeMalzemeMiktar" style="margin-bottom:8px;width:120px">
+                            <option value="bar">Çubuk</option>
+                            <option value="pie">Pasta</option>
+                            <option value="line">Çizgi</option>
+                        </select>
+                        <div style="position:relative;height:0;">
+                            <div style="position:absolute;top:-40px;right:8px;display:flex;gap:8px;z-index:2;">
+                                <span style="cursor:pointer;font-size:20px;" onclick="RaporModul.enlargeChart('malzemeMiktarChart', 'En Çok Alınan Malzemeler')" title="Büyüt">🔍</span>
+                                <span style="cursor:pointer;font-size:20px;" onclick="RaporModul.downloadSVG('malzemeMiktarChart', 'En Çok Alınan Malzemeler')" title="İndir">⬇️</span>
+                            </div>
+                        </div>
+                        <div id="malzemeMiktarChart" style="height:340px;min-height:340px;"></div>
+                    </div>
+                    <div class="chart-container">
+                        <h4>MALZEME GRUBUNA GÖRE TUTAR</h4>
+                        <p class="filter-hint" style="margin-top:0;margin-bottom:8px;"><span>Önce para birimi seçin (TRY, EUR, USD…).</span></p>
+                        <select id="chartTypeMalGrubu" style="margin-bottom:8px;width:120px">
+                            <option value="pie">Pasta</option>
+                            <option value="bar">Çubuk</option>
+                            <option value="line">Çizgi</option>
+                        </select>
+                        <div style="position:relative;height:0;">
+                            <div style="position:absolute;top:-40px;right:8px;display:flex;gap:8px;z-index:2;">
+                                <span style="cursor:pointer;font-size:20px;" onclick="RaporModul.enlargeChart('malGrubuTutarChart', 'Malzeme Grubuna Göre Tutar')" title="Büyüt">🔍</span>
+                                <span style="cursor:pointer;font-size:20px;" onclick="RaporModul.downloadSVG('malGrubuTutarChart', 'Malzeme Grubuna Göre Tutar')" title="İndir">⬇️</span>
+                            </div>
+                        </div>
+                        <div id="malGrubuTutarChart" style="height:340px;min-height:340px;max-height:340px;"></div>
+                    </div>
+                    <div class="chart-container">
+                        <h4>TESLİM PERFORMANSI </h4>
+                        <select id="chartTypeTeslimPerf" style="margin-bottom:8px;width:120px">
+                            <option value="pie">Pasta</option>
+                            <option value="bar">Çubuk</option>
+                            <option value="line">Çizgi</option>
+                        </select>
+                        <div style="position:relative;height:0;">
+                            <div style="position:absolute;top:-40px;right:8px;display:flex;gap:8px;z-index:2;">
+                                <span style="cursor:pointer;font-size:20px;" onclick="RaporModul.enlargeChart('teslimPerfChart', 'Teslim Performansı')" title="Büyüt">🔍</span>
+                                <span style="cursor:pointer;font-size:20px;" onclick="RaporModul.downloadSVG('teslimPerfChart', 'Teslim Performansı')" title="İndir">⬇️</span>
+                            </div>
+                        </div>
+                        <div id="teslimPerfChart" style="height:340px;min-height:340px;max-height:340px;"></div>
+                    </div>
+                    <div class="chart-container">
+                        <h4>ERKEN TESLİM / ZAMANINDA / GECİKME GÜNÜ DAĞILIMI</h4>
+                        <select id="chartTypeGecikme" style="margin-bottom:8px;width:120px">
+                            <option value="bar">Çubuk</option>
+                            <option value="pie">Pasta</option>
+                            <option value="line">Çizgi</option>
+                        </select>
+                        <div style="position:relative;height:0;">
+                            <div style="position:absolute;top:-40px;right:8px;display:flex;gap:8px;z-index:2;">
+                                <span style="cursor:pointer;font-size:20px;" onclick="RaporModul.enlargeChart('gecikmeChart', 'Gecikme Günü Dağılımı')" title="Büyüt">🔍</span>
+                                <span style="cursor:pointer;font-size:20px;" onclick="RaporModul.downloadSVG('gecikmeChart', 'Gecikme Günü Dağılımı')" title="İndir">⬇️</span>
+                            </div>
+                        </div>
+                        <div id="gecikmeChart" style="height:340px;min-height:340px;max-height:340px;"></div>
+                    </div>
+                    <div class="chart-container">
+                        <h4>AYLIK TESLİM ALMA TREND GRAFİĞİ</h4>
+                        <p class="filter-hint" style="margin-top:0;margin-bottom:8px;"><span>Gerçekleşen tarihe göre aylık kalem sayısı.</span></p>
+                        <select id="chartTypeAylikBudat" style="margin-bottom:8px;width:120px">
+                            <option value="line">Çizgi</option>
+                            <option value="bar">Çubuk</option>
+                            <option value="pie">Pasta</option>
+                        </select>
+                        <div style="position:relative;height:0;">
+                            <div style="position:absolute;top:-40px;right:8px;display:flex;gap:8px;z-index:2;">
+                                <span style="cursor:pointer;font-size:20px;" onclick="RaporModul.enlargeChart('aylikBudatChart', 'Aylık Kabul Trendi')" title="Büyüt">🔍</span>
+                                <span style="cursor:pointer;font-size:20px;" onclick="RaporModul.downloadSVG('aylikBudatChart', 'Aylık Kabul Trendi')" title="İndir">⬇️</span>
+                            </div>
+                        </div>
+                        <div id="aylikBudatChart" style="height:340px;min-height:340px;max-height:340px;"></div>
+                    </div>
+                    <div class="chart-container">
+                        <h4>TEDARİKÇİ × TESLİM PERFORMANS GRAFİĞİ</h4>
+                        <p class="filter-hint" style="margin-top:0;margin-bottom:8px;"><span>Top 12 tedarikçi — erken / zamanında / gecikmeli kalem dağılımı (yığılmış çubuk).</span></p>
+                        <div style="position:relative;height:0;">
+                            <div style="position:absolute;top:-40px;right:8px;display:flex;gap:8px;z-index:2;">
+                                <span style="cursor:pointer;font-size:20px;" onclick="RaporModul.enlargeChart('tedarikciTeslimStackChart', 'Tedarikçi × Teslim Performansı')" title="Büyüt">🔍</span>
+                                <span style="cursor:pointer;font-size:20px;" onclick="RaporModul.downloadSVG('tedarikciTeslimStackChart', 'Tedarikçi × Teslim Performansı')" title="İndir">⬇️</span>
+                            </div>
+                        </div>
+                        <div id="tedarikciTeslimStackChart" style="height:340px;min-height:340px;max-height:420px;"></div>
+                    </div>
+                    <div class="chart-container">
+                        <h4>TEDARİKÇİ ORT. GECİKME GÜNÜ GRAFİĞİ</h4>
+                        <p class="filter-hint" style="margin-top:0;margin-bottom:8px;"><span>Ortalama sapma günü: <strong style="color:#29b6f6">mavi = erken</strong>, <strong style="color:#43a047">yeşil = 0</strong>, <strong style="color:#e53935">kırmızı = geç</strong>.</span></p>
+                        <select id="chartTypeTedarikciOrtGecikme" style="margin-bottom:8px;width:120px">
+                            <option value="bar">Çubuk</option>
+                            <option value="line">Çizgi</option>
+                        </select>
+                        <div style="position:relative;height:0;">
+                            <div style="position:absolute;top:-40px;right:8px;display:flex;gap:8px;z-index:2;">
+                                <span style="cursor:pointer;font-size:20px;" onclick="RaporModul.enlargeChart('tedarikciOrtGecikmeChart', 'Tedarikçi Ort. Gecikme')" title="Büyüt">🔍</span>
+                                <span style="cursor:pointer;font-size:20px;" onclick="RaporModul.downloadSVG('tedarikciOrtGecikmeChart', 'Tedarikçi Ort. Gecikme')" title="İndir">⬇️</span>
+                            </div>
+                        </div>
+                        <div id="tedarikciOrtGecikmeChart" style="height:340px;min-height:340px;max-height:480px;"></div>
+                    </div>
+                </div>
+            </div>
+
+            <h2 style="margin-top:32px;">📑 Detay Tablo</h2>
+            <div id="gridContainer" class="card"></div>
+
+            <h2 style="margin-top:32px;">📑 Tedarikçi × Malzeme Grubu (Miktar &amp; Tutar)</h2>
+            <div id="pivotGridContainer" class="card"></div>
+        </div>
+    </div>
+
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <script src="/lib/js/jszip.min.js"></script>
+    <script src="/lib/js/dx.all.js"></script>
+    <script src="common.js"></script>
+    <script src="toast.js"></script>
+    <script>window.API_BASE = '/api';</script>
+    <script src="raporModul.js?v=20260811d"></script>
+    <script src="satinalma-kabuller-schema.js?v=20260811d"></script>
+    <script>RaporTheme.bindToggle();</script>
+</body>
+</html>

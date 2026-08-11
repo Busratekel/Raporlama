@@ -75,11 +75,63 @@ public static class ReportPermissionMetadata
         },
         DepartmentNameField: "Sisteme Girenin Müdürlük/Direktörlüğü");
 
+    private static readonly ReportPermissionMeta SatinalmaKabuller = new(
+        FilterFields:
+        [
+            "WERKS", "NAME1", "LIFNR", "EKNAM", "EKGRP", "ZZSORUMLU",
+            "MATNR", "MAKTX", "MATKL", "WGBEZ", "MEINS",
+            "EINDT", "BUDAT", "BEDAT", "DELIV", "TESLMAY", "ZZGECGUN", "WAERS"
+        ],
+        FilterLabels: new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
+        {
+            ["WERKS"] = "Üretim Yeri",
+            ["NAME1"] = "Tedarikçi",
+            ["LIFNR"] = "Tedarikçi Kodu",
+            ["EKNAM"] = "Satın Alma Grubu",
+            ["EKGRP"] = "Satın Alma Grubu Kodu",
+            ["ZZSORUMLU"] = "Sorumlu",
+            ["MATNR"] = "Malzeme Kodu",
+            ["MAKTX"] = "Malzeme Açıklaması",
+            ["MATKL"] = "Malzeme Grubu",
+            ["WGBEZ"] = "Malzeme Grubu Açıklaması",
+            ["MEINS"] = "Ölçü Birimi",
+            ["WAERS"] = "Para Birimi",
+            ["EINDT"] = "Planlanan Teslim",
+            ["BUDAT"] = "Sipariş Tarihi",
+            ["BEDAT"] = "Satın Alma Siparişi Tarihi",
+            ["DELIV"] = "Teslim Durumu",
+            ["TESLMAY"] = "Teslimat Yapıldı mı",
+            ["ZZGECGUN"] = "Sapma Günü (− erken, + geç)"
+        },
+        Columns:
+        [
+            "EBELN", "EBELP", "EKGRP", "EKNAM", "ZZSORUMLU",
+            "MATNR", "MAKTX", "MATKL", "WGBEZ", "LIFNR", "NAME1",
+            "MENGE", "MEINS", "NETWR", "WAERS", "BEDAT", "EINDT", "BUDAT",
+            "ZZGECGUN", "TESLMAY", "DELIV", "WERKS"
+        ],
+        ColumnLabels: new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
+        {
+            ["EKNAM"] = "Satın Alma Grubu",
+            ["EKGRP"] = "Satın Alma Grubu Kodu",
+            ["ZZSORUMLU"] = "Sorumlu",
+            ["MATNR"] = "Malzeme Kodu",
+            ["MATKL"] = "Malzeme Grubu",
+            ["WGBEZ"] = "Malzeme Grubu Açıklaması",
+            ["NAME1"] = "Tedarikçi",
+            ["NETWR"] = "Net Tutar",
+            ["MENGE"] = "Miktar",
+            ["EINDT"] = "Planlanan Teslim",
+            ["BUDAT"] = "Gerçekleşen Tarih"
+        },
+        DepartmentNameField: "EKORG");
+
     public static ReportPermissionMeta? Resolve(string? reportCode, string? reportName, string? url)
     {
         var haystack = $"{reportCode} {reportName} {url}".ToLowerInvariant();
         if (haystack.Contains("bekleyen")) return Bekleyen;
         if (haystack.Contains("qdms")) return Qdms;
+        if (haystack.Contains("satinalma") || haystack.Contains("kabuller")) return SatinalmaKabuller;
         return null;
     }
 }

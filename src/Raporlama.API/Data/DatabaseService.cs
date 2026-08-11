@@ -7,7 +7,7 @@ namespace Raporlama.API.Data
     public interface IDatabaseService
     {
         Task<IEnumerable<T>> QueryAsync<T>(string databaseName, string query, object? parameters = null);
-        Task<DataTable> QueryDataTableAsync(string databaseName, string query, object? parameters = null);
+        Task<DataTable> QueryDataTableAsync(string databaseName, string query, object? parameters = null, int? commandTimeoutSeconds = null);
     }
 
     public class DatabaseService : IDatabaseService
@@ -46,7 +46,7 @@ namespace Raporlama.API.Data
             }
         }
 
-        public async Task<DataTable> QueryDataTableAsync(string databaseName, string query, object? parameters = null)
+        public async Task<DataTable> QueryDataTableAsync(string databaseName, string query, object? parameters = null, int? commandTimeoutSeconds = null)
         {
             try
             {
@@ -55,6 +55,8 @@ namespace Raporlama.API.Data
                 await connection.OpenAsync();
 
                 using var command = new SqlCommand(query, connection);
+                command.CommandTimeout = commandTimeoutSeconds
+                    ?? _configuration.GetValue("ReportQuery:CommandTimeoutSeconds", 300);
                 if (parameters != null)
                 {
                     if (parameters is Dictionary<string, object> dictParams)

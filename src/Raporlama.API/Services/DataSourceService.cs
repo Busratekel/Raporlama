@@ -18,6 +18,7 @@ namespace Raporlama.API.Services
         private readonly ICustomAuthorizationService _authorizationService;
         private readonly IAdminService _adminService;
         private readonly IMemoryCache _cache;
+        private readonly IConfiguration _configuration;
         private readonly ILogger<DataSourceService> _logger;
 
         public DataSourceService(
@@ -26,6 +27,7 @@ namespace Raporlama.API.Services
             ICustomAuthorizationService authorizationService,
             IAdminService adminService,
             IMemoryCache cache,
+            IConfiguration configuration,
             ILogger<DataSourceService> logger)
         {
             _databaseService = databaseService;
@@ -33,6 +35,7 @@ namespace Raporlama.API.Services
             _authorizationService = authorizationService;
             _adminService = adminService;
             _cache = cache;
+            _configuration = configuration;
             _logger = logger;
         }
 
@@ -143,7 +146,12 @@ namespace Raporlama.API.Services
                 }
             }
 
+            _logger.LogInformation("Report {ReportId} sorgusu çalıştırılıyor (timeout {Timeout}s)",
+                reportId, _configuration.GetValue("ReportQuery:CommandTimeoutSeconds", 300));
+
             var data = await _databaseService.QueryDataTableAsync(report.SourceDatabase, query, parameters);
+
+            _logger.LogInformation("Report {ReportId} tamamlandı: {RowCount} satır", reportId, data.Rows.Count);
 
             if (report.CacheDuration.HasValue && report.CacheDuration.Value > 0)
             {
