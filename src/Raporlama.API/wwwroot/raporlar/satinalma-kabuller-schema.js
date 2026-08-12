@@ -17,13 +17,17 @@ const skF = {
     eindt: 'EINDT',
     budat: 'BUDAT',
     zzgecgun: 'ZZGECGUN',
+    zzgec1: 'ZZGEC1',
+    zzgec3: 'ZZGEC3',
     teslmay: 'TESLMAY',
     deliv: 'DELIV',
     waers: 'WAERS',
     ekgrp: 'EKGRP',
     eknam: 'EKNAM',
     zzsorumlu: 'ZZSORUMLU',
-    teslimPerformans: 'TeslimPerformans'
+    teslimPerformans: 'TeslimPerformans',
+    aktifTeslim: 'AktifTeslimDurumu',
+    toleransKirilim: 'ToleransKirilim'
 };
 
 function skParseNumber(value) {
@@ -37,35 +41,129 @@ function skDateOnly(value) {
     return String(value).trim().split('T')[0];
 }
 
+function skParseSapmaGun(value) {
+    if (value == null || value === '') return null;
+    const s = String(value).trim();
+    if (/^\d+-$/.test(s)) return -parseInt(s, 10);
+    return skParseNumber(s);
+}
+
 function skGecikmeEtiket(gec) {
     if (gec == null || !Number.isFinite(gec)) return '—';
     if (gec < 0) return `${Math.abs(gec)} gün erken`;
-    if (gec === 0) return 'Zamanında (0 gün)';
+    if (gec === 0) return 'Tam gününde (0)';
     return `${gec} gün geç`;
 }
 
-function skTeslimDurumu(row) {
-    const gec = skParseNumber(row[skF.zzgecgun]);
-    if (gec != null) {
-        if (gec < 0) return 'Erken';
-        if (gec === 0) return 'Zamanında';
-        return 'Gecikmeli';
-    }
-
-    const eindt = skDateOnly(row[skF.eindt]);
+function skSapmaGun(row) {
+    const gec = skParseSapmaGun(row[skF.zzgecgun]);
+    if (gec != null) return gec;
     const budat = skDateOnly(row[skF.budat]);
-    if (budat && eindt) return budat <= eindt ? 'Zamanında' : 'Gecikmeli';
+    const eindt = skDateOnly(row[skF.eindt]);
+    if (budat && eindt) {
+        const a = new Date(budat);
+        const b = new Date(eindt);
+        if (!isNaN(a) && !isNaN(b)) {
+            return Math.round((a - b) / 86400000);
+        }
+    }
+    return null;
+}
+
+function skNormalizeTeslimSap(value) {
+    const s = String(value || '').trim();
+    if (!s) return null;
+    const lower = s.toLocaleLowerCase('tr-TR');
+    if (lower === 'zamanında' || lower === 'zamaninda') return 'Zamanında';
+    if (lower === 'geç' || lower === 'gec' || lower.startsWith('gecik')) return 'Geç';
+    return null;
+}
+
+function skTeslimDurumu1(row) {
+    const fromSap = skNormalizeTeslimSap(row[skF.zzgec1]);
+    if (fromSap) return fromSap;
+    const gec = skSapmaGun(row);
+    if (gec != null) return gec >= 1 ? 'Geç' : 'Zamanında';
 
     const tes = String(row[skF.teslmay] ?? row[skF.deliv] ?? '').trim().toLowerCase();
     if (tes.includes('evet') || tes === 'x' || tes === '1') return 'Zamanında';
-    if (tes.includes('hayır') || tes.includes('hayir') || tes === '0') return 'Gecikmeli';
+    if (tes.includes('hayır') || tes.includes('hayir') || tes === '0') return 'Geç';
 
+    const eindt = skDateOnly(row[skF.eindt]);
+    const budat = skDateOnly(row[skF.budat]);
     if (eindt) {
         const today = new Date().toISOString().split('T')[0];
-        if (!budat && today > eindt) return 'Gecikmeli (açık)';
+        if (!budat && today > eindt) return 'Geç';
         if (!budat) return 'Bekliyor';
     }
     return 'Belirsiz';
+}
+
+function skTeslimDurumu3(row) {
+    const fromSap = skNormalizeTeslimSap(row[skF.zzgec3]);
+    if (fromSap) return fromSap;
+    const gec = skSapmaGun(row);
+    if (gec != null) return gec > 3 ? 'Geç' : 'Zamanında';
+    return null;
+}
+
+function skGetToleransMode(modul) {
+    return String(modul?.filterState?.[skF.toleransKirilim] ?? '').trim();
+}
+
+function skTeslimFromZzgecgun(row) {
+    const gec = skParseSapmaGun(row[skF.zzgecgun]);
+    if (gec == null || !Number.isFinite(gec)) return null;
+    return gec > 0 ? 'Geç' : 'Zamanında';
+}
+
+function skActiveTeslimDurumu(row, modul) {
+    const mode = skGetToleransMode(modul);
+    if (mode === '1') {
+        return skNormalizeTeslimSap(row[skF.zzgec1]) || skTeslimDurumu1(row);
+    }
+    if (mode === '3') {
+        return skNormalizeTeslimSap(row[skF.zzgec3]) || skTeslimDurumu3(row);
+    }
+    return skTeslimFromZzgecgun(row);
+}
+
+function skToleransKpiMetinleri(modul) {
+    const mode = skGetToleransMode(modul);
+    if (mode === '1') {
+        return { zamaninda: 'Zamanında Teslim (1 gün tolerans)', gec: 'Geç Teslim (1 gün tolerans)' };
+    }
+    if (mode === '3') {
+        return { zamaninda: 'Zamanında Teslim (3 gün tolerans)', gec: 'Geç Teslim (3 gün tolerans)' };
+    }
+    return { zamaninda: 'Zamanında Teslim', gec: 'Geç Teslim' };
+}
+
+function skToleransKpiDetayBaslik(modul, durum) {
+    const mode = skGetToleransMode(modul);
+    if (mode === '1') return durum === 'Geç' ? 'Geç Teslim (1 gün tolerans)' : 'Zamanında Teslim (1 gün tolerans)';
+    if (mode === '3') return durum === 'Geç' ? 'Geç Teslim (3 gün tolerans)' : 'Zamanında Teslim (3 gün tolerans)';
+    return durum === 'Geç' ? 'Geç Teslim' : 'Zamanında Teslim';
+}
+
+function skToleransChartMetinleri(modul) {
+    const mode = skGetToleransMode(modul);
+    if (mode === '1') {
+        return {
+            teslimPerf: '1 gün toleransına göre zamanında / geç dağılımı. Sol panelden tolerans filtresini değiştirebilirsiniz.',
+            tedarikciTeslim: 'Top 12 tedarikçi — 1 gün toleransına göre zamanında / geç.'
+        };
+    }
+    if (mode === '3') {
+        return {
+            teslimPerf: '3 gün toleransına göre zamanında / geç dağılımı. Sol panelden tolerans filtresini değiştirebilirsiniz.',
+            tedarikciTeslim: 'Top 12 tedarikçi — 3 gün toleransına göre zamanında / geç.'
+        };
+    }
+    return {
+        teslimPerf: 'Gerçek sapma gününe göre zamanında / geç dağılımı (0 ve erken zamanında, pozitif geç). Sol panelden 1 veya 3 gün tolerans seçebilirsiniz.',
+        tedarikciTeslim: 'Top 12 tedarikçi — gerçek sapma gününe göre zamanında / geç (0 ve erken zamanında, pozitif geç).'
+    };
 }
 
 function skMalzemeEtiket(row) {
@@ -164,11 +262,7 @@ function skFormatAy(yyyyMm) {
 }
 
 function skNormalizeTeslimPerf(value) {
-    const s = String(value || '').trim();
-    if (s === 'Erken') return 'Erken';
-    if (s === 'Zamanında') return 'Zamanında';
-    if (s.startsWith('Gecikmeli')) return 'Gecikmeli';
-    return null;
+    return skNormalizeTeslimSap(value);
 }
 
 function skBuildAylikBudatTrend(rows) {
@@ -184,18 +278,26 @@ function skBuildAylikBudatTrend(rows) {
         .map(([monthKey, value]) => ({
             argument: skFormatAy(monthKey),
             value,
-            monthKey
+            monthKey,
+            filterValue: monthKey
         }));
+}
+
+function skTedarikciEtiket(row) {
+    const name = String(row[skF.name1] || '').trim();
+    if (name) return name;
+    const kod = String(row[skF.lifnr] || '').trim();
+    return kod || '';
 }
 
 function skBuildTedarikciTeslimStacked(rows) {
     const grouped = new Map();
     rows.forEach(d => {
-        const name = String(d[skF.name1] || '').trim();
-        const perf = skNormalizeTeslimPerf(d[skF.teslimPerformans]);
+        const name = skTedarikciEtiket(d);
+        const perf = skNormalizeTeslimPerf(d[skF.aktifTeslim]);
         if (!name || !perf) return;
         if (!grouped.has(name)) {
-            grouped.set(name, { Erken: 0, 'Zamanında': 0, Gecikmeli: 0, total: 0 });
+            grouped.set(name, { 'Zamanında': 0, 'Geç': 0, total: 0 });
         }
         const g = grouped.get(name);
         g[perf]++;
@@ -206,9 +308,8 @@ function skBuildTedarikciTeslimStacked(rows) {
         .slice(0, 12)
         .map(([argument, g]) => ({
             argument,
-            Erken: g.Erken,
             'Zamanında': g['Zamanında'],
-            Gecikmeli: g.Gecikmeli,
+            'Geç': g['Geç'],
             filterValue: argument
         }));
 }
@@ -216,9 +317,9 @@ function skBuildTedarikciTeslimStacked(rows) {
 function skBuildTedarikciOrtGecikme(rows) {
     const grouped = new Map();
     rows.forEach(d => {
-        const name = String(d[skF.name1] || '').trim();
-        const gec = skParseNumber(d[skF.zzgecgun]);
-        if (!name || gec == null) return;
+        const name = skTedarikciEtiket(d);
+        const gec = d.SapmaGun;
+        if (!name || gec == null || !Number.isFinite(gec)) return;
         if (!grouped.has(name)) grouped.set(name, { sum: 0, count: 0 });
         const g = grouped.get(name);
         g.sum += gec;
@@ -281,7 +382,7 @@ function skFormatTutarKpi(data, modul) {
 function skTopTedarikciNames(data, n) {
     const sums = new Map();
     data.forEach(d => {
-        const name = String(d[skF.name1] || '').trim();
+        const name = skTedarikciEtiket(d);
         if (!name) return;
         sums.set(name, (sums.get(name) || 0) + (skParseNumber(d[skF.netwr]) || 0));
     });
@@ -320,7 +421,7 @@ const skKpiTop10Cols = [
     skF.waers,
     skF.menge,
     skF.meins,
-    skF.teslimPerformans,
+    skF.aktifTeslim,
     'GecikmeEtiket',
     skF.budat,
     skF.ebeln
@@ -337,7 +438,7 @@ function skDistinctCount(data, field) {
 
 function satinalmaEnrichRow(row) {
     const normalized = { ...row };
-    const gecGun = skParseNumber(normalized[skF.zzgecgun]);
+    const gecGun = skParseSapmaGun(normalized[skF.zzgecgun]);
     if (gecGun != null) normalized[skF.zzgecgun] = gecGun;
     const waers = normalized[skF.waers];
     if (waers != null && String(waers).trim() !== '') {
@@ -347,18 +448,33 @@ function satinalmaEnrichRow(row) {
     if (meins != null && String(meins).trim() !== '') {
         normalized[skF.meins] = String(meins).trim().toUpperCase();
     }
-    normalized.GecikmeEtiket = skGecikmeEtiket(gecGun);
-    normalized[skF.teslimPerformans] = skTeslimDurumu(normalized);
+    normalized.SapmaGun = skSapmaGun(normalized);
+    normalized.GecikmeEtiket = skGecikmeEtiket(normalized.SapmaGun);
     normalized.MalzemeEtiket = skMalzemeEtiket(normalized);
     normalized.MalGrubuEtiket = skMalGrubuEtiket(normalized);
+    normalized.TedarikciEtiket = skTedarikciEtiket(normalized);
+    const budatIso = skDateOnly(normalized[skF.budat]);
+    if (budatIso) normalized.BudatAy = budatIso.slice(0, 7);
+    skSetYilHafta(normalized, budatIso);
     return normalized;
 }
 
+function skSetYilHafta(row, isoDate) {
+    if (!isoDate) return;
+    const dt = new Date(isoDate);
+    if (isNaN(dt)) return;
+    row.Yil = dt.getFullYear();
+    const jan1 = new Date(dt.getFullYear(), 0, 1);
+    const days = Math.floor((dt - jan1) / 86400000);
+    row.Hafta = Math.ceil((days + jan1.getDay() + 1) / 7);
+}
+
 const skGecikmeBuckets = [
-    { key: 'Erken (>7 gün)', min: -Infinity, max: -8 },
-    { key: 'Erken (1-7 gün)', min: -7, max: -1 },
-    { key: 'Zamanında (0)', min: 0, max: 0 },
-    { key: '1-7 gün geç', min: 1, max: 7 },
+    { key: 'Erken (≤−1 gün)', min: -Infinity, max: -1 },
+    { key: 'Tam gününde (0)', min: 0, max: 0 },
+    { key: '1 gün geç', min: 1, max: 1 },
+    { key: '2-3 gün geç', min: 2, max: 3 },
+    { key: '4-7 gün geç', min: 4, max: 7 },
     { key: '8-15 gün geç', min: 8, max: 15 },
     { key: '16-30 gün geç', min: 16, max: 30 },
     { key: '31-60 gün geç', min: 31, max: 60 },
@@ -367,8 +483,7 @@ const skGecikmeBuckets = [
 
 const skTeslimPointColors = {
     'Zamanında': '#43a047',
-    Erken: '#29b6f6',
-    Gecikmeli: '#e53935',
+    'Geç': '#e53935',
     Bekliyor: '#fb8c00',
     Belirsiz: '#78909c'
 };
@@ -389,16 +504,35 @@ const skPieLegend = {
 const satinalmaSchema = {
     reportKey: 'satinalma-kabuller',
     enrichRow: satinalmaEnrichRow,
+    applyActiveFields(data, modul) {
+        return data.map(row => ({
+            ...row,
+            [skF.aktifTeslim]: skActiveTeslimDurumu(row, modul)
+        }));
+    },
+    afterUpdateAll(modul) {
+        const metin = skToleransKpiMetinleri(modul);
+        const zEl = document.getElementById('zamanindaTeslimLabel');
+        const gEl = document.getElementById('gecikmeliTeslimLabel');
+        if (zEl) zEl.textContent = metin.zamaninda;
+        if (gEl) gEl.textContent = metin.gec;
+
+        const chartMetin = skToleransChartMetinleri(modul);
+        const hintTeslim = document.getElementById('hintTeslimPerf');
+        const hintTedarikci = document.getElementById('hintTedarikciTeslim');
+        if (hintTeslim) hintTeslim.textContent = chartMetin.teslimPerf;
+        if (hintTedarikci) hintTedarikci.textContent = chartMetin.tedarikciTeslim;
+    },
     summaryColumnLabels: {
         [skF.name1]: 'Tedarikçi',
-        [skF.eknam]: 'Satın Alma Grubu',
+        [skF.eknam]: 'Satın Alma Organizasyonu',
         [skF.matnr]: 'Malzeme Kodu',
         [skF.maktx]: 'Malzeme Açıklaması',
         [skF.netwr]: 'Net Tutar',
         [skF.waers]: 'Para Birimi',
         [skF.menge]: 'Miktar',
         [skF.meins]: 'Ölçü Birimi',
-        [skF.teslimPerformans]: 'Teslim Durumu',
+        [skF.aktifTeslim]: 'Teslim Durumu',
         GecikmeEtiket: 'Teslim Sapması',
         [skF.budat]: 'Gerçekleşen Tarih',
         [skF.ebeln]: 'Sipariş No',
@@ -412,18 +546,26 @@ const satinalmaSchema = {
     pivotValueResolvers: { Adet: () => 1 },
     beklemeSuresiBuckets: skGecikmeBuckets,
     bucketFilters: {
-        [skF.zzgecgun]: { buckets: skGecikmeBuckets, fields: [skF.zzgecgun] }
+        SapmaGun: { buckets: skGecikmeBuckets, fields: ['SapmaGun'] }
+    },
+    virtualFilters: {
+        BudatAy: { fields: ['BudatAy'] }
     },
     filters: [
-        { field: skF.name1, elementId: 'filterTedarikci', label: 'Tedarikçi' },
-        { field: skF.eknam, elementId: 'filterEknam', label: 'Satın Alma Grubu' },
+        {
+            field: 'TedarikciEtiket',
+            elementId: 'filterTedarikci',
+            label: 'Tedarikçi',
+            matchFields: ['TedarikciEtiket', skF.name1, skF.lifnr]
+        },
+        { field: skF.eknam, elementId: 'filterEknam', label: 'Satın Alma Organizasyonu' },
         { field: skF.zzsorumlu, elementId: 'filterZzSorumlu', label: 'Sorumlu' },
         { field: 'MalGrubuEtiket', elementId: 'filterMalGrubu', label: 'Malzeme Grubu' },
         { field: skF.matnr, elementId: 'filterMatnr', label: 'Malzeme Kodu' },
         {
             field: skF.meins,
             elementId: 'filterMeins',
-            label: 'Ölçü Birimi (MEINS)',
+            label: 'Ölçü Birimi',
             emptyLabel: 'Tümü',
             optionLabel: skMeinsFilterLabel,
             normalizeOption: (v) => String(v).trim().toUpperCase(),
@@ -432,12 +574,23 @@ const satinalmaSchema = {
         {
             field: skF.waers,
             elementId: 'filterWaers',
-            label: 'Para Birimi (WAERS)',
+            label: 'Para Birimi',
             emptyLabel: 'Tümü',
             normalizeOption: (v) => String(v).trim().toUpperCase(),
             hintElementId: 'filterWaersHint'
         },
-        { field: skF.teslimPerformans, elementId: 'filterTeslimPerf', label: 'Teslim Durumu' },
+        {
+            field: skF.toleransKirilim,
+            elementId: 'filterTolerans',
+            label: 'Teslim Toleransı',
+            uiOnly: true,
+            staticOptions: [
+                { value: '', label: 'Varsayılan (gerçek sapma günü)' },
+                { value: '1', label: '1 gün tolerans' },
+                { value: '3', label: '3 gün tolerans' }
+            ]
+        },
+        { field: skF.aktifTeslim, elementId: 'filterTeslimPerf', label: 'Teslim Durumu' },
         { field: skF.werks, elementId: 'filterWerks', label: 'Üretim Yeri' },
         { field: skF.eindt, elementId: 'filterEindtBas', label: 'Plan. teslim (baş.)', type: 'date', compare: '>=' },
         { field: skF.eindt, elementId: 'filterEindtBit', label: 'Plan. teslim (bit.)', type: 'date', compare: '<=' },
@@ -472,7 +625,7 @@ const satinalmaSchema = {
                     siralama: 'Net tutara göre',
                     kapsam: 'Farklı satın alma siparişi numaraları içinden kalemler'
                 }),
-                columns: [skF.ebeln, skF.ebelp, skF.name1, skF.netwr, skF.waers, skF.budat, skF.teslimPerformans]
+                columns: [skF.ebeln, skF.ebelp, skF.name1, skF.netwr, skF.waers, skF.budat, skF.aktifTeslim]
             }
         },
         {
@@ -525,7 +678,7 @@ const satinalmaSchema = {
                 topN: 10,
                 filterRows: (data) => {
                     const top = skTopTedarikciNames(data, 10);
-                    return data.filter(d => top.includes(String(d[skF.name1] || '').trim()));
+                    return data.filter(d => top.includes(skTedarikciEtiket(d)));
                 },
                 subtitle: skKpiDetayAltYazi({
                     siralama: 'Net tutara göre',
@@ -536,53 +689,36 @@ const satinalmaSchema = {
         },
         {
             elementId: '#zamanindaTeslim',
-            calc: (data) => data.filter(d => d[skF.teslimPerformans] === 'Zamanında').length.toLocaleString('tr-TR'),
+            calc: (data) => data.filter(d => d[skF.aktifTeslim] === 'Zamanında').length.toLocaleString('tr-TR'),
             detailModal: {
-                title: 'Zamanında Teslim Edilen Kalemler',
+                title: (rows, _val, modul) => skToleransKpiDetayBaslik(modul, 'Zamanında'),
                 sortField: skF.netwr,
                 sortOrder: 'desc',
                 topN: 10,
-                filterRows: (data) => data.filter(d => d[skF.teslimPerformans] === 'Zamanında'),
-                subtitle: skKpiDetayAltYazi({
-                    filterRows: (data) => data.filter(d => d[skF.teslimPerformans] === 'Zamanında'),
+                filterRows: (data) => data.filter(d => d[skF.aktifTeslim] === 'Zamanında'),
+                subtitle: (rows, _val, modul) => skKpiDetayAltYazi({
+                    filterRows: (data) => data.filter(d => d[skF.aktifTeslim] === 'Zamanında'),
                     siralama: 'Net tutara göre',
-                    kapsam: 'Planlanan tarihte (0 gün sapma) teslim edilen kalemler'
-                }),
-                columns: skKpiTop10Cols
-            }
-        },
-        {
-            elementId: '#erkenTeslim',
-            calc: (data) => data.filter(d => d[skF.teslimPerformans] === 'Erken').length.toLocaleString('tr-TR'),
-            detailModal: {
-                title: 'Erken Teslim Edilen Kalemler',
-                sortField: skF.zzgecgun,
-                sortOrder: 'asc',
-                topN: 10,
-                filterRows: (data) => data.filter(d => d[skF.teslimPerformans] === 'Erken'),
-                subtitle: skKpiDetayAltYazi({
-                    filterRows: (data) => data.filter(d => d[skF.teslimPerformans] === 'Erken'),
-                    siralama: 'En erken teslim (negatif gün) göre',
-                    kapsam: 'Planlanandan önce teslim edilen kalemler'
-                }),
+                    kapsam: skToleransKpiMetinleri(modul).zamaninda
+                })(rows, _val, modul),
                 columns: skKpiTop10Cols
             }
         },
         {
             elementId: '#gecikmeliTeslim',
-            calc: (data) => data.filter(d => String(d[skF.teslimPerformans] || '').startsWith('Gecikmeli')).length.toLocaleString('tr-TR'),
+            calc: (data) => data.filter(d => d[skF.aktifTeslim] === 'Geç').length.toLocaleString('tr-TR'),
             detailModal: {
-                title: 'Gecikmeli Teslim Edilen Kalemler',
+                title: (rows, _val, modul) => skToleransKpiDetayBaslik(modul, 'Geç'),
                 sortField: skF.zzgecgun,
                 sortOrder: 'desc',
                 topN: 10,
                 highlightMax: true,
-                filterRows: (data) => data.filter(d => String(d[skF.teslimPerformans] || '').startsWith('Gecikmeli')),
-                subtitle: skKpiDetayAltYazi({
-                    filterRows: (data) => data.filter(d => String(d[skF.teslimPerformans] || '').startsWith('Gecikmeli')),
-                    siralama: 'En çok gecikme gününe göre',
-                    kapsam: 'Planlanandan sonra teslim edilen kalemler'
-                }),
+                filterRows: (data) => data.filter(d => d[skF.aktifTeslim] === 'Geç'),
+                subtitle: (rows, _val, modul) => skKpiDetayAltYazi({
+                    filterRows: (data) => data.filter(d => d[skF.aktifTeslim] === 'Geç'),
+                    siralama: 'En çok sapma gününe göre',
+                    kapsam: skToleransKpiMetinleri(modul).gec
+                })(rows, _val, modul),
                 columns: skKpiTop10Cols
             }
         },
@@ -605,9 +741,8 @@ const satinalmaSchema = {
     columns: [
         { dataField: skF.ebeln, caption: 'Sipariş No', forceText: true },
         { dataField: skF.ebelp, caption: 'Kalem No', dataType: 'number' },
-        { dataField: skF.ekgrp, caption: 'Satın Alma Grubu Kodu', visible: false, forceText: true },
-        { dataField: skF.eknam, caption: 'Satın Alma Grubu' },
-        { dataField: skF.zzsorumlu, caption: 'Sorumlu Kişi' },
+        { dataField: skF.ekgrp, caption: 'Satın Alma Organizasyonu Kodu', visible: false, forceText: true },
+        { dataField: skF.eknam, caption: 'Satın Alma Organizasyonu' },
         { dataField: skF.matnr, caption: 'Malzeme Kodu', forceText: true },
         { dataField: skF.maktx, caption: 'Malzeme Açıklaması' },
         { dataField: skF.matkl, caption: 'Malzeme Grubu Kodu', visible: false },
@@ -623,7 +758,7 @@ const satinalmaSchema = {
         { dataField: skF.bedat, caption: 'Sipariş Tarihi', dataType: 'date', format: 'dd.MM.yyyy' },
         { dataField: skF.eindt, caption: 'Planlanan Teslim Tarihi', dataType: 'date', format: 'dd.MM.yyyy' },
         { dataField: skF.budat, caption: 'Gerçekleşen Tarih', dataType: 'date', format: 'dd.MM.yyyy' },
-        { dataField: skF.teslimPerformans, caption: 'Teslim Durumu' },
+        { dataField: skF.aktifTeslim, caption: 'Teslim Durumu' },
         { dataField: 'GecikmeEtiket', caption: 'Teslim Sapması' },
         { dataField: skF.zzgecgun, caption: 'Sapma Günü', dataType: 'number', visible: false },
         { dataField: skF.teslmay, caption: 'Teslimat Yapıldı mı', visible: false },
@@ -648,7 +783,7 @@ const satinalmaSchema = {
             legend: skPieLegend
         },
         {
-            field: skF.name1,
+            field: 'TedarikciEtiket',
             elementId: '#tedarikciTutarChart',
             typeSelector: '#chartTypeTedarikciTutar',
             filterElementId: '#filterTedarikci',
@@ -696,7 +831,7 @@ const satinalmaSchema = {
             legend: skPieLegend
         },
         {
-            field: skF.teslimPerformans,
+            field: skF.aktifTeslim,
             elementId: '#teslimPerfChart',
             typeSelector: '#chartTypeTeslimPerf',
             filterElementId: '#filterTeslimPerf',
@@ -706,7 +841,7 @@ const satinalmaSchema = {
             legend: skPieLegend
         },
         {
-            field: skF.zzgecgun,
+            field: 'SapmaGun',
             elementId: '#gecikmeChart',
             typeSelector: '#chartTypeGecikme',
             defaultType: 'bar',
@@ -721,21 +856,24 @@ const satinalmaSchema = {
             typeSelector: '#chartTypeAylikBudat',
             defaultType: 'line',
             buildData: skBuildAylikBudatTrend,
+            chartClickFilter: { field: 'BudatAy', valueKey: 'monthKey' },
             seriesName: 'Kalem Sayısı',
             legend: { visible: false }
         },
         {
             elementId: '#tedarikciTeslimStackChart',
+            typeSelector: '#chartTypeTedarikciTeslimStack',
             filterElementId: '#filterTedarikci',
-            filterField: skF.name1,
-            fixedType: 'bar',
+            filterField: 'TedarikciEtiket',
+            defaultType: 'bar',
             rotatedBar: true,
             buildData: skBuildTedarikciTeslimStacked,
             stackedSeries: [
-                { field: 'Erken', name: 'Erken', color: skTeslimPointColors.Erken },
                 { field: 'Zamanında', name: 'Zamanında', color: skTeslimPointColors['Zamanında'] },
-                { field: 'Gecikmeli', name: 'Gecikmeli', color: skTeslimPointColors.Gecikmeli }
+                { field: 'Geç', name: 'Geç', color: skTeslimPointColors['Geç'] }
             ],
+            stackedPieFilterField: skF.aktifTeslim,
+            stackedPieFilterElementId: '#filterTeslimPerf',
             seriesName: 'Teslim Durumu',
             legend: skPieLegend
         },
@@ -743,12 +881,13 @@ const satinalmaSchema = {
             elementId: '#tedarikciOrtGecikmeChart',
             typeSelector: '#chartTypeTedarikciOrtGecikme',
             filterElementId: '#filterTedarikci',
-            filterField: skF.name1,
+            filterField: 'TedarikciEtiket',
             defaultType: 'bar',
             rotatedBar: true,
             buildData: skBuildTedarikciOrtGecikme,
             formatValue: skFormatGecikmeGun,
             useDataPointColors: true,
+            colorBySign: true,
             seriesName: 'Ort. Sapma (gün)',
             legend: { visible: false }
         }
@@ -767,6 +906,20 @@ const satinalmaSchema = {
             fieldMappings: {
                 [skF.name1]: [skF.name1],
                 [skF.wgbez]: [skF.wgbez, skF.matkl]
+            }
+        },
+        {
+            containerId: 'yillikPivotGridContainer',
+            fileName: 'EknamYillikDagilim',
+            texts: { grandTotal: 'Tüm Yılların Toplamı', total: 'O Yıla Ait Alt Toplam' },
+            fields: [
+                { dataField: skF.eknam, area: 'row', caption: 'Satın Alma Organizasyonu' },
+                { dataField: 'Yil', area: 'column', caption: 'Yıl' },
+                { dataField: 'Hafta', area: 'column', caption: 'Hafta' },
+                { dataField: 'Adet', area: 'data', summaryType: 'sum', caption: 'Kayıt' }
+            ],
+            fieldMappings: {
+                [skF.eknam]: [skF.eknam]
             }
         }
     ]

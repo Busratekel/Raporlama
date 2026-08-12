@@ -1,0 +1,200 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Görev Formu Personel Seyahat</title>
+    <link id="dxThemeCss" rel="stylesheet" href="../lib/css/dx.dark.css" />
+    <link rel="stylesheet" href="rapor-ortak.css?v=20260812d" />
+    <script src="theme.js"></script>
+    <script>RaporTheme.init({ dxBase: '../lib/css/' });</script>
+</head>
+<body>
+    <div id="reportMeta" data-report-id="4"></div>
+    <div class="header">
+        <h1>✈️ Görev Formu Personel Seyahat Raporu</h1>
+        <button type="button" id="themeToggle" class="theme-toggle">☀️ Açık Tema</button>
+    </div>
+
+    <div class="main-layout">
+        <div class="sidebar">
+            <h3 style="font-size: 22px; color: #00eaff; margin-bottom: 24px;">🔍 Filtreler</h3>
+
+            <div class="filter-group">
+                <label class="filter-label">Departman</label>
+                <select id="filterDepartman"><option value="">Tümü</option></select>
+            </div>
+            <div class="filter-group">
+                <label class="filter-label">Ünvan</label>
+                <select id="filterUnvan"><option value="">Tümü</option></select>
+            </div>
+            <div class="filter-group">
+                <label class="filter-label">Üretim Yeri</label>
+                <select id="filterUretimYeri"><option value="">Tümü</option></select>
+            </div>
+            <div class="filter-group">
+                <label class="filter-label">İzne Giden Personel</label>
+                <select id="filterPersonel"><option value="">Tümü</option></select>
+            </div>
+            <div class="filter-group">
+                <label class="filter-label">Seyahat Tipi</label>
+                <select id="filterSeyahatTipi"><option value="">Tümü</option></select>
+            </div>
+            <div class="filter-group">
+                <label class="filter-label">Seyahat Sebebi</label>
+                <select id="filterSebep"><option value="">Tümü</option></select>
+            </div>
+            <div class="filter-group">
+                <label class="filter-label">Başlangıç (en erken)</label>
+                <input type="date" id="filterBaslangic">
+            </div>
+            <div class="filter-group">
+                <label class="filter-label">Bitiş (en geç)</label>
+                <input type="date" id="filterBitis">
+            </div>
+
+            <button class="clear-filters">⊘ Temizle</button>
+            <button id="saveDefaultReport_gorev-formu-seyahat" class="filter-btn" style="margin-top:12px;background:orange;color:#181A20;font-weight:bold;">⭐ Varsayılan olarak kaydet</button>
+        </div>
+
+        <div class="content">
+            <div class="card">
+                <h2>📊 Özet</h2>
+                <div class="stats">
+                    <div class="stat-card stat-card-blue"><h3 id="totalSeyahat">-</h3><p>Toplam Seyahat</p></div>
+                    <div class="stat-card stat-card-green"><h3 id="totalPersonel">-</h3><p>İzne Giden Personel</p></div>
+                    <div class="stat-card stat-card-yellow"><h3 id="ortSeyahatGun">-</h3><p>Ortalama Süre (gün)</p></div>
+                    <div class="stat-card stat-card-red"><h3 id="yurtIciSayisi">-</h3><p>Yurt İçi Seyahat</p></div>
+                </div>
+            </div>
+
+            <div class="card">
+                <h2>📈 Grafikler</h2>
+                <div class="charts-grid">
+                    <div class="chart-container">
+                        <h4>İZNE GİDEN PERSONEL GRAFİĞİ</h4>
+                        <select id="chartTypePersonel" style="margin-bottom:8px;width:120px">
+                            <option value="bar">Çubuk</option>
+                            <option value="line">Çizgi</option>
+                            <option value="pie">Pasta</option>
+                        </select>
+                        <div style="position:relative;height:0;">
+                            <div style="position:absolute;top:-40px;right:8px;display:flex;gap:8px;z-index:2;">
+                                <span style="cursor:pointer;font-size:20px;" onclick="RaporModul.enlargeChart('personelChart', 'İzne Giden Personel')" title="Büyüt">🔍</span>
+                                <span style="cursor:pointer;font-size:20px;" onclick="RaporModul.downloadSVG('personelChart', 'İzne Giden Personel')" title="İndir">⬇️</span>
+                            </div>
+                        </div>
+                        <div id="personelChart" style="height:320px;"></div>
+                    </div>
+                    <div class="chart-container">
+                        <h4>SEYAHAT TİPİ GRAFİĞİ</h4>
+                        <select id="chartTypeTip" style="margin-bottom:8px;width:120px">
+                            <option value="pie">Pasta</option>
+                            <option value="bar">Çubuk</option>
+                            <option value="line">Çizgi</option>
+                        </select>
+                        <div style="position:relative;height:0;">
+                            <div style="position:absolute;top:-40px;right:8px;display:flex;gap:8px;z-index:2;">
+                                <span style="cursor:pointer;font-size:20px;" onclick="RaporModul.enlargeChart('tipChart', 'Seyahat Tipi')" title="Büyüt">🔍</span>
+                                <span style="cursor:pointer;font-size:20px;" onclick="RaporModul.downloadSVG('tipChart', 'Seyahat Tipi')" title="İndir">⬇️</span>
+                            </div>
+                        </div>
+                        <div id="tipChart" style="height:320px;"></div>
+                    </div>
+                    <div class="chart-container">
+                        <h4>SEYAHAT SEBEBİ GRAFİĞİ</h4>
+                        <select id="chartTypeSebep" style="margin-bottom:8px;width:120px">
+                            <option value="bar">Çubuk</option>
+                            <option value="line">Çizgi</option>
+                            <option value="pie">Pasta</option>
+                        </select>
+                        <div style="position:relative;height:0;">
+                            <div style="position:absolute;top:-40px;right:8px;display:flex;gap:8px;z-index:2;">
+                                <span style="cursor:pointer;font-size:20px;" onclick="RaporModul.enlargeChart('sebepChart', 'Seyahat Sebebi')" title="Büyüt">🔍</span>
+                                <span style="cursor:pointer;font-size:20px;" onclick="RaporModul.downloadSVG('sebepChart', 'Seyahat Sebebi')" title="İndir">⬇️</span>
+                            </div>
+                        </div>
+                        <div id="sebepChart" style="height:320px;"></div>
+                    </div>
+                    <div class="chart-container">
+                        <h4>SEYAHETE GİDİLEN YER GRAFİĞİ</h4>
+                        <select id="chartTypeGidilenYer" style="margin-bottom:8px;width:120px">
+                            <option value="bar">Çubuk</option>
+                            <option value="line">Çizgi</option>
+                            <option value="pie">Pasta</option>
+                        </select>
+                        <div style="position:relative;height:0;">
+                            <div style="position:absolute;top:-40px;right:8px;display:flex;gap:8px;z-index:2;">
+                                <span style="cursor:pointer;font-size:20px;" onclick="RaporModul.enlargeChart('gidilenYerChart', 'Gidilen Yer')" title="Büyüt">🔍</span>
+                                <span style="cursor:pointer;font-size:20px;" onclick="RaporModul.downloadSVG('gidilenYerChart', 'Gidilen Yer')" title="İndir">⬇️</span>
+                            </div>
+                        </div>
+                        <div id="gidilenYerChart" style="height:320px;"></div>
+                    </div>
+                    <div class="chart-container">
+                        <h4>SEYAHATE GİDEN PERSONELİN DEPARTMAN GRAFİĞİ</h4>
+                        <select id="chartTypeDepartman" style="margin-bottom:8px;width:120px">
+                            <option value="bar">Çubuk</option>
+                            <option value="line">Çizgi</option>
+                            <option value="pie">Pasta</option>
+                        </select>
+                        <div style="position:relative;height:0;">
+                            <div style="position:absolute;top:-40px;right:8px;display:flex;gap:8px;z-index:2;">
+                                <span style="cursor:pointer;font-size:20px;" onclick="RaporModul.enlargeChart('departmanChart', 'Departman')" title="Büyüt">🔍</span>
+                                <span style="cursor:pointer;font-size:20px;" onclick="RaporModul.downloadSVG('departmanChart', 'Departman')" title="İndir">⬇️</span>
+                            </div>
+                        </div>
+                        <div id="departmanChart" style="height:320px;"></div>
+                    </div>
+                    <div class="chart-container">
+                        <h4>AYLIK SEYAHAT TREND GRAFİĞİ</h4>
+                        <select id="chartTypeAylik" style="margin-bottom:8px;width:120px">
+                            <option value="line">Çizgi</option>
+                            <option value="bar">Çubuk</option>
+                            <option value="pie">Pasta</option>
+                        </select>
+                        <div style="position:relative;height:0;">
+                            <div style="position:absolute;top:-40px;right:8px;display:flex;gap:8px;z-index:2;">
+                                <span style="cursor:pointer;font-size:20px;" onclick="RaporModul.enlargeChart('aylikTrendChart', 'Aylık Seyahat Trendi')" title="Büyüt">🔍</span>
+                                <span style="cursor:pointer;font-size:20px;" onclick="RaporModul.downloadSVG('aylikTrendChart', 'Aylık Seyahat Trendi')" title="İndir">⬇️</span>
+                            </div>
+                        </div>
+                        <div id="aylikTrendChart" style="height:320px;"></div>
+                    </div>
+                    <div class="chart-container">
+                        <h4>SÜRE DAĞILIM GRAFİĞİ (GÜN)</h4>
+                        <select id="chartTypeSure" style="margin-bottom:8px;width:120px">
+                            <option value="bar">Çubuk</option>
+                            <option value="line">Çizgi</option>
+                            <option value="pie">Pasta</option>
+                        </select>
+                        <div style="position:relative;height:0;">
+                            <div style="position:absolute;top:-40px;right:8px;display:flex;gap:8px;z-index:2;">
+                                <span style="cursor:pointer;font-size:20px;" onclick="RaporModul.enlargeChart('sureChart', 'Süre Dağılımı')" title="Büyüt">🔍</span>
+                                <span style="cursor:pointer;font-size:20px;" onclick="RaporModul.downloadSVG('sureChart', 'Süre Dağılımı')" title="İndir">⬇️</span>
+                            </div>
+                        </div>
+                        <div id="sureChart" style="height:320px;"></div>
+                    </div>
+                </div>
+            </div>
+
+            <h2 style="margin-top:32px;">📑 Detaylı Tablo</h2>
+            <div id="gridContainer" class="card"></div>
+
+            <h2 style="margin-top:32px;">📑 Detay Tablo (Haftalık/Yıllık Dağılım)</h2>
+            <div id="yillikPivotGridContainer" class="card"></div>
+        </div>
+    </div>
+
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <script src="/lib/js/jszip.min.js"></script>
+    <script src="/lib/js/dx.all.js"></script>
+    <script src="common.js"></script>
+    <script src="toast.js"></script>
+    <script>window.API_BASE = '/api';</script>
+    <script src="raporModul.js?v=20260812s"></script>
+    <script src="gorev-formu-seyahat-schema.js?v=20260812i"></script>
+    <script>RaporTheme.bindToggle();</script>
+</body>
+</html>

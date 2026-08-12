@@ -80,15 +80,15 @@ public static class ReportPermissionMetadata
         [
             "WERKS", "NAME1", "LIFNR", "EKNAM", "EKGRP", "ZZSORUMLU",
             "MATNR", "MAKTX", "MATKL", "WGBEZ", "MEINS",
-            "EINDT", "BUDAT", "BEDAT", "DELIV", "TESLMAY", "ZZGECGUN", "WAERS"
+            "EINDT", "BUDAT", "BEDAT", "DELIV", "TESLMAY", "ZZGECGUN", "ZZGEC1", "ZZGEC3", "WAERS"
         ],
         FilterLabels: new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
         {
             ["WERKS"] = "Üretim Yeri",
             ["NAME1"] = "Tedarikçi",
             ["LIFNR"] = "Tedarikçi Kodu",
-            ["EKNAM"] = "Satın Alma Grubu",
-            ["EKGRP"] = "Satın Alma Grubu Kodu",
+            ["EKNAM"] = "Satın Alma Organizasyonu",
+            ["EKGRP"] = "Satın Alma Organizasyonu Kodu",
             ["ZZSORUMLU"] = "Sorumlu",
             ["MATNR"] = "Malzeme Kodu",
             ["MAKTX"] = "Malzeme Açıklaması",
@@ -101,19 +101,21 @@ public static class ReportPermissionMetadata
             ["BEDAT"] = "Satın Alma Siparişi Tarihi",
             ["DELIV"] = "Teslim Durumu",
             ["TESLMAY"] = "Teslimat Yapıldı mı",
-            ["ZZGECGUN"] = "Sapma Günü (− erken, + geç)"
+            ["ZZGECGUN"] = "Sapma Günü (ZZGECGUN)",
+            ["ZZGEC1"] = "Teslim Durumu 1 gün (ZZGEC1)",
+            ["ZZGEC3"] = "Teslim Durumu 3 gün (ZZGEC3)"
         },
         Columns:
         [
             "EBELN", "EBELP", "EKGRP", "EKNAM", "ZZSORUMLU",
             "MATNR", "MAKTX", "MATKL", "WGBEZ", "LIFNR", "NAME1",
             "MENGE", "MEINS", "NETWR", "WAERS", "BEDAT", "EINDT", "BUDAT",
-            "ZZGECGUN", "TESLMAY", "DELIV", "WERKS"
+            "ZZGECGUN", "ZZGEC1", "ZZGEC3", "TESLMAY", "DELIV", "WERKS"
         ],
         ColumnLabels: new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
         {
-            ["EKNAM"] = "Satın Alma Grubu",
-            ["EKGRP"] = "Satın Alma Grubu Kodu",
+            ["EKNAM"] = "Satın Alma Organizasyonu",
+            ["EKGRP"] = "Satın Alma Organizasyonu Kodu",
             ["ZZSORUMLU"] = "Sorumlu",
             ["MATNR"] = "Malzeme Kodu",
             ["MATKL"] = "Malzeme Grubu",
@@ -123,8 +125,46 @@ public static class ReportPermissionMetadata
             ["MENGE"] = "Miktar",
             ["EINDT"] = "Planlanan Teslim",
             ["BUDAT"] = "Gerçekleşen Tarih"
+        });
+
+    private static readonly ReportPermissionMeta GorevFormuSeyahat = new(
+        FilterFields:
+        [
+            "Sicil", "İzne Giden Personel", "Ünvan", "Departman", "Üretim Yeri",
+            "Seyahat Tipi", "Gidilen Yer", "Seyahat Sebebi",
+            "Seyahat Başlangıç Tarihi", "Seyahat Bitiş Tarihi", "Vekalet Edecek Personel"
+        ],
+        FilterLabels: new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
+        {
+            ["Sicil"] = "Sicil",
+            ["İzne Giden Personel"] = "Personel",
+            ["Ünvan"] = "Ünvan",
+            ["Departman"] = "Departman",
+            ["Üretim Yeri"] = "Üretim Yeri",
+            ["Seyahat Tipi"] = "Seyahat Tipi",
+            ["Gidilen Yer"] = "Gidilen Yer",
+            ["Seyahat Sebebi"] = "Seyahat Sebebi",
+            ["Seyahat Başlangıç Tarihi"] = "Başlangıç Tarihi",
+            ["Seyahat Bitiş Tarihi"] = "Bitiş Tarihi",
+            ["Vekalet Edecek Personel"] = "Vekalet Personeli"
         },
-        DepartmentNameField: "EKORG");
+        Columns:
+        [
+            "Sicil", "İzne Giden Personel", "Ünvan", "Departman", "Üretim Yeri",
+            "Seyahat Başlangıç Tarihi", "Seyahat Bitiş Tarihi", "Vekalet Edecek Personel",
+            "Seyahat Tipi", "Gidilen Yer", "Seyahat Sebebi", "Açıklama"
+        ],
+        ColumnLabels: new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
+        {
+            ["İzne Giden Personel"] = "Personel",
+            ["Seyahat Başlangıç Tarihi"] = "Başlangıç",
+            ["Seyahat Bitiş Tarihi"] = "Bitiş",
+            ["Vekalet Edecek Personel"] = "Vekalet Personeli",
+            ["Seyahat Tipi"] = "Seyahat Tipi",
+            ["Gidilen Yer"] = "Gidilen Yer",
+            ["Seyahat Sebebi"] = "Seyahat Sebebi"
+        },
+        DepartmentNameField: "Departman");
 
     public static ReportPermissionMeta? Resolve(string? reportCode, string? reportName, string? url)
     {
@@ -132,6 +172,8 @@ public static class ReportPermissionMetadata
         if (haystack.Contains("bekleyen")) return Bekleyen;
         if (haystack.Contains("qdms")) return Qdms;
         if (haystack.Contains("satinalma") || haystack.Contains("kabuller")) return SatinalmaKabuller;
+        if (haystack.Contains("gorev-formu") || haystack.Contains("seyahat") || haystack.Contains("görev formu"))
+            return GorevFormuSeyahat;
         return null;
     }
 }

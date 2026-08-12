@@ -264,6 +264,10 @@
                 || name.includes('satınalma') || name.includes('kabul')
                 || url.includes('satinalma') || url.includes('kabuller'))
                 return 'images/satinalma-kabuller.png';
+            if (code.includes('gorev-formu') || code.includes('seyahat')
+                || name.includes('görev') || name.includes('gorev') || name.includes('seyahat')
+                || url.includes('gorev-formu') || url.includes('seyahat'))
+                return 'images/seyahat.png';
             return null;
         }
         function getReportDisplayName(report) {
@@ -276,6 +280,10 @@
                 || name.includes('satinalma') || name.includes('kabuller')
                 || name.includes('satınalma') || url.includes('satinalma-kabuller'))
                 return 'Satınalma Kabuller Dökümü';
+            if (code.includes('gorev-formu') || code.includes('seyahat')
+                || name.includes('görev') || name.includes('gorev') || name.includes('seyahat')
+                || url.includes('gorev-formu'))
+                return 'Görev Formu Personel Seyahat';
             return report.reportName || 'Rapor';
         }
         function renderReportButton(report, url) {
