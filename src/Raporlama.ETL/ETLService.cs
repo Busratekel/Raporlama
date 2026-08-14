@@ -56,6 +56,49 @@ namespace Raporlama.ETL
             catch { }
         }
 
+        public string? FindLatestLogFile(string? date = null)
+        {
+            var logDir = GetLogDirectory();
+            if (!Directory.Exists(logDir))
+                return null;
+
+            try
+            {
+                var files = Directory.GetFiles(logDir, "etl-*.txt");
+                if (files.Length == 0)
+                    return null;
+
+                if (!string.IsNullOrWhiteSpace(date))
+                {
+                    var dated = Path.Combine(logDir, $"etl-{date}.txt");
+                    return File.Exists(dated) ? dated : null;
+                }
+
+                return files
+                    .OrderByDescending(f => File.GetLastWriteTimeUtc(f))
+                    .FirstOrDefault();
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "ETL log dosyası listelenemedi: {LogDir}", logDir);
+                return null;
+            }
+        }
+
+        public static string ReadLogTail(string filePath, int maxBytes = 512_000)
+        {
+            using var fs = new FileStream(filePath, FileMode.Open, FileAccess.Read, FileShare.ReadWrite);
+            if (fs.Length <= maxBytes)
+            {
+                using var sr = new StreamReader(fs);
+                return sr.ReadToEnd();
+            }
+
+            fs.Seek(-maxBytes, SeekOrigin.End);
+            using var tailReader = new StreamReader(fs);
+            return "(… dosyanın son kısmı gösteriliyor …)\n" + tailReader.ReadToEnd();
+        }
+
         public async Task<List<ETLGorev>> GetActiveTasksAsync()
         {
             using var conn = new SqlConnection(_connectionString);
@@ -89,6 +132,29 @@ namespace Raporlama.ETL
         {
             if (string.IsNullOrWhiteSpace(runMode)) return "ReplaceAll";
             return runMode.Trim();
+        }
+
+        /// <summary>
+        /// INSERT ... SELECT için hedef tablonun identity olmayan kolonları (fact sırası).
+        /// View kolon sayısı/sırası bununla eşleşmeli; aksi halde SQL hata verir.
+        /// </summary>
+        private static async Task<string> GetNonIdentityInsertColumnListAsync(
+            SqlConnection conn,
+            SqlTransaction tx,
+            string tableName)
+        {
+            const string sql = @"
+                SELECT c.name
+                FROM sys.columns c
+                INNER JOIN sys.tables t ON c.object_id = t.object_id
+                WHERE t.name = @tableName AND c.is_identity = 0
+                ORDER BY c.column_id";
+
+            var columns = (await conn.QueryAsync<string>(sql, new { tableName }, transaction: tx)).AsList();
+            if (columns.Count == 0)
+                throw new InvalidOperationException($"Hedef tabloda insert kolonu bulunamadı: {tableName}");
+
+            return string.Join(", ", columns.Select(QuoteSqlIdentifier));
         }
 
         public async Task<int> RunCustomETLWithResultAsync(string sorgu, string tablo, int? gorevId = null, string? runMode = null)
@@ -136,8 +202,9 @@ namespace Raporlama.ETL
                         transaction: tx,
                         commandTimeout: 0);
 
+                    var insertColumns = await GetNonIdentityInsertColumnListAsync(conn, tx, tableName);
                     var inserted = await conn.ExecuteAsync(
-                        $"INSERT INTO {QuoteSqlIdentifier(tableName)} {selectSql}",
+                        $"INSERT INTO {QuoteSqlIdentifier(tableName)} ({insertColumns}) {selectSql}",
                         transaction: tx,
                         commandTimeout: 0);
 

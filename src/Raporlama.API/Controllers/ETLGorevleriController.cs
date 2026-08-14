@@ -28,6 +28,8 @@ namespace Raporlama.API.Controllers
 
         private readonly IAdminService _adminService;
 
+        private readonly IHttpClientFactory _httpClientFactory;
+
         private readonly ILogger<ETLGorevleriController> _logger;
 
 
@@ -40,6 +42,8 @@ namespace Raporlama.API.Controllers
 
             IAdminService adminService,
 
+            IHttpClientFactory httpClientFactory,
+
             ILogger<ETLGorevleriController> logger)
 
         {
@@ -50,6 +54,8 @@ namespace Raporlama.API.Controllers
 
             _adminService = adminService;
 
+            _httpClientFactory = httpClientFactory;
+
             _logger = logger;
 
         }
@@ -57,125 +63,114 @@ namespace Raporlama.API.Controllers
 
 
         [HttpGet("logs")]
-
-        public IActionResult GetETLLogs(string? date = null)
-
+        public async Task<IActionResult> GetETLLogs(string? date = null)
         {
-
-            if (!RequireAdmin(out var denied)) return denied!;
-
-
-
-            var logDir = EtlPathHelper.ResolveLogDirectory(_configuration);
-
-            var logFile = EtlPathHelper.FindLatestLogFile(logDir, date);
-
             var raw = Request.Query.ContainsKey("raw");
 
-
-
-            if (logFile == null)
-
-            {
-
-                var searched = string.Join("\n  - ", EtlPathHelper.BuildCandidatePaths(_configuration));
-
-                if (raw)
-
-                {
-
-                    var hint = logDir == null
-
-                        ? "ETL log klasörü bulunamadı.\n\nappsettings.json örneği:\n  \"ETL\": { \"LogDirectory\": \"C:\\\\Services\\\\Raporlama.ETL\\\\logs\" }\n\nAranan konumlar:\n  - " + searched
-
-                        : $"ETL log dosyası henüz yok.\nKlasör: {logDir}\n\nETL servisini bir kez çalıştırın; etl-YYYYMMDD.txt oluşur.";
-
-                    return Content(hint, "text/plain; charset=utf-8");
-
-                }
-
-                return Ok(new List<object>());
-
-            }
-
-
-
             try
-
             {
+                if (!RequireAdmin(out var denied)) return denied!;
+
+                // Canlı: IIS disk izni gerekmez — ETL servisi (5010) kendi logunu okur
+                var fromEtlService = await TryFetchLogsFromEtlServiceAsync(date);
+                if (!string.IsNullOrEmpty(fromEtlService))
+                {
+                    if (raw)
+                        return Content(fromEtlService, "text/plain; charset=utf-8");
+                    return Ok(ParseStructuredLogs(fromEtlService));
+                }
+
+                var logFile = EtlPathHelper.FindLatestLogFileFromCandidates(_configuration, date);
+                var logDir = logFile != null
+                    ? Path.GetDirectoryName(logFile)
+                    : EtlPathHelper.ResolveLogDirectory(_configuration);
+
+                if (logFile == null)
+                {
+                    var searchReport = EtlPathHelper.DescribeLogSearch(_configuration);
+
+                    if (raw)
+                    {
+                        var hint = $"ETL log dosyası bulunamadı veya okunamadı.\n\n{searchReport}\n\n" +
+                            "Kontrol:\n" +
+                            "1. IIS appsettings.json → ETL:LogDirectory = ETL servisinin logs klasörü (ETL appsettings ile aynı yol)\n" +
+                            "2. IIS app pool hesabına o klasörde Okuma yetkisi verin\n" +
+                            "3. App pool recycle edin";
+
+                        return Content(hint, "text/plain; charset=utf-8");
+                    }
+
+                    return Ok(new List<object>());
+                }
 
                 if (raw)
-
                 {
-
                     var text = EtlPathHelper.ReadLogTail(logFile);
-
                     var header = $"# Dosya: {logFile}\n# Klasör: {logDir}\n\n";
-
                     return Content(header + text, "text/plain; charset=utf-8");
-
                 }
 
-
-
-                var lines = EtlPathHelper.ReadLogTail(logFile)
-
-                    .Split(new[] { '\r', '\n' }, StringSplitOptions.RemoveEmptyEntries);
-
-
-
-                var regex = new System.Text.RegularExpressions.Regex(@"ETL Görevi (Başladı|Bitti): (.+) \((.+)\) \| (Başlangıç|Bitiş): ([0-9\-: ]+)( \| Çekilen Kayıt: (\d+))?");
-
-                var result = lines
-
-                    .Select(l => regex.Match(l))
-
-                    .Where(m => m.Success)
-
-                    .Select(m => new {
-
-                        Status = m.Groups[1].Value,
-
-                        TaskName = m.Groups[2].Value,
-
-                        Table = m.Groups[3].Value,
-
-                        TimeType = m.Groups[4].Value,
-
-                        Time = m.Groups[5].Value,
-
-                        RecordCount = m.Groups[7].Success ? m.Groups[7].Value : null
-
-                    })
-
-                    .ToList();
-
-                return Ok(result);
-
+                return Ok(ParseStructuredLogs(EtlPathHelper.ReadLogTail(logFile)));
             }
-
             catch (Exception ex)
-
             {
-
-                _logger.LogError(ex, "ETL log okunamadı. Klasör: {LogDir}, Dosya: {LogFile}", logDir, logFile);
-
+                _logger.LogError(ex, "ETL log endpoint hatası");
                 if (raw)
-
                 {
-
                     return Content(
-
-                        $"Log dosyası okunamadı: {ex.Message}\nDosya: {logFile}\nKlasör: {logDir}",
-
+                        $"Log okuma hatası: {ex.Message}\n\n" +
+                        "ETL servisi: " + EtlPathHelper.GetEtlServiceUrl(_configuration) + "/api/etl/logs?raw=1\n" +
+                        EtlPathHelper.DescribeLogSearch(_configuration),
                         "text/plain; charset=utf-8");
+                }
+                return StatusCode(500, new { error = ex.Message });
+            }
+        }
 
+        private async Task<string?> TryFetchLogsFromEtlServiceAsync(string? date)
+        {
+            try
+            {
+                var baseUrl = EtlPathHelper.GetEtlServiceUrl(_configuration);
+                var url = $"{baseUrl}/api/etl/logs?raw=1";
+                if (!string.IsNullOrWhiteSpace(date))
+                    url += $"&date={Uri.EscapeDataString(date)}";
+
+                var client = _httpClientFactory.CreateClient();
+                client.Timeout = TimeSpan.FromSeconds(20);
+                using var response = await client.GetAsync(url);
+                if (!response.IsSuccessStatusCode)
+                {
+                    _logger.LogWarning("ETL log HTTP {StatusCode}: {Url}", (int)response.StatusCode, url);
+                    return null;
                 }
 
-                return StatusCode(500, new { error = ex.Message, logDir, logFile });
-
+                return await response.Content.ReadAsStringAsync();
             }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "ETL servisinden log alınamadı");
+                return null;
+            }
+        }
 
+        private static List<object> ParseStructuredLogs(string logText)
+        {
+            var lines = logText.Split(new[] { '\r', '\n' }, StringSplitOptions.RemoveEmptyEntries);
+            var regex = new System.Text.RegularExpressions.Regex(@"ETL Görevi (Başladı|Bitti): (.+) \((.+)\) \| (Başlangıç|Bitiş): ([0-9\-: ]+)( \| Çekilen Kayıt: (\d+))?");
+
+            return lines
+                .Select(l => regex.Match(l))
+                .Where(m => m.Success)
+                .Select(m => (object)new {
+                    Status = m.Groups[1].Value,
+                    TaskName = m.Groups[2].Value,
+                    Table = m.Groups[3].Value,
+                    TimeType = m.Groups[4].Value,
+                    Time = m.Groups[5].Value,
+                    RecordCount = m.Groups[7].Success ? m.Groups[7].Value : null
+                })
+                .ToList();
         }
 
 

@@ -4,17 +4,13 @@ public static class EtlPathHelper
 {
     public static string? ResolveLogDirectory(IConfiguration config)
     {
-        var candidates = BuildCandidatePaths(config);
-
-        foreach (var dir in candidates)
+        foreach (var dir in BuildCandidatePaths(config))
         {
-            if (string.IsNullOrEmpty(dir) || !Directory.Exists(dir))
-                continue;
-            if (Directory.GetFiles(dir, "etl-*.txt").Length > 0)
+            if (TryPickNewestInDirectory(dir, null) != null)
                 return dir;
         }
 
-        foreach (var dir in candidates)
+        foreach (var dir in BuildCandidatePaths(config))
         {
             if (!string.IsNullOrEmpty(dir) && Directory.Exists(dir))
                 return dir;
@@ -42,9 +38,11 @@ public static class EtlPathHelper
                 "logs",
                 Path.Combine("Raporlama.ETL", "logs"),
                 Path.Combine("Raporlama.ETL", "bin", "Debug", "net10.0", "logs"),
+                Path.Combine("Raporlama.ETL", "bin", "Debug", "net10.0-windows", "logs"),
                 Path.Combine("Raporlama.ETL", "bin", "Release", "net10.0", "win-x64", "logs"),
                 Path.Combine("src", "Raporlama.ETL", "logs"),
                 Path.Combine("src", "Raporlama.ETL", "bin", "Debug", "net10.0", "logs"),
+                Path.Combine("src", "Raporlama.ETL", "bin", "Debug", "net10.0-windows", "logs"),
             })
             {
                 try { list.Add(Path.GetFullPath(Path.Combine(dir, rel))); } catch { /* ignore */ }
@@ -59,14 +57,114 @@ public static class EtlPathHelper
         if (string.IsNullOrEmpty(logDir) || !Directory.Exists(logDir))
             return null;
 
-        if (!string.IsNullOrWhiteSpace(date))
+        return PickNewestLogFile(Directory.GetFiles(logDir, "etl-*.txt"), date);
+    }
+
+    /// <summary>
+    /// Önce appsettings ETL:LogDirectory; yoksa aday klasörlerde en güncel dosya.
+    /// </summary>
+    public static string? FindLatestLogFileFromCandidates(IConfiguration config, string? date = null)
+    {
+        var configured = config["ETL:LogDirectory"]?.Trim();
+        if (!string.IsNullOrWhiteSpace(configured))
         {
-            var dated = Path.Combine(logDir, $"etl-{date}.txt");
-            return File.Exists(dated) ? dated : null;
+            var fromConfigured = TryPickNewestInDirectory(configured, date);
+            if (fromConfigured != null)
+                return fromConfigured;
         }
 
-        return Directory.GetFiles(logDir, "etl-*.txt")
-            .OrderByDescending(f => f, StringComparer.OrdinalIgnoreCase)
+        string? bestFile = null;
+        var bestTime = DateTime.MinValue;
+
+        foreach (var dir in BuildCandidatePaths(config))
+        {
+            if (string.IsNullOrWhiteSpace(configured) ||
+                !string.Equals(dir, configured, StringComparison.OrdinalIgnoreCase))
+            {
+                var file = TryPickNewestInDirectory(dir, date);
+                if (file == null)
+                    continue;
+
+                DateTime writeTime;
+                try { writeTime = File.GetLastWriteTimeUtc(file); }
+                catch { continue; }
+
+                if (writeTime > bestTime)
+                {
+                    bestTime = writeTime;
+                    bestFile = file;
+                }
+            }
+        }
+
+        return bestFile;
+    }
+
+    private static string? TryPickNewestInDirectory(string? dir, string? date)
+    {
+        if (string.IsNullOrEmpty(dir) || !Directory.Exists(dir))
+            return null;
+
+        try
+        {
+            var files = Directory.GetFiles(dir, "etl-*.txt");
+            return PickNewestLogFile(files, date);
+        }
+        catch
+        {
+            return null;
+        }
+    }
+
+    public static string DescribeLogSearch(IConfiguration config)
+    {
+        var lines = new List<string>();
+        var configured = config["ETL:LogDirectory"]?.Trim();
+        if (!string.IsNullOrWhiteSpace(configured))
+            lines.Add($"Yapılandırılan: {configured} → {(Directory.Exists(configured) ? "var" : "YOK")}");
+
+        foreach (var dir in BuildCandidatePaths(config).Take(8))
+        {
+            if (string.IsNullOrEmpty(dir))
+                continue;
+            string status;
+            try
+            {
+                if (!Directory.Exists(dir))
+                    status = "yok";
+                else
+                {
+                    var count = Directory.GetFiles(dir, "etl-*.txt").Length;
+                    status = count > 0 ? $"{count} dosya" : "boş";
+                }
+            }
+            catch
+            {
+                status = "erişilemiyor (IIS okuma yetkisi?)";
+            }
+            lines.Add($"  - {dir} → {status}");
+        }
+
+        return string.Join("\n", lines);
+    }
+
+    private static string? PickNewestLogFile(string[] files, string? date)
+    {
+        if (files.Length == 0)
+            return null;
+
+        if (!string.IsNullOrWhiteSpace(date))
+        {
+            var dated = files.FirstOrDefault(f =>
+                string.Equals(Path.GetFileNameWithoutExtension(f), $"etl-{date}", StringComparison.OrdinalIgnoreCase));
+            return dated;
+        }
+
+        return files
+            .Select(f => { try { return (f, File.GetLastWriteTimeUtc(f)); } catch { return (f, DateTime.MinValue); } })
+            .OrderByDescending(x => x.Item2)
+            .ThenByDescending(x => x.f, StringComparer.OrdinalIgnoreCase)
+            .Select(x => x.f)
             .FirstOrDefault();
     }
 

@@ -28,7 +28,6 @@
                     <tr>
                         <th>ID</th>
                         <th>Görev Adı</th>
-                        <th>Sorgu Metni</th>
                         <th>Hedef Tablo</th>
                         <th>Zamanlama (Cron)</th>
                         <th>Son Başarılı Çalışma</th>
@@ -311,7 +310,6 @@
                     tr.innerHTML = [
                         `<td>${gorev.gorevId}</td>`,
                         `<td>${gorev.gorevAdi}</td>`,
-                        `<td><pre style="max-width:200px;white-space:pre-wrap;background:none;color:#bfc7d5;">${gorev.sorguMetni}</pre></td>`,
                         `<td>${gorev.hedefTablo}</td>`,
                         `<td>${gorev.schedule || ''}</td>`,
                         `<td>${displaySonBasariliCalisma(gorev)}</td>`,
@@ -417,19 +415,21 @@
 
     function fetchLogs() {
         apiFetch('/api/etlgorevleri/logs?raw=1')
-            .then(r => r.text())
-            .then(text => {
+            .then(async r => {
+                const text = await r.text();
+                if (!r.ok) {
+                    throw new Error('HTTP ' + r.status + '\n' + text);
+                }
                 document.getElementById('logText').textContent = text || '(Log dosyası boş)';
             })
             .catch(err => {
                 document.getElementById('logText').textContent =
                     'Loglar okunamadı.\n' + err.message +
                     '\n\nKontrol listesi:' +
-                    '\n1. Portala giriş yaptınız mı? (yönetici olmalısınız)' +
-                    '\n2. Raporlama.API çalışıyor mu?' +
-                    '\n3. appsettings.json → ETL:LogDirectory = ETL servisinin log klasörü' +
-                    '\n   Örnek: C:\\Services\\Raporlama.ETL\\logs' +
-                    '\n   veya geliştirme: src\\Raporlama.ETL\\bin\\Debug\\net10.0\\logs';
+                    '\n1. IIS appsettings.json → ETL:LogDirectory (ETL ile AYNI logs yolu)' +
+                    '\n2. IIS app pool → logs klasörüne Okuma yetkisi' +
+                    '\n3. Tarayıcıda aç: /api/etlgorevleri/logs?raw=1' +
+                    '\n4. App pool recycle';
             });
     }
 
