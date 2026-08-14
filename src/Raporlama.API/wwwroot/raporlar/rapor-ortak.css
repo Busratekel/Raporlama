@@ -30,17 +30,15 @@ html[data-theme="light"] {
 }
 
 .sidebar {
-    min-width: 220px;
-    max-width: 320px;
-    width: 260px;
-    max-height: calc(100vh - 48px);
-    overflow-y: auto;
-    overflow-x: hidden;
+    flex: 0 0 340px;
+    width: 340px;
+    min-width: 300px;
+    max-width: 340px;
     background: var(--bg-panel);
     color: var(--text-main);
     border-radius: 16px;
     box-shadow: 0 4px 24px var(--shadow-soft);
-    padding: 24px 16px 18px 12px;
+    padding: 20px 14px 16px;
     margin-right: 24px;
     margin-top: 20px;
     display: flex;
@@ -48,17 +46,61 @@ html[data-theme="light"] {
     align-self: flex-start;
     box-sizing: border-box;
     z-index: 2;
+    overflow: visible;
+}
+
+.sidebar-title {
+    font-size: 1.2rem;
+    font-weight: 600;
+    color: var(--text-accent);
+    margin: 0 0 16px;
+    letter-spacing: 0.2px;
+}
+
+.sidebar > h3:not(.sidebar-title) {
+    font-size: 1.2rem;
+    font-weight: 600;
+    color: var(--text-accent);
+    margin: 0 0 16px;
+}
+
+.filter-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+    margin-bottom: 10px;
+}
+
+.filter-dates {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    margin-bottom: 14px;
+}
+
+.filter-actions {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    margin-top: auto;
+    padding-top: 4px;
 }
 
 .filter-group {
     max-width: 100%;
     box-sizing: border-box;
-    margin-bottom: 16px;
+    margin-bottom: 0;
     background: var(--bg-card);
-    border-radius: 8px;
-    padding: 16px 14px 10px 14px;
+    border-radius: 10px;
+    padding: 12px 10px 10px;
     box-shadow: 0 2px 8px var(--shadow-card);
-    display: block;
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+}
+
+.filter-group--wide {
+    grid-column: 1 / -1;
 }
 
 html[data-theme="light"] .filter-group {
@@ -67,12 +109,12 @@ html[data-theme="light"] .filter-group {
 
 .filter-label {
     display: block;
-    font-size: 13px;
+    font-size: 11px;
     font-weight: 600;
-    margin-bottom: 8px;
+    margin-bottom: 6px;
     color: var(--text-accent);
-    letter-spacing: 0.3px;
-    line-height: 1.3;
+    letter-spacing: 0.2px;
+    line-height: 1.25;
     word-break: break-word;
 }
 
@@ -142,13 +184,13 @@ html[data-theme="light"] .filter-hint {
     min-width: 0;
     max-width: 100%;
     box-sizing: border-box;
-    padding: 10px 12px;
+    padding: 8px 10px;
     border: 1.5px solid var(--border-input);
     border-radius: 6px;
     background: var(--bg-panel);
     color: var(--text-main);
-    font-size: 15px;
-    margin-bottom: 8px;
+    font-size: 13px;
+    margin-bottom: 0;
     transition: border 0.2s, box-shadow 0.2s;
     appearance: none;
     outline: none;
@@ -167,10 +209,23 @@ html[data-theme="light"] .filter-hint {
 .sidebar select {
     background-image: url('data:image/svg+xml;utf8,<svg fill="%2300eaff" height="20" viewBox="0 0 24 24" width="20" xmlns="http://www.w3.org/2000/svg"><path d="M7 10l5 5 5-5z"/></svg>');
     background-repeat: no-repeat;
-    background-position: right 10px center;
-    background-size: 18px 18px;
-    padding-right: 36px;
+    background-position: right 8px center;
+    background-size: 16px 16px;
+    padding-right: 30px;
     cursor: pointer;
+}
+
+.sidebar input[type="date"] {
+    background-image: url('data:image/svg+xml;utf8,<svg fill="%2300eaff" height="18" viewBox="0 0 24 24" width="18" xmlns="http://www.w3.org/2000/svg"><path d="M19 4h-1V2h-2v2H8V2H6v2H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2zm0 16H5V10h14v10zM5 8V6h14v2H5z"/></svg>');
+    background-repeat: no-repeat;
+    background-position: right 8px center;
+    background-size: 16px 16px;
+    padding-right: 30px;
+    cursor: pointer;
+}
+
+html[data-theme="light"] .sidebar input[type="date"] {
+    background-image: url('data:image/svg+xml;utf8,<svg fill="%231976d2" height="18" viewBox="0 0 24 24" width="18" xmlns="http://www.w3.org/2000/svg"><path d="M19 4h-1V2h-2v2H8V2H6v2H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2zm0 16H5V10h14v10zM5 8V6h14v2H5z"/></svg>');
 }
 
 html[data-theme="light"] .sidebar select {
@@ -184,23 +239,32 @@ html[data-theme="light"] .sidebar select {
 
 .sidebar .filter-btn {
     width: 100%;
-    padding: 7px 0;
+    padding: 10px 0;
     background: linear-gradient(135deg, var(--text-accent) 0%, #2196f3 100%);
     color: var(--text-on-accent);
     border: none;
-    border-radius: 5px;
+    border-radius: 8px;
     cursor: pointer;
-    font-size: 14px;
+    font-size: 13px;
     font-weight: bold;
-    margin-top: 8px;
-    margin-bottom: 5px;
+    margin: 0;
     box-shadow: 0 2px 8px var(--shadow-card);
     transition: background 0.2s, color 0.2s, transform 0.2s;
     display: flex;
     align-items: center;
     justify-content: center;
     gap: 7px;
-    letter-spacing: 0.3px;
+    letter-spacing: 0.2px;
+}
+
+.sidebar .filter-btn--save {
+    background: linear-gradient(135deg, #ffb347 0%, #ff9800 100%);
+    color: #181A20;
+}
+
+.sidebar .filter-btn--save:hover {
+    background: linear-gradient(135deg, #ff9800 0%, #ffb347 100%);
+    color: #181A20;
 }
 
 html[data-theme="light"] .sidebar .filter-btn {
@@ -215,18 +279,21 @@ html[data-theme="light"] .sidebar .filter-btn {
 
 .sidebar .clear-filters {
     width: 100%;
-    padding: 7px 0;
+    padding: 10px 0;
     background: linear-gradient(135deg, #e74c3c 0%, #c0392b 100%);
     color: #fff;
     border: none;
-    border-radius: 5px;
+    border-radius: 8px;
     cursor: pointer;
     font-size: 13px;
     font-weight: 600;
-    margin-top: 4px;
-    margin-bottom: 2px;
+    margin: 0;
     transition: background 0.2s, color 0.2s, transform 0.2s;
     letter-spacing: 0.2px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
 }
 
 .sidebar .clear-filters:hover {
@@ -252,25 +319,50 @@ html[data-theme="light"] .card {
     display: flex;
     flex-wrap: wrap;
     gap: 14px;
+    align-items: flex-start;
 }
 
 .stat-card {
     position: relative;
     background: var(--bg-card);
     border-radius: 12px;
-    padding: 16px 14px;
-    flex: 1 1 130px;
+    padding: 16px 14px 14px;
+    flex: 0 1 auto;
+    width: fit-content;
     min-width: 120px;
-    max-width: 180px;
+    max-width: 100%;
+    align-self: flex-start;
     text-align: center;
     box-shadow: 0 1px 4px var(--shadow-card);
 }
 
+.stat-card--tutar {
+    min-width: 140px;
+}
+
 .stat-card h3 {
-    font-size: 1.35rem;
-    line-height: 1.2;
+    font-size: 1.15rem;
+    line-height: 1.25;
     margin: 0 0 6px;
-    word-break: break-word;
+    padding-right: 28px;
+    font-variant-numeric: tabular-nums;
+    white-space: nowrap;
+}
+
+.stat-card h3.stat-card-value--multi {
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
+    gap: 3px;
+    white-space: normal;
+    font-size: 0.92rem;
+    line-height: 1.35;
+}
+
+.stat-card .stat-kpi-line {
+    display: block;
+    white-space: nowrap;
+    font-variant-numeric: tabular-nums;
 }
 
 .stat-card p {
@@ -281,6 +373,60 @@ html[data-theme="light"] .card {
 
 html[data-theme="light"] .stat-card {
     border: 1px solid #e8edf2;
+}
+
+/* Gradient KPI kartları — açık temada da beyaz metin */
+html[data-theme="light"] .stat-card[style*="gradient"] h3,
+html[data-theme="light"] .stat-card[style*="gradient"] p,
+html[data-theme="light"] .stat-card[style*="gradient"] .stat-card-blue,
+html[data-theme="light"] .stat-card[style*="gradient"] .stat-card-yellow,
+html[data-theme="light"] .stat-card[style*="gradient"] .stat-card-pink {
+    color: #fff !important;
+    font-weight: 700;
+    text-shadow: 0 1px 3px rgba(0, 0, 0, 0.45);
+}
+
+/* Düz renkli KPI kartları (seyahat vb.) — açık temada pastel zemin + koyu metin */
+html[data-theme="light"] .stat-card.stat-card-blue:not([style*="gradient"]) {
+    background: linear-gradient(135deg, #e3f2fd 0%, #bbdefb 100%);
+    border-color: #90caf9;
+}
+html[data-theme="light"] .stat-card.stat-card-blue:not([style*="gradient"]) h3,
+html[data-theme="light"] .stat-card.stat-card-blue:not([style*="gradient"]) p {
+    color: #0d47a1;
+    text-shadow: none;
+    font-weight: 700;
+}
+
+html[data-theme="light"] .stat-card.stat-card-green:not([style*="gradient"]) {
+    background: linear-gradient(135deg, #e8f5e9 0%, #c8e6c9 100%);
+    border-color: #a5d6a7;
+}
+html[data-theme="light"] .stat-card.stat-card-green:not([style*="gradient"]) h3,
+html[data-theme="light"] .stat-card.stat-card-green:not([style*="gradient"]) p {
+    color: #1b5e20;
+    font-weight: 700;
+}
+
+html[data-theme="light"] .stat-card.stat-card-red:not([style*="gradient"]) {
+    background: linear-gradient(135deg, #ffebee 0%, #ffcdd2 100%);
+    border-color: #ef9a9a;
+}
+html[data-theme="light"] .stat-card.stat-card-red:not([style*="gradient"]) h3,
+html[data-theme="light"] .stat-card.stat-card-red:not([style*="gradient"]) p {
+    color: #b71c1c;
+    font-weight: 700;
+}
+
+html[data-theme="light"] .stat-card.stat-card-yellow:not([style*="gradient"]) {
+    background: linear-gradient(135deg, #fff8e1 0%, #ffecb3 100%);
+    border-color: #ffe082;
+}
+html[data-theme="light"] .stat-card.stat-card-yellow:not([style*="gradient"]) h3,
+html[data-theme="light"] .stat-card.stat-card-yellow:not([style*="gradient"]) p {
+    color: #e65100;
+    text-shadow: none;
+    font-weight: 700;
 }
 
 .stat-card-blue {
@@ -294,6 +440,19 @@ html[data-theme="light"] .stat-card {
     color: #fff;
     font-weight: 700;
     text-shadow: 0 1px 2px #ffd600, 0 0 2px #ffe08299;
+}
+
+.stat-card-pink {
+    color: #fff;
+    font-weight: 700;
+    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.35);
+}
+
+html[data-theme="light"] .chart-container .dxc-arg-elements text,
+html[data-theme="light"] .chart-container .dxc-val-elements text,
+html[data-theme="light"] .chart-container .dxc-legend text,
+html[data-theme="light"] .chart-container .dxc-title text {
+    fill: #37474f !important;
 }
 
 .stat-card-clickable {
@@ -378,12 +537,16 @@ html[data-theme="dark"] .summary-detail-row-max,
     overflow: hidden;
 }
 
+.chart-container .filter-hint {
+    margin: 0 0 16px;
+}
+
 .chart-container select {
     width: 100%;
     max-width: 160px;
     box-sizing: border-box;
     padding: 8px 32px 8px 10px;
-    margin-bottom: 8px;
+    margin-bottom: 18px;
     border: 1.5px solid var(--border-input);
     border-radius: 6px;
     background-color: var(--bg-panel);
@@ -419,6 +582,7 @@ html[data-theme="light"] .chart-container {
 .chart-container > div[id$="Chart"] {
     overflow: hidden;
     max-width: 100%;
+    margin-top: 28px;
 }
 
 body {
@@ -523,4 +687,38 @@ html[data-theme="light"] .chart-modal-backdrop {
     border: none;
     border-radius: 6px;
     cursor: pointer;
+}
+
+.rapor-loading-overlay {
+    position: fixed;
+    inset: 0;
+    z-index: 10000;
+    display: none;
+    align-items: center;
+    justify-content: center;
+    background: rgba(24, 26, 32, 0.72);
+    backdrop-filter: blur(2px);
+}
+
+.rapor-loading-box {
+    text-align: center;
+    color: var(--text-main);
+    padding: 24px 32px;
+    border-radius: 12px;
+    background: var(--bg-panel);
+    box-shadow: 0 8px 32px var(--shadow-soft);
+}
+
+.rapor-loading-spinner {
+    width: 40px;
+    height: 40px;
+    margin: 0 auto 16px;
+    border: 3px solid var(--border-input);
+    border-top-color: var(--text-accent);
+    border-radius: 50%;
+    animation: rapor-spin 0.8s linear infinite;
+}
+
+@keyframes rapor-spin {
+    to { transform: rotate(360deg); }
 }

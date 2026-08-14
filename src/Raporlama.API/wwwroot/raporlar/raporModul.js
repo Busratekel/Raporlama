@@ -195,21 +195,22 @@ class RaporModul {
         async loadDefaultFilters() {
             let reportId = document.getElementById('reportMeta')?.dataset?.reportId;
             if (reportId) reportId = parseInt(reportId, 10);
-            if (!reportId || isNaN(reportId) || reportId <= 0) return;
             let filters = null;
-            try {
-                const resp = await fetch(window.API_BASE + `/authorization/default-report?reportKey=${reportId}`, { credentials: 'include' });
-                if (resp.ok) {
-                    const data = await resp.json();
-                    if (data && data.filters) {
-                        if (typeof data.filters === 'string') {
-                            filters = JSON.parse(data.filters);
-                        } else {
-                            filters = data.filters;
+            if (reportId && !isNaN(reportId) && reportId > 0) {
+                try {
+                    const resp = await fetch(window.API_BASE + `/authorization/default-report?reportKey=${reportId}`, { credentials: 'include' });
+                    if (resp.ok) {
+                        const data = await resp.json();
+                        if (data && data.filters) {
+                            if (typeof data.filters === 'string') {
+                                filters = JSON.parse(data.filters);
+                            } else {
+                                filters = data.filters;
+                            }
                         }
                     }
-                }
-            } catch {}
+                } catch {}
+            }
             // Fallback: localStorage
             if (!filters) {
                 const raw = localStorage.getItem(this.getStorageKey());
@@ -217,18 +218,29 @@ class RaporModul {
                     try { filters = JSON.parse(raw); } catch {}
                 }
             }
+            if (!filters && this.schema.initialFilters) {
+                filters = { ...this.schema.initialFilters };
+            }
             if (!filters) return;
             // filterState'i güncelle
             this.filterState = { ...filters };
             // Tüm input/select ve grafik tipi değerlerini DOM'a uygula
             (this.schema.filters || []).forEach(f => {
                 const elem = document.getElementById(f.elementId);
-                if (elem && filters[f.field] !== undefined) elem.value = filters[f.field];
-                // Dinamik date filtreleri için de uygula
-                if (f.type === 'date') {
-                    const dateVal = filters[f.field];
-                    if (elem && dateVal) elem.value = dateVal;
+                if (!elem || filters[f.field] === undefined) return;
+                const val = filters[f.field];
+                if (elem.tagName === 'SELECT' && val !== '' && val != null) {
+                    const hasOpt = [...elem.options].some(o => o.value === String(val));
+                    if (!hasOpt) {
+                        const opt = document.createElement('option');
+                        opt.value = val;
+                        opt.text = typeof f.optionLabel === 'function' ? f.optionLabel(val) : val;
+                        elem.appendChild(opt);
+                    }
                 }
+                elem.value = val;
+                // Dinamik date filtreleri için de uygula
+                if (f.type === 'date' && val) elem.value = val;
             });
             if (this.schema.charts) {
                 this.schema.charts.forEach(chart => {
@@ -250,15 +262,55 @@ class RaporModul {
     constructor(schema) {
         this.schema = schema; // Şema: filtreler, özetler, grafikler, kolonlar
         this.data = [];
+        this.baseEnrichedData = null;
+        this._baseEnrichedDirty = true;
         this.filtered = [];
         this.columns = [];
         this.filteredWithCalculated = [];
         this.pivotFields = [];
     }
 
+    showLoading(message) {
+        let el = document.getElementById('raporLoadingOverlay');
+        if (!el) {
+            el = document.createElement('div');
+            el.id = 'raporLoadingOverlay';
+            el.className = 'rapor-loading-overlay';
+            el.innerHTML = '<div class="rapor-loading-box"><div class="rapor-loading-spinner"></div><p id="raporLoadingText"></p></div>';
+            document.body.appendChild(el);
+        }
+        const text = document.getElementById('raporLoadingText');
+        if (text) text.textContent = message || 'Yükleniyor…';
+        el.style.display = 'flex';
+    }
+
+    hideLoading() {
+        const el = document.getElementById('raporLoadingOverlay');
+        if (el) el.style.display = 'none';
+    }
+
+    rebuildBaseEnrichedData() {
+        if (!this._baseEnrichedDirty && this.baseEnrichedData) return this.baseEnrichedData;
+        this.baseEnrichedData = typeof this.schema.enrichRow === 'function'
+            ? this.data.map(r => this.schema.enrichRow(r))
+            : this.data.slice();
+        this._baseEnrichedDirty = false;
+        return this.baseEnrichedData;
+    }
+
+    getWorkingData() {
+        let data = this.rebuildBaseEnrichedData();
+        if (typeof this.schema.applyActiveFields === 'function') {
+            data = this.schema.applyActiveFields(data, this);
+        }
+        return data;
+    }
+
     async init() {
         try {
+            this.showLoading('Veri indiriliyor…');
             await this.fetchSchemaAndData();
+            this.hideLoading();
             this.populateFilters();
             await this.loadDefaultFilters();
             this.sortFilterDropdowns();
@@ -269,6 +321,8 @@ class RaporModul {
             const msg = err?.message || 'Rapor verisi yüklenirken hata oluştu.';
             if (typeof showToast === 'function') showToast(msg, 'error');
             else alert(msg);
+        } finally {
+            this.hideLoading();
         }
     }
 
@@ -294,6 +348,8 @@ class RaporModul {
         if (!dataUrl) throw new Error('Data endpointi bulunamadı!');
         const result = await fetchJsonSafe(dataUrl);
         this.data = result.data || result || [];
+        this._baseEnrichedDirty = true;
+        this.baseEnrichedData = null;
         // Kolonlar otomatik veya şemadan
         if (schema.columns && schema.columns.length) {
             // Eğer columns dizisinde sadece string varsa, string olarak kullan
@@ -357,6 +413,7 @@ class RaporModul {
 
     sortFilterDropdowns() {
         (this.schema.filters || []).forEach(f => {
+            if (f.staticOptions && f.staticOptions.length) return;
             const select = document.getElementById(f.elementId);
             if (!select || select.tagName !== 'SELECT') return;
             const current = select.value;
@@ -392,12 +449,7 @@ class RaporModul {
     }
 
     populateFilters() {
-        let filterData = typeof this.schema.enrichRow === 'function'
-            ? this.data.map(r => this.schema.enrichRow(r))
-            : this.data;
-        if (typeof this.schema.applyActiveFields === 'function') {
-            filterData = this.schema.applyActiveFields(filterData, this);
-        }
+        const filterData = this.getWorkingData();
         (this.schema.filters || []).forEach(f => {
             const select = document.getElementById(f.elementId);
             if (!select || select.tagName !== 'SELECT') return;
@@ -460,6 +512,65 @@ class RaporModul {
         return JSON.parse(JSON.stringify(legend));
     }
 
+    isLightTheme() {
+        if (window.RaporTheme && typeof window.RaporTheme.getTheme === 'function') {
+            return window.RaporTheme.getTheme() === 'light';
+        }
+        return document.documentElement.getAttribute('data-theme') === 'light';
+    }
+
+    getChartUiColors() {
+        const light = this.isLightTheme();
+        return {
+            axisLabel: light ? '#37474f' : '#e0e0e0',
+            seriesLabel: light ? '#263238' : '#f0f0f0',
+            grid: light ? '#cfd8dc' : '#3a3a3a'
+        };
+    }
+
+    mergeChartAxisTheme(chartOptions) {
+        const colors = this.getChartUiColors();
+        const mergeLabel = (axis) => ({
+            ...(axis || {}),
+            label: {
+                ...(axis && axis.label),
+                font: {
+                    ...((axis && axis.label && axis.label.font) || {}),
+                    color: colors.axisLabel
+                }
+            },
+            grid: {
+                ...(axis && axis.grid),
+                color: colors.grid
+            }
+        });
+        chartOptions.argumentAxis = mergeLabel(chartOptions.argumentAxis);
+        chartOptions.valueAxis = mergeLabel(chartOptions.valueAxis);
+        if (chartOptions.legend && chartOptions.legend.visible !== false) {
+            chartOptions.legend = {
+                ...chartOptions.legend,
+                font: {
+                    ...(chartOptions.legend.font || {}),
+                    color: colors.axisLabel
+                }
+            };
+        }
+        return chartOptions;
+    }
+
+    resolveChartSeriesName(chart) {
+        if (chart.seriesName) return chart.seriesName;
+        if (chart.legendLabel) return chart.legendLabel;
+        const labels = this.schema.summaryColumnLabels || {};
+        if (chart.aggregate === 'sum' && chart.valueField && labels[chart.valueField]) {
+            return labels[chart.valueField];
+        }
+        if (chart.field && labels[chart.field]) return labels[chart.field];
+        const col = (this.schema.columns || []).find(c => c.dataField === chart.field);
+        if (col && col.caption) return col.caption;
+        return chart.field;
+    }
+
     findChartByHostId(chartId) {
         const id = String(chartId).replace(/^#/, '');
         return (this.schema.charts || []).find(c => c.elementId === `#${id}` || c.elementId === id);
@@ -500,7 +611,7 @@ class RaporModul {
                 const buckets = this.schema.beklemeSuresiBuckets;
                 const grouped = buckets.map(b => ({ bucket: b.key, count: 0, min: b.min, max: b.max }));
                 (chartSource || []).forEach(d => {
-                    const raw = d[chart.field] ?? d.BekleyenGun ?? d.BeklemeGun;
+                    const raw = d[chart.field] ?? d.SeyahatGun ?? d.BekleyenGun ?? d.BeklemeGun;
                     if (raw == null || raw === '' || !Number.isFinite(Number(raw))) return;
                     const gun = Number(raw);
                     const bucket = grouped.find(b => gun >= b.min && gun <= b.max);
@@ -543,6 +654,15 @@ class RaporModul {
                     entries = entries.slice(0, limit);
                 }
                 items = entries;
+            }
+        }
+        if (Array.isArray(items)) {
+            const rawLimit = chart.limit;
+            const limit = rawLimit === 0 || rawLimit === false
+                ? null
+                : (Number.isFinite(rawLimit) ? rawLimit : null);
+            if (limit != null && limit > 0 && items.length > limit) {
+                items = items.slice(0, limit);
             }
         }
         return this.attachPointColors(chart, items);
@@ -618,13 +738,14 @@ class RaporModul {
         const isEnlarge = profile === 'enlarge';
         const showLabels = isEnlarge || useRotatedBar;
         if (!showLabels) return { visible: false };
+        const labelColor = this.getChartUiColors().seriesLabel;
         return {
             visible: true,
             overlappingBehavior: 'none',
             position: useRotatedBar ? 'outside' : 'top',
             customizeText: labelCustomize || ((point) => formatVal(point.value, point.data)),
-            font: { size: isEnlarge ? 11 : 10, color: '#f0f0f0' },
-            backgroundColor: isEnlarge ? 'rgba(0,0,0,0.55)' : undefined
+            font: { size: isEnlarge ? 11 : 10, color: labelColor },
+            backgroundColor: isEnlarge ? (this.isLightTheme() ? 'rgba(255,255,255,0.85)' : 'rgba(0,0,0,0.55)') : undefined
         };
     }
 
@@ -637,7 +758,59 @@ class RaporModul {
         };
     }
 
-    static COMPACT_PIE_LEGEND_MAX = 6;
+    buildCompactVerticalBarAxis(chartData, count) {
+        const categories = chartData.map(d => String(d.argument ?? ''));
+        const labelColor = this.getChartUiColors().axisLabel;
+        return {
+            categories,
+            type: 'discrete',
+            discreteAxisDivisionMode: 'crossLabels',
+            label: {
+                visible: true,
+                overlappingBehavior: 'rotate',
+                rotationAngle: count > 8 ? -45 : (count > 4 ? -30 : 0),
+                wordWrap: 'none',
+                font: { size: 9, color: labelColor },
+                customizeText: (info) => {
+                    const t = String(info.valueText || '');
+                    return t.length > 32 ? `${t.slice(0, 30)}…` : t;
+                }
+            }
+        };
+    }
+
+    getCompactChartSize($container) {
+        const host = $container[0];
+        if (!host) return null;
+        const width = host.clientWidth || 320;
+        const styleHeight = parseInt(host.style.height, 10);
+        const height = host.clientHeight || styleHeight || 340;
+        return { width, height };
+    }
+
+    getCompactPieSize($container, legend, sliceCount) {
+        const host = $container[0];
+        if (!host) return null;
+        const width = host.clientWidth || 320;
+        const styleHeight = parseInt(host.style.height, 10);
+        const height = host.clientHeight || styleHeight || 340;
+        const legendRows = legend?.visible
+            ? Math.ceil(sliceCount / (legend.columnCount || 3))
+            : 0;
+        // Alt margin: legend satır yüksekliği; pasta–legend arası boşluk legend.margin ile
+        const legendSpace = legend?.visible ? legendRows * 18 + 6 : 8;
+        return { width, height: Math.max(height, 280), legendSpace, legendRows };
+    }
+
+    getCompactPieContainerHeight(legend, sliceCount) {
+        if (!legend?.visible) return 340;
+        const rows = Math.ceil(sliceCount / (legend.columnCount || 3));
+        return Math.min(440, 360 + rows * 24);
+    }
+
+    static PIE_LEGEND_GAP = 18;
+
+    static COMPACT_PIE_LEGEND_MAX = 4;
 
     buildLegend(chart, chartType, chartData, profile) {
         const base = this.cloneLegend(chart.legend);
@@ -655,21 +828,31 @@ class RaporModul {
                     paddingLeftRight: 12,
                     paddingTopBottom: 8,
                     font: { size: 12 },
-                    margin: 20
+                    margin: 28
                 };
             }
             return { ...base, visible: true, font: { size: 12 } };
         }
 
-        // Kompakt çubuk/çizgi: seriesName ile okunabilir legend
+        // Kompakt çubuk/çizgi: tek seri — pasta legend ayarlarını (columnCount, büyük margin) kullanma
         if (chartType !== 'pie') {
             if (chart.legend && chart.legend.visible === false) {
                 return { visible: false };
             }
-            return { ...base, visible: true, font: { size: 10 } };
+            return {
+                visible: true,
+                orientation: 'horizontal',
+                horizontalAlignment: 'center',
+                verticalAlignment: 'bottom',
+                itemTextPosition: 'right',
+                margin: 8,
+                paddingTopBottom: 4,
+                paddingLeftRight: 8,
+                font: { size: 10 }
+            };
         }
 
-        // Kompakt pasta: 6'dan fazla dilimde legend gizle (ok + sayı etiketleri yeterli)
+        // Kompakt pasta: çok dilimde legend gizle (tooltip yeterli)
         if (chart.legend && chart.legend.visible === false) {
             return { visible: false };
         }
@@ -679,14 +862,15 @@ class RaporModul {
         }
 
         return {
-            ...base,
             visible: true,
+            orientation: 'horizontal',
             verticalAlignment: 'bottom',
             horizontalAlignment: 'center',
-            margin: 24,
-            paddingTopBottom: 8,
+            itemTextPosition: 'right',
+            columnCount: Math.min(3, Math.max(2, Math.ceil(count / 2))),
+            margin: RaporModul.PIE_LEGEND_GAP,
+            paddingTopBottom: 6,
             paddingLeftRight: 8,
-            columnCount: Math.min(4, Math.max(2, Math.ceil(count / 3))),
             font: { size: 9 }
         };
     }
@@ -806,6 +990,9 @@ class RaporModul {
         } else if (useRotatedBar && count > 0) {
             const h = Math.max(340, Math.min(count * 38 + 100, 720));
             $container.css({ width: '', height: h + 'px', minHeight: h + 'px', maxHeight: h + 'px' });
+        } else if (chartType === 'pie' && !isEnlarge && legend?.visible) {
+            const pieH = this.getCompactPieContainerHeight(legend, count);
+            $container.css({ width: '', height: pieH + 'px', minHeight: pieH + 'px', maxHeight: pieH + 'px' });
         } else {
             $container.css({ width: '', height: '340px', minHeight: '340px', maxHeight: '340px' });
         }
@@ -816,6 +1003,12 @@ class RaporModul {
             ? (point) => `${point.argumentText}: ${formatVal(point.value, point.data)}`
             : labelCustomize;
         const pieLabels = this.buildPieLabelOptions(isEnlarge, pieLabelCustomize);
+        const compactPieSize = chartType === 'pie' && !isEnlarge
+            ? this.getCompactPieSize($container, legend, count)
+            : null;
+        const compactChartSize = !isEnlarge && (chartType === 'bar' || chartType === 'line') && !useRotatedBar
+            ? this.getCompactChartSize($container)
+            : null;
         const seriesLabels = this.buildChartLabelOptions(chart, profile, chartType, useRotatedBar, formatVal, labelCustomize);
         const stackedLabelCustomize = (point) => {
             const v = point.value;
@@ -836,7 +1029,12 @@ class RaporModul {
             const pieData = this.buildStackedPieData(chart, chartData);
             const stackedPieOptions = {
                 dataSource: pieData,
-                size: isEnlarge ? { width: size.width, height: size.height } : undefined,
+                size: isEnlarge
+                    ? { width: size.width, height: size.height }
+                    : (compactPieSize ? { width: compactPieSize.width, height: compactPieSize.height } : undefined),
+                margin: compactPieSize
+                    ? { top: 8, bottom: compactPieSize.legendSpace, left: 8, right: 8 }
+                    : undefined,
                 series: [{
                     argumentField: 'argument',
                     valueField: 'value',
@@ -850,14 +1048,19 @@ class RaporModul {
                     return color ? { color, hoverStyle: { color } } : {};
                 }
             };
-            $container.dxPieChart(stackedPieOptions);
+            $container.dxPieChart(this.mergeChartAxisTheme(stackedPieOptions));
             return;
         }
 
         if (chartType === 'pie') {
             const pieOptions = {
                 dataSource: chartData,
-                size: isEnlarge ? { width: size.width, height: size.height } : undefined,
+                size: isEnlarge
+                    ? { width: size.width, height: size.height }
+                    : (compactPieSize ? { width: compactPieSize.width, height: compactPieSize.height } : undefined),
+                margin: compactPieSize
+                    ? { top: 8, bottom: compactPieSize.legendSpace, left: 8, right: 8 }
+                    : undefined,
                 series: [{
                     argumentField: 'argument',
                     valueField: 'value',
@@ -875,7 +1078,7 @@ class RaporModul {
                     return color ? { color, hoverStyle: { color } } : {};
                 };
             }
-            $container.dxPieChart(pieOptions);
+            $container.dxPieChart(this.mergeChartAxisTheme(pieOptions));
             return;
         }
 
@@ -899,8 +1102,10 @@ class RaporModul {
                         visible: isEnlarge,
                         overlappingBehavior: 'none',
                         customizeText: stackedLabelCustomize,
-                        font: { size: 10, color: '#f0f0f0' },
-                        backgroundColor: isEnlarge ? 'rgba(0,0,0,0.55)' : undefined
+                        font: { size: 10, color: this.getChartUiColors().seriesLabel },
+                        backgroundColor: isEnlarge
+                            ? (this.isLightTheme() ? 'rgba(255,255,255,0.85)' : 'rgba(0,0,0,0.55)')
+                            : undefined
                     }
                 },
                 series: stackedSeries,
@@ -935,55 +1140,7 @@ class RaporModul {
                     }
                 };
             }
-            $container.dxChart(stackedOptions);
-            return;
-        }
-
-        if (chart.colorBySign && (chartType === 'bar' || chartType === 'line')) {
-            const self = this;
-            const signedChartOptions = {
-                dataSource: chartData,
-                size: isEnlarge ? { width: size.width, height: size.height } : undefined,
-                rotated: useRotatedBar,
-                commonSeriesSettings: {
-                    type: chartType,
-                    argumentField: 'argument',
-                    valueField: 'value',
-                    ignoreEmptyPoints: true,
-                    label: seriesLabels
-                },
-                seriesTemplate: {
-                    nameField: 'argument',
-                    customizeSeries(seriesName) {
-                        const item = chartData.find(d => d.argument === seriesName);
-                        const color = item?.color || self.signColor(item?.value);
-                        return {
-                            color,
-                            name: seriesName,
-                            showInLegend: false
-                        };
-                    }
-                },
-                legend: { visible: false },
-                tooltip: { enabled: true, contentTemplate: d => `${d.argumentText}: ${formatVal(d.value, d.point?.data)}` },
-                onPointClick: onPointClick || undefined
-            };
-            if (useRotatedBar) {
-                signedChartOptions.argumentAxis = {
-                    label: { overlappingBehavior: 'ellipsis', font: { size: 11 } }
-                };
-            } else {
-                const rot = count > 6 ? -45 : (count > 4 ? -30 : 0);
-                signedChartOptions.argumentAxis = {
-                    label: {
-                        visible: true,
-                        overlappingBehavior: 'rotate',
-                        rotationAngle: rot,
-                        font: { size: 10 }
-                    }
-                };
-            }
-            $container.dxChart(signedChartOptions);
+            $container.dxChart(this.mergeChartAxisTheme(stackedOptions));
             return;
         }
 
@@ -991,17 +1148,19 @@ class RaporModul {
         const chartOptions = {
             dataSource: chartData,
             palette: chartPalette,
-            size: isEnlarge ? { width: size.width, height: size.height } : undefined,
+            size: isEnlarge
+                ? { width: size.width, height: size.height }
+                : (compactChartSize ? { width: compactChartSize.width, height: compactChartSize.height } : undefined),
             rotated: useRotatedBar,
+            customizePoint: needsPointCustomizer ? barCustomizePoint : undefined,
             commonSeriesSettings: {
                 argumentField: 'argument',
                 type: chartType
             },
             series: [{
                 valueField: 'value',
-                name: chart.seriesName || chart.legendLabel || chart.field,
+                name: this.resolveChartSeriesName(chart),
                 type: chartType,
-                customizePoint: barCustomizePoint || undefined,
                 label: seriesLabels
             }],
             tooltip: { enabled: true, contentTemplate: d => `${d.argumentText}: ${formatVal(d.value, d.point?.data)}` },
@@ -1032,8 +1191,12 @@ class RaporModul {
                     font: { size: 11 }
                 }
             };
+        } else if (chartType === 'bar' && !useRotatedBar && count > 0) {
+            chartOptions.argumentAxis = this.buildCompactVerticalBarAxis(chartData, count);
+        } else if (chartType === 'line' && !isEnlarge && count > 4) {
+            chartOptions.argumentAxis = this.buildCompactVerticalBarAxis(chartData, count);
         }
-        $container.dxChart(chartOptions);
+        $container.dxChart(this.mergeChartAxisTheme(chartOptions));
     }
 
     enlargeChart(chartId, title) {
@@ -1221,12 +1384,7 @@ class RaporModul {
         this.syncFilterStateFromDom();
         const dataFilterKeys = this.getDataFilterKeys();
         const uiStateKeys = this.getUiStateKeys();
-        let sourceData = typeof this.schema.enrichRow === 'function'
-            ? this.data.map(r => this.schema.enrichRow(r))
-            : this.data;
-        if (typeof this.schema.applyActiveFields === 'function') {
-            sourceData = this.schema.applyActiveFields(sourceData, this);
-        }
+        const sourceData = this.getWorkingData();
         return sourceData.filter(d => {
             let match = true;
             for (const key in this.filterState) {
@@ -1523,6 +1681,44 @@ class RaporModul {
         });
     }
 
+    fitStatCardValues() {
+        $('.stat-card h3').each(function () {
+            const el = this;
+            const $el = $(el);
+            $el.css('font-size', '');
+            if ($el.hasClass('stat-card-value--multi')) {
+                $el.find('.stat-kpi-line').each(function () {
+                    this.style.fontSize = '';
+                });
+                const cardW = $el.closest('.stat-card').innerWidth() - 28;
+                let minFs = 16;
+                $el.find('.stat-kpi-line').each(function () {
+                    const line = this;
+                    if (line.scrollWidth <= cardW) return;
+                    let fs = parseFloat(getComputedStyle(line).fontSize) || 14.7;
+                    while (line.scrollWidth > cardW && fs > 10) {
+                        fs -= 0.5;
+                        line.style.fontSize = `${fs}px`;
+                    }
+                    minFs = Math.min(minFs, fs);
+                });
+                if (minFs < 16) {
+                    $el.find('.stat-kpi-line').each(function () {
+                        this.style.fontSize = `${minFs}px`;
+                    });
+                }
+                return;
+            }
+            if (el.scrollWidth <= el.clientWidth) return;
+            const cardW = $el.closest('.stat-card').innerWidth() - 28;
+            let fs = parseFloat(getComputedStyle(el).fontSize) || 18.4;
+            while (el.scrollWidth > cardW && fs > 10) {
+                fs -= 0.5;
+                el.style.fontSize = `${fs}px`;
+            }
+        });
+    }
+
     renderSummaries() {
         // Şemadaki özetler (istatistik kutuları)
         const data = this.filteredWithCalculated || this.filtered;
@@ -1542,7 +1738,13 @@ class RaporModul {
                 value = summary.calc(data);
             }
             const $el = $(summary.elementId);
-            $el.text(value);
+            if (summary.htmlValue) {
+                const lineCount = (String(value).match(/stat-kpi-line/g) || []).length;
+                $el.toggleClass('stat-card-value--multi', lineCount > 1);
+                $el.html(value);
+            } else {
+                $el.removeClass('stat-card-value--multi').text(value);
+            }
 
             const $card = $el.closest('.stat-card');
             let $icon = $card.find('.stat-card-detail-icon');
@@ -1559,13 +1761,15 @@ class RaporModul {
                 $icon.show();
                 $card.addClass('stat-card-clickable').attr('title', 'Detay için tıklayın');
                 $card.off('click.summaryDetail').on('click.summaryDetail', () => {
-                    this.openSummaryDetailModal(summary, value);
+                    const modalValue = summary.htmlValue ? $el.text().trim() : value;
+                    this.openSummaryDetailModal(summary, modalValue);
                 });
             } else {
                 if ($icon.length) $icon.hide();
                 $card.removeClass('stat-card-clickable').removeAttr('title').off('click.summaryDetail');
             }
         });
+        requestAnimationFrame(() => this.fitStatCardValues());
     }
 
     renderCharts() {
@@ -1639,6 +1843,11 @@ class RaporModul {
                 });
             }
         });
+
+        if (!this._themeBound) {
+            this._themeBound = true;
+            window.addEventListener('rapor-theme-change', () => this.renderCharts());
+        }
 
         // Temizle butonu
         document.querySelectorAll('.clear-filters').forEach(btn => {

@@ -22,13 +22,68 @@ const skF = {
     teslmay: 'TESLMAY',
     deliv: 'DELIV',
     waers: 'WAERS',
-    ekgrp: 'EKGRP',
-    eknam: 'EKNAM',
+    ekorg: 'EKORG',
     zzsorumlu: 'ZZSORUMLU',
     teslimPerformans: 'TeslimPerformans',
     aktifTeslim: 'AktifTeslimDurumu',
-    toleransKirilim: 'ToleransKirilim'
+    toleransKirilim: 'ToleransKirilim',
+    satinalmaOrgEtiket: 'SatinalmaOrgEtiket',
+    sapmaGun: 'SapmaGun',
+    budatAy: 'BudatAy',
+    tedarikciEtiket: 'TedarikciEtiket',
+    malGrubuEtiket: 'MalGrubuEtiket'
 };
+
+const skEkorgMap = {
+    '251': 'İç Satınalma',
+    '252': 'Dış Satınalma',
+    '253': 'Yan Sanayi',
+    '254': 'Şirketiçi Satınalma',
+    '255': 'İhracat Satınalma'
+};
+
+const skEkorgFilterOptions = [
+    { value: '', label: 'Tümü' },
+    ...Object.entries(skEkorgMap).map(([, label]) => ({ value: label, label }))
+];
+
+function skGetField(row, field) {
+    if (!row || !field) return undefined;
+    if (row[field] != null && String(row[field]).trim() !== '') return row[field];
+    const norm = String(field).toLocaleLowerCase('tr-TR');
+    for (const k of Object.keys(row)) {
+        if (k.toLocaleLowerCase('tr-TR') === norm) {
+            const v = row[k];
+            if (v != null && String(v).trim() !== '') return v;
+        }
+    }
+    return undefined;
+}
+
+function skResolveEkorgRaw(row) {
+    return skGetField(row, skF.ekorg);
+}
+
+function skNormalizeEkorgCode(value) {
+    if (value == null || value === '') return '';
+    if (typeof value === 'number' && Number.isFinite(value)) {
+        return String(Math.trunc(value));
+    }
+    const s = String(value).trim();
+    if (!s) return '';
+    const asNum = Number(s);
+    if (Number.isFinite(asNum) && /^\d+(\.0+)?$/.test(s)) {
+        return String(Math.trunc(asNum));
+    }
+    const trimmed = s.replace(/^0+/, '') || '0';
+    return trimmed;
+}
+
+function skEkorgEtiket(row) {
+    const code = skNormalizeEkorgCode(skResolveEkorgRaw(row));
+    if (!code) return '—';
+    return skEkorgMap[code] || `${code} (tanımsız)`;
+}
 
 function skParseNumber(value) {
     if (value == null || value === '') return null;
@@ -151,18 +206,18 @@ function skToleransChartMetinleri(modul) {
     if (mode === '1') {
         return {
             teslimPerf: '1 gün toleransına göre zamanında / geç dağılımı. Sol panelden tolerans filtresini değiştirebilirsiniz.',
-            tedarikciTeslim: 'Top 12 tedarikçi — 1 gün toleransına göre zamanında / geç.'
+            tedarikciTeslim: 'En yüksek hacimli ilk 10 tedarikçi — 1 gün toleransına göre zamanında / geç (tam liste için 🔍 büyüt).'
         };
     }
     if (mode === '3') {
         return {
             teslimPerf: '3 gün toleransına göre zamanında / geç dağılımı. Sol panelden tolerans filtresini değiştirebilirsiniz.',
-            tedarikciTeslim: 'Top 12 tedarikçi — 3 gün toleransına göre zamanında / geç.'
+            tedarikciTeslim: 'En yüksek hacimli ilk 10 tedarikçi — 3 gün toleransına göre zamanında / geç (tam liste için 🔍 büyüt).'
         };
     }
     return {
         teslimPerf: 'Gerçek sapma gününe göre zamanında / geç dağılımı (0 ve erken zamanında, pozitif geç). Sol panelden 1 veya 3 gün tolerans seçebilirsiniz.',
-        tedarikciTeslim: 'Top 12 tedarikçi — gerçek sapma gününe göre zamanında / geç (0 ve erken zamanında, pozitif geç).'
+        tedarikciTeslim: 'En yüksek hacimli ilk 10 tedarikçi — gerçek sapma gününe göre zamanında / geç (tam liste için 🔍 büyüt).'
     };
 }
 
@@ -333,8 +388,7 @@ function skBuildTedarikciOrtGecikme(rows) {
             else if (avg < 0) color = '#29b6f6';
             return { argument, value: avg, color, filterValue: argument };
         })
-        .sort((a, b) => b.value - a.value)
-        .slice(0, 15);
+        .sort((a, b) => b.value - a.value);
 }
 
 function skFormatGecikmeGun(value) {
@@ -379,6 +433,23 @@ function skFormatTutarKpi(data, modul) {
     return entries.map(([w, s]) => skFormatMoneyWithCurrency(s, w)).join(' · ');
 }
 
+function skFormatTutarKpiHtml(data, modul) {
+    const selected = modul?.filterState?.[skF.waers];
+    if (selected) {
+        const w = String(selected).trim().toUpperCase();
+        const sum = data
+            .filter(d => String(d[skF.waers] || '').trim().toUpperCase() === w)
+            .reduce((a, d) => a + (skParseNumber(d[skF.netwr]) || 0), 0);
+        const line = skFormatMoneyWithCurrency(sum, w);
+        return `<span class="stat-kpi-line">${line}</span>`;
+    }
+    const entries = skTutarByWaers(data);
+    if (!entries.length) return '-';
+    return entries
+        .map(([w, s]) => `<span class="stat-kpi-line">${skFormatMoneyWithCurrency(s, w)}</span>`)
+        .join('');
+}
+
 function skTopTedarikciNames(data, n) {
     const sums = new Map();
     data.forEach(d => {
@@ -414,7 +485,7 @@ function skKpiDetayAltYazi(opts) {
 
 const skKpiTop10Cols = [
     skF.name1,
-    skF.eknam,
+    skF.satinalmaOrgEtiket,
     skF.matnr,
     skF.maktx,
     skF.netwr,
@@ -453,6 +524,11 @@ function satinalmaEnrichRow(row) {
     normalized.MalzemeEtiket = skMalzemeEtiket(normalized);
     normalized.MalGrubuEtiket = skMalGrubuEtiket(normalized);
     normalized.TedarikciEtiket = skTedarikciEtiket(normalized);
+    const ekorgRaw = skResolveEkorgRaw(normalized);
+    if (ekorgRaw != null && String(ekorgRaw).trim() !== '') {
+        normalized[skF.ekorg] = skNormalizeEkorgCode(ekorgRaw);
+    }
+    normalized[skF.satinalmaOrgEtiket] = skEkorgEtiket(normalized);
     const budatIso = skDateOnly(normalized[skF.budat]);
     if (budatIso) normalized.BudatAy = budatIso.slice(0, 7);
     skSetYilHafta(normalized, budatIso);
@@ -503,6 +579,10 @@ const skPieLegend = {
 
 const satinalmaSchema = {
     reportKey: 'satinalma-kabuller',
+    initialFilters: {
+        [skF.meins]: 'ST',
+        [skF.waers]: 'TRY'
+    },
     enrichRow: satinalmaEnrichRow,
     applyActiveFields(data, modul) {
         return data.map(row => ({
@@ -525,7 +605,7 @@ const satinalmaSchema = {
     },
     summaryColumnLabels: {
         [skF.name1]: 'Tedarikçi',
-        [skF.eknam]: 'Satın Alma Organizasyonu',
+        [skF.satinalmaOrgEtiket]: 'Satın Alma Organizasyonu',
         [skF.matnr]: 'Malzeme Kodu',
         [skF.maktx]: 'Malzeme Açıklaması',
         [skF.netwr]: 'Net Tutar',
@@ -534,33 +614,44 @@ const satinalmaSchema = {
         [skF.meins]: 'Ölçü Birimi',
         [skF.aktifTeslim]: 'Teslim Durumu',
         GecikmeEtiket: 'Teslim Sapması',
+        [skF.sapmaGun]: 'Kayıt Sayısı',
+        [skF.budatAy]: 'Aylık Kabul Kaydı',
+        [skF.tedarikciEtiket]: 'Tedarikçi',
+        [skF.malGrubuEtiket]: 'Malzeme Grubu',
+        [skF.zzgecgun]: 'Sapma Günü',
         [skF.budat]: 'Gerçekleşen Tarih',
         [skF.ebeln]: 'Sipariş No',
         [skF.ebelp]: 'Kalem No',
         MalGrubuEtiket: 'Malzeme Grubu'
     },
     fieldAliases: {
+        EKORG: ['EKORG', 'Ekorg', 'ekorg'],
         WAERS: ['WAERS', 'Waers', 'waers', 'PARA_BIRIMI', 'ParaBirimi'],
         MEINS: ['MEINS', 'Meins', 'meins']
     },
     pivotValueResolvers: { Adet: () => 1 },
     beklemeSuresiBuckets: skGecikmeBuckets,
     bucketFilters: {
-        SapmaGun: { buckets: skGecikmeBuckets, fields: ['SapmaGun'] }
+        [skF.sapmaGun]: { buckets: skGecikmeBuckets, fields: [skF.sapmaGun] }
     },
     virtualFilters: {
-        BudatAy: { fields: ['BudatAy'] }
+        [skF.budatAy]: { fields: [skF.budatAy] }
     },
     filters: [
         {
-            field: 'TedarikciEtiket',
+            field: skF.tedarikciEtiket,
             elementId: 'filterTedarikci',
             label: 'Tedarikçi',
-            matchFields: ['TedarikciEtiket', skF.name1, skF.lifnr]
+            matchFields: [skF.tedarikciEtiket, skF.name1, skF.lifnr]
         },
-        { field: skF.eknam, elementId: 'filterEknam', label: 'Satın Alma Organizasyonu' },
+        {
+            field: skF.satinalmaOrgEtiket,
+            elementId: 'filterSatinalmaOrg',
+            label: 'Satın Alma Organizasyonu',
+            staticOptions: skEkorgFilterOptions
+        },
         { field: skF.zzsorumlu, elementId: 'filterZzSorumlu', label: 'Sorumlu' },
-        { field: 'MalGrubuEtiket', elementId: 'filterMalGrubu', label: 'Malzeme Grubu' },
+        { field: skF.malGrubuEtiket, elementId: 'filterMalGrubu', label: 'Malzeme Grubu' },
         { field: skF.matnr, elementId: 'filterMatnr', label: 'Malzeme Kodu' },
         {
             field: skF.meins,
@@ -648,7 +739,8 @@ const satinalmaSchema = {
         },
         {
             elementId: '#totalTutar',
-            calc: (data, modul) => skFormatTutarKpi(data, modul),
+            htmlValue: true,
+            calc: (data, modul) => skFormatTutarKpiHtml(data, modul),
             detailModal: {
                 title: 'En Yüksek Tutarlı Kalemler',
                 sortField: skF.netwr,
@@ -741,8 +833,8 @@ const satinalmaSchema = {
     columns: [
         { dataField: skF.ebeln, caption: 'Sipariş No', forceText: true },
         { dataField: skF.ebelp, caption: 'Kalem No', dataType: 'number' },
-        { dataField: skF.ekgrp, caption: 'Satın Alma Organizasyonu Kodu', visible: false, forceText: true },
-        { dataField: skF.eknam, caption: 'Satın Alma Organizasyonu' },
+        { dataField: skF.ekorg, caption: 'Satın Alma Organizasyonu Kodu', visible: false, forceText: true },
+        { dataField: skF.satinalmaOrgEtiket, caption: 'Satın Alma Organizasyonu' },
         { dataField: skF.matnr, caption: 'Malzeme Kodu', forceText: true },
         { dataField: skF.maktx, caption: 'Malzeme Açıklaması' },
         { dataField: skF.matkl, caption: 'Malzeme Grubu Kodu', visible: false },
@@ -767,23 +859,22 @@ const satinalmaSchema = {
     ],
     charts: [
         {
-            field: skF.eknam,
-            elementId: '#eknamTutarChart',
-            typeSelector: '#chartTypeEknam',
-            filterElementId: '#filterEknam',
-            defaultType: 'bar',
+            field: skF.satinalmaOrgEtiket,
+            elementId: '#satinalmaOrgTutarChart',
+            typeSelector: '#chartTypeEkorg',
+            filterElementId: '#filterSatinalmaOrg',
+            defaultType: 'pie',
             aggregate: 'sum',
             valueField: skF.netwr,
             parseValue: skParseNumber,
             formatValue: skFormatMoneyWithCurrency,
             requiresWaers: true,
             waersField: skF.waers,
-            seriesName: 'Net Tutar',
             limit: 12,
             legend: skPieLegend
         },
         {
-            field: 'TedarikciEtiket',
+            field: skF.tedarikciEtiket,
             elementId: '#tedarikciTutarChart',
             typeSelector: '#chartTypeTedarikciTutar',
             filterElementId: '#filterTedarikci',
@@ -794,8 +885,7 @@ const satinalmaSchema = {
             formatValue: skFormatMoneyWithCurrency,
             requiresWaers: true,
             waersField: skF.waers,
-            seriesName: 'Net Tutar',
-            limit: 15,
+            limit: 10,
             legend: skPieLegend
         },
         {
@@ -803,31 +893,29 @@ const satinalmaSchema = {
             typeSelector: '#chartTypeMalzemeMiktar',
             filterElementId: '#filterMatnr',
             filterField: skF.matnr,
-            field: skF.matnr,
+            field: skF.menge,
             defaultType: 'bar',
             rotatedBar: true,
             requiresMeins: true,
             meinsField: skF.meins,
             buildData: skBuildMalzemeMiktarChartData,
             formatValue: skFormatMengeWithUnit,
-            seriesName: 'Miktar',
-            limit: 15,
-            legend: { visible: false }
+            limit: 12,
+            legend: skPieLegend
         },
         {
-            field: 'MalGrubuEtiket',
+            field: skF.malGrubuEtiket,
             elementId: '#malGrubuTutarChart',
             typeSelector: '#chartTypeMalGrubu',
             filterElementId: '#filterMalGrubu',
-            defaultType: 'pie',
+            defaultType: 'bar',
             aggregate: 'sum',
             valueField: skF.netwr,
             parseValue: skParseNumber,
             formatValue: skFormatMoneyWithCurrency,
             requiresWaers: true,
             waersField: skF.waers,
-            seriesName: 'Net Tutar',
-            limit: 12,
+            limit: 10,
             legend: skPieLegend
         },
         {
@@ -836,35 +924,32 @@ const satinalmaSchema = {
             typeSelector: '#chartTypeTeslimPerf',
             filterElementId: '#filterTeslimPerf',
             defaultType: 'pie',
-            seriesName: 'Teslim Durumu',
             pointColors: skTeslimPointColors,
             legend: skPieLegend
         },
         {
-            field: 'SapmaGun',
+            field: skF.sapmaGun,
             elementId: '#gecikmeChart',
             typeSelector: '#chartTypeGecikme',
             defaultType: 'bar',
             useBuckets: true,
             bucketLabelSuffix: '',
-            seriesName: 'Kayıt Sayısı',
             legend: skPieLegend
         },
         {
-            field: skF.budat,
+            field: skF.budatAy,
             elementId: '#aylikBudatChart',
             typeSelector: '#chartTypeAylikBudat',
             defaultType: 'line',
             buildData: skBuildAylikBudatTrend,
-            chartClickFilter: { field: 'BudatAy', valueKey: 'monthKey' },
-            seriesName: 'Kalem Sayısı',
-            legend: { visible: false }
+            chartClickFilter: { field: skF.budatAy, valueKey: 'monthKey' },
+            legend: skPieLegend
         },
         {
             elementId: '#tedarikciTeslimStackChart',
             typeSelector: '#chartTypeTedarikciTeslimStack',
             filterElementId: '#filterTedarikci',
-            filterField: 'TedarikciEtiket',
+            filterField: skF.tedarikciEtiket,
             defaultType: 'bar',
             rotatedBar: true,
             buildData: skBuildTedarikciTeslimStacked,
@@ -874,22 +959,23 @@ const satinalmaSchema = {
             ],
             stackedPieFilterField: skF.aktifTeslim,
             stackedPieFilterElementId: '#filterTeslimPerf',
-            seriesName: 'Teslim Durumu',
+            limit: 10,
             legend: skPieLegend
         },
         {
             elementId: '#tedarikciOrtGecikmeChart',
             typeSelector: '#chartTypeTedarikciOrtGecikme',
             filterElementId: '#filterTedarikci',
-            filterField: 'TedarikciEtiket',
+            filterField: skF.tedarikciEtiket,
+            field: skF.zzgecgun,
             defaultType: 'bar',
             rotatedBar: true,
             buildData: skBuildTedarikciOrtGecikme,
             formatValue: skFormatGecikmeGun,
             useDataPointColors: true,
             colorBySign: true,
-            seriesName: 'Ort. Sapma (gün)',
-            legend: { visible: false }
+            limit: 12,
+            legend: skPieLegend,
         }
     ],
     pivotTables: [
@@ -913,13 +999,13 @@ const satinalmaSchema = {
             fileName: 'EknamYillikDagilim',
             texts: { grandTotal: 'Tüm Yılların Toplamı', total: 'O Yıla Ait Alt Toplam' },
             fields: [
-                { dataField: skF.eknam, area: 'row', caption: 'Satın Alma Organizasyonu' },
+                { dataField: skF.satinalmaOrgEtiket, area: 'row', caption: 'Satın Alma Organizasyonu' },
                 { dataField: 'Yil', area: 'column', caption: 'Yıl' },
                 { dataField: 'Hafta', area: 'column', caption: 'Hafta' },
                 { dataField: 'Adet', area: 'data', summaryType: 'sum', caption: 'Kayıt' }
             ],
             fieldMappings: {
-                [skF.eknam]: [skF.eknam]
+                [skF.satinalmaOrgEtiket]: [skF.satinalmaOrgEtiket]
             }
         }
     ]

@@ -78,7 +78,7 @@ public static class ReportPermissionMetadata
     private static readonly ReportPermissionMeta SatinalmaKabuller = new(
         FilterFields:
         [
-            "WERKS", "NAME1", "LIFNR", "EKNAM", "EKGRP", "ZZSORUMLU",
+            "WERKS", "NAME1", "LIFNR", "EKORG", "ZZSORUMLU",
             "MATNR", "MAKTX", "MATKL", "WGBEZ", "MEINS",
             "EINDT", "BUDAT", "BEDAT", "DELIV", "TESLMAY", "ZZGECGUN", "ZZGEC1", "ZZGEC3", "WAERS"
         ],
@@ -87,8 +87,7 @@ public static class ReportPermissionMetadata
             ["WERKS"] = "Üretim Yeri",
             ["NAME1"] = "Tedarikçi",
             ["LIFNR"] = "Tedarikçi Kodu",
-            ["EKNAM"] = "Satın Alma Organizasyonu",
-            ["EKGRP"] = "Satın Alma Organizasyonu Kodu",
+            ["EKORG"] = "Satın Alma Organizasyonu",
             ["ZZSORUMLU"] = "Sorumlu",
             ["MATNR"] = "Malzeme Kodu",
             ["MAKTX"] = "Malzeme Açıklaması",
@@ -107,15 +106,14 @@ public static class ReportPermissionMetadata
         },
         Columns:
         [
-            "EBELN", "EBELP", "EKGRP", "EKNAM", "ZZSORUMLU",
+            "EBELN", "EBELP", "EKORG", "ZZSORUMLU",
             "MATNR", "MAKTX", "MATKL", "WGBEZ", "LIFNR", "NAME1",
             "MENGE", "MEINS", "NETWR", "WAERS", "BEDAT", "EINDT", "BUDAT",
             "ZZGECGUN", "ZZGEC1", "ZZGEC3", "TESLMAY", "DELIV", "WERKS"
         ],
         ColumnLabels: new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
         {
-            ["EKNAM"] = "Satın Alma Organizasyonu",
-            ["EKGRP"] = "Satın Alma Organizasyonu Kodu",
+            ["EKORG"] = "Satın Alma Organizasyonu",
             ["ZZSORUMLU"] = "Sorumlu",
             ["MATNR"] = "Malzeme Kodu",
             ["MATKL"] = "Malzeme Grubu",

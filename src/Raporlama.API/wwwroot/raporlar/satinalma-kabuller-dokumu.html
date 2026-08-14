@@ -5,7 +5,12 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Satınalma Kabuller Dökümü</title>
     <link id="dxThemeCss" rel="stylesheet" href="../lib/css/dx.dark.css" />
-    <link rel="stylesheet" href="rapor-ortak.css?v=20260810k" />
+    <link rel="stylesheet" href="rapor-ortak.css?v=20260814j" />
+    <style>
+        .chart-container .filter-hint { margin: 0 0 16px !important; }
+        .chart-container select { margin-bottom: 18px !important; }
+        .chart-container > div[id$="Chart"] { margin-top: 28px !important; }
+    </style>
     <script src="theme.js"></script>
     <script>RaporTheme.init({ dxBase: '../lib/css/' });</script>
 </head>
@@ -18,76 +23,81 @@
 
     <div class="main-layout">
         <div class="sidebar">
-            <h3 style="font-size: 22px; color: #00eaff; margin-bottom: 24px;">🔍 Filtreler</h3>
+            <h3 class="sidebar-title">🔍 Filtreler</h3>
 
-            <div class="filter-group">
-                <label class="filter-label">Tedarikçiler</label>
-                <select id="filterTedarikci"><option value="">Tümü</option></select>
-            </div>
-            <div class="filter-group">
-                <label class="filter-label">Satın Alma Organizasyonu</label>
-                <select id="filterEknam"><option value="">Tümü</option></select>
-            </div>
-            <div class="filter-group">
-                <label class="filter-label">Malzeme Grubu</label>
-                <select id="filterMalGrubu"><option value="">Tümü</option></select>
-            </div>
-            <div class="filter-group">
-                <label class="filter-label">Malzeme Kodu</label>
-                <select id="filterMatnr"><option value="">Tümü</option></select>
-            </div>
-            <div class="filter-group">
-                <label class="filter-label">Ölçü Birimi</label>
-                <span class="filter-meta">Miktar grafiği için seçin</span>
-                <select id="filterMeins"><option value="">Tümü</option></select>
-                <p id="filterMeinsHint" class="filter-meta"></p>
-            </div>
-            <div class="filter-group">
-                <label class="filter-label">Para Birimi</label>
-                <span class="filter-meta">Tutar grafiği için seçin</span>
-                <select id="filterWaers"><option value="">Tümü</option></select>
-                <p id="filterWaersHint" class="filter-meta"></p>
-            </div>
-            <div class="filter-group">
-                <label class="filter-label">Teslim Toleransı</label>
-                <select id="filterTolerans">
-                    <option value="">Varsayılan (gerçek sapma günü)</option>
-                    <option value="1">1 gün tolerans</option>
-                    <option value="3">3 gün tolerans</option>
-                </select>
-            </div>
-            <div class="filter-group">
-                <label class="filter-label">Teslim Durumu</label>
-                <select id="filterTeslimPerf"><option value="">Tümü</option></select>
-            </div>
-            <div class="filter-group">
-                <label class="filter-label">Üretim Yeri</label>
-                <select id="filterWerks"><option value="">Tümü</option></select>
-            </div>
-            <div class="filter-group">
-                <label class="filter-label">Planlanan Teslim Başlangıç Tarihi</label>
-                <input type="date" id="filterEindtBas">
-            </div>
-            <div class="filter-group">
-                <label class="filter-label">Planlanan Teslim Bitiş Tarihi</label>
-                <input type="date" id="filterEindtBit">
-            </div>
-            <div class="filter-group">
-                <label class="filter-label">Gerçekleşen Başlangıç Tarihi</label>
-                <input type="date" id="filterBudatBas">
-            </div>
-            <div class="filter-group">
-                <label class="filter-label">Gerçekleşen Bitiş Tarihi</label>
-                <input type="date" id="filterBudatBit">
+            <div class="filter-grid">
+                <div class="filter-group">
+                    <label class="filter-label">Tedarikçiler</label>
+                    <select id="filterTedarikci"><option value="">Tümü</option></select>
+                </div>
+                <div class="filter-group">
+                    <label class="filter-label">Satın Alma Organizasyonu</label>
+                    <select id="filterSatinalmaOrg"><option value="">Tümü</option></select>
+                </div>
+                <div class="filter-group">
+                    <label class="filter-label">Malzeme Grubu</label>
+                    <select id="filterMalGrubu"><option value="">Tümü</option></select>
+                </div>
+                <div class="filter-group">
+                    <label class="filter-label">Malzeme Kodu</label>
+                    <select id="filterMatnr"><option value="">Tümü</option></select>
+                </div>
+                <div class="filter-group">
+                    <label class="filter-label">Ölçü Birimi</label>
+                    <select id="filterMeins"><option value="">Tümü</option></select>
+                    <p id="filterMeinsHint" class="filter-meta"></p>
+                </div>
+                <div class="filter-group">
+                    <label class="filter-label">Para Birimi</label>
+                    <select id="filterWaers"><option value="">Tümü</option></select>
+                    <p id="filterWaersHint" class="filter-meta"></p>
+                </div>
+                <div class="filter-group">
+                    <label class="filter-label">Teslim Toleransı</label>
+                    <select id="filterTolerans">
+                        <option value="">Varsayılan (gerçek sapma günü)</option>
+                        <option value="1">1 gün tolerans</option>
+                        <option value="3">3 gün tolerans</option>
+                    </select>
+                </div>
+                <div class="filter-group">
+                    <label class="filter-label">Teslim Durumu</label>
+                    <select id="filterTeslimPerf"><option value="">Tümü</option></select>
+                </div>
+                <div class="filter-group">
+                    <label class="filter-label">Üretim Yeri</label>
+                    <select id="filterWerks"><option value="">Tümü</option></select>
+                </div>
             </div>
 
-            <button class="clear-filters">⊘ Temizle</button>
-            <button id="saveDefaultReport_satinalma" class="filter-btn" style="margin-top:12px;background:orange;color:#181A20;font-weight:bold;">⭐ Varsayılan olarak kaydet</button>
+            <div class="filter-dates">
+                <div class="filter-group">
+                    <label class="filter-label">Planlanan Teslim Başlangıç Tarihi</label>
+                    <input type="date" id="filterEindtBas">
+                </div>
+                <div class="filter-group">
+                    <label class="filter-label">Planlanan Teslim Bitiş Tarihi</label>
+                    <input type="date" id="filterEindtBit">
+                </div>
+                <div class="filter-group">
+                    <label class="filter-label">Gerçekleşen Başlangıç Tarihi</label>
+                    <input type="date" id="filterBudatBas">
+                </div>
+                <div class="filter-group">
+                    <label class="filter-label">Gerçekleşen Bitiş Tarihi</label>
+                    <input type="date" id="filterBudatBit">
+                </div>
+            </div>
+
+            <div class="filter-actions">
+                <button type="button" class="clear-filters">⊘ Temizle</button>
+                <button type="button" id="saveDefaultReport_satinalma" class="filter-btn filter-btn--save">⭐ Varsayılan olarak kaydet</button>
+            </div>
         </div>
 
         <div class="content">
             <div class="card">
-                <h2>📊 Özet KPI</h2>
+                <h2>📊 İstatistikler</h2>
                 <div class="stats">
                     <div class="stat-card" style="background: linear-gradient(135deg, #b61ca9 0%, #fe0000 100%);">
                         <h3 id="totalKalem">-</h3>
@@ -101,7 +111,7 @@
                         <h3 id="totalMenge" class="stat-card-blue">-</h3>
                         <p class="stat-card-blue">Toplam Miktar</p>
                     </div>
-                    <div class="stat-card" style="background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);">
+                    <div class="stat-card stat-card--tutar" style="background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);">
                         <h3 id="totalTutar" class="stat-card-pink">-</h3>
                         <p class="stat-card-pink">Toplam Tutar (Net)</p>
                     </div>
@@ -125,28 +135,28 @@
             </div>
 
             <div class="card">
-                <h2>📈 Analiz Grafikleri</h2>
+                <h2>📈 Grafikler</h2>
                 <div class="charts-grid">
                     <div class="chart-container">
                         <h4>SATIN ALMA GRUBUNA GÖRE TUTAR GRAFİĞİ</h4>
-                        <p class="filter-hint" style="margin-top:0;margin-bottom:8px;"><span>Önce sol filtre panelinden para birimi seçin (TRY, EUR, USD…).</span></p>
-                        <select id="chartTypeEknam" style="margin-bottom:8px;width:120px">
+                        <p class="filter-hint"><span>Satın alma organizasyonuna göre <strong>net tutar</strong> — ana ekranda <strong>ilk 12</strong> grup (tam liste için 🔍 büyüt).</span></p>
+                        <select id="chartTypeEkorg" style="width:120px">
                             <option value="bar">Çubuk</option>
                             <option value="pie">Pasta</option>
                             <option value="line">Çizgi</option>
                         </select>
                         <div style="position:relative;height:0;">
                             <div style="position:absolute;top:-40px;right:8px;display:flex;gap:8px;z-index:2;">
-                                <span style="cursor:pointer;font-size:20px;" onclick="RaporModul.enlargeChart('eknamTutarChart', 'Satın Alma Organizasyonuna Göre Tutar')" title="Büyüt">🔍</span>
-                                <span style="cursor:pointer;font-size:20px;" onclick="RaporModul.downloadSVG('eknamTutarChart', 'Satın Alma Organizasyonuna Göre Tutar')" title="İndir">⬇️</span>
+                                <span style="cursor:pointer;font-size:20px;" onclick="RaporModul.enlargeChart('satinalmaOrgTutarChart', 'Satın Alma Organizasyonuna Göre Tutar')" title="Büyüt">🔍</span>
+                                <span style="cursor:pointer;font-size:20px;" onclick="RaporModul.downloadSVG('satinalmaOrgTutarChart', 'Satın Alma Organizasyonuna Göre Tutar')" title="İndir">⬇️</span>
                             </div>
                         </div>
-                        <div id="eknamTutarChart" style="height:340px;min-height:340px;max-height:340px;"></div>
+                        <div id="satinalmaOrgTutarChart" style="height:340px;min-height:340px;max-height:340px;"></div>
                     </div>
                     <div class="chart-container">
                         <h4>TEDARİKÇİYE GÖRE TUTAR GRAFİĞİ</h4>
-                        <p class="filter-hint" style="margin-top:0;margin-bottom:8px;"><span>Önce sol filtre panelinden para birimi seçin (TRY, EUR, USD…).</span></p>
-                        <select id="chartTypeTedarikciTutar" style="margin-bottom:8px;width:120px">
+                        <p class="filter-hint"><span>En yüksek tutarlı <strong>ilk 10 tedarikçi</strong> — net tutar toplamı (tam liste için 🔍 büyüt).</span></p>
+                        <select id="chartTypeTedarikciTutar" style="width:120px">
                             <option value="bar">Çubuk</option>
                             <option value="pie">Pasta</option>
                             <option value="line">Çizgi</option>
@@ -161,8 +171,8 @@
                     </div>
                     <div class="chart-container">
                         <h4>EN ÇOK ALINAN MALZEMELER (MİKTAR) GRAFİĞİ</h4>
-                        <p class="filter-hint" style="margin-top:0;margin-bottom:8px;"><span>Önce sol filtre panelinden birim seçin (ör. ADT — adet). Çubuk ve pasta aynı birimde karşılaştırır.</span></p>
-                        <select id="chartTypeMalzemeMiktar" style="margin-bottom:8px;width:120px">
+                        <p class="filter-hint"><span>En çok kabul edilen <strong>ilk 12 malzeme</strong> — kabul miktarı (tam liste için 🔍 büyüt).</span></p>
+                        <select id="chartTypeMalzemeMiktar" style="width:120px">
                             <option value="bar">Çubuk</option>
                             <option value="pie">Pasta</option>
                             <option value="line">Çizgi</option>
@@ -177,8 +187,8 @@
                     </div>
                     <div class="chart-container">
                         <h4>MALZEME GRUBUNA GÖRE TUTAR GRAFİĞİ</h4>
-                        <p class="filter-hint" style="margin-top:0;margin-bottom:8px;"><span>Önce sol filtre panelinden para birimi seçin (TRY, EUR, USD…).</span></p>
-                        <select id="chartTypeMalGrubu" style="margin-bottom:8px;width:120px">
+                        <p class="filter-hint"><span>Malzeme grubuna göre <strong>net tutar</strong> — ana ekranda <strong>ilk 10</strong> grup (tam liste için 🔍 büyüt).</span></p>
+                        <select id="chartTypeMalGrubu" style="width:120px">
                             <option value="pie">Pasta</option>
                             <option value="bar">Çubuk</option>
                             <option value="line">Çizgi</option>
@@ -193,8 +203,8 @@
                     </div>
                     <div class="chart-container">
                         <h4>TESLİM PERFORMANSI GRAFİĞİ</h4>
-                        <p class="filter-hint" style="margin-top:0;margin-bottom:8px;"><span id="hintTeslimPerf">Gerçek sapma gününe göre zamanında / geç dağılımı (0 ve erken zamanında, pozitif geç). Sol panelden 1 veya 3 gün tolerans seçebilirsiniz.</span></p>
-                        <select id="chartTypeTeslimPerf" style="margin-bottom:8px;width:120px">
+                        <p class="filter-hint"><span id="hintTeslimPerf">Gerçek sapma gününe göre zamanında / geç dağılımı (0 ve erken zamanında, pozitif geç). Sol panelden 1 veya 3 gün tolerans seçebilirsiniz.</span></p>
+                        <select id="chartTypeTeslimPerf" style="width:120px">
                             <option value="pie">Pasta</option>
                             <option value="bar">Çubuk</option>
                             <option value="line">Çizgi</option>
@@ -209,8 +219,8 @@
                     </div>
                     <div class="chart-container">
                         <h4>TESLİM SÜRESİ DAĞILIM GRAFİĞİ</h4>
-                        <p class="filter-hint" style="margin-top:0;margin-bottom:8px;"><span>Planlanan teslime göre kaç gün erken veya geç teslim edildiğinin dağılımı (erken, tam gününde, 1 gün geç, 2–3 gün geç…). Tolerans filtresinden bağımsızdır; ham sapma günü verisini gösterir.</span></p>
-                        <select id="chartTypeGecikme" style="margin-bottom:8px;width:120px">
+                        <p class="filter-hint"><span>Planlanan teslime göre kaç gün erken veya geç teslim edildiğinin dağılımı (erken, tam gününde, 1 gün geç, 2–3 gün geç…). Tolerans filtresinden bağımsızdır; ham sapma günü verisini gösterir.</span></p>
+                        <select id="chartTypeGecikme" style="width:120px">
                             <option value="bar">Çubuk</option>
                             <option value="pie">Pasta</option>
                             <option value="line">Çizgi</option>
@@ -225,8 +235,8 @@
                     </div>
                     <div class="chart-container">
                         <h4>AYLIK TESLİM ALMA TREND GRAFİĞİ</h4>
-                        <p class="filter-hint" style="margin-top:0;margin-bottom:8px;"><span>Gerçekleşen tarihe göre aylık kalem sayısı.</span></p>
-                        <select id="chartTypeAylikBudat" style="margin-bottom:8px;width:120px">
+                        <p class="filter-hint"><span>Aylık <strong>kabul kalem sayısı</strong> trendi; gerçekleşen teslim tarihine göre gruplanır.</span></p>
+                        <select id="chartTypeAylikBudat" style="width:120px">
                             <option value="line">Çizgi</option>
                             <option value="bar">Çubuk</option>
                             <option value="pie">Pasta</option>
@@ -241,8 +251,8 @@
                     </div>
                     <div class="chart-container">
                         <h4>TEDARİKÇİ × TESLİM PERFORMANS GRAFİĞİ</h4>
-                        <p class="filter-hint" style="margin-top:0;margin-bottom:8px;"><span id="hintTedarikciTeslim">Top 12 tedarikçi — gerçek sapma gününe göre zamanında / geç (0 ve erken zamanında, pozitif geç).</span></p>
-                        <select id="chartTypeTedarikciTeslimStack" style="margin-bottom:8px;width:120px">
+                        <p class="filter-hint"><span id="hintTedarikciTeslim">En yüksek hacimli <strong>ilk 10 tedarikçi</strong> — zamanında / geç kalem dağılımı (tam liste için 🔍 büyüt).</span></p>
+                        <select id="chartTypeTedarikciTeslimStack" style="width:120px">
                             <option value="bar">Çubuk</option>
                             <option value="line">Çizgi</option>
                             <option value="pie">Pasta</option>
@@ -257,8 +267,8 @@
                     </div>
                     <div class="chart-container">
                         <h4>TEDARİKÇİ ORTALAMA GECİKME GÜNÜ GRAFİĞİ</h4>
-                        <p class="filter-hint" style="margin-top:0;margin-bottom:8px;"><span>Ortalama sapma günü: <strong style="color:#29b6f6">mavi = erken</strong>, <strong style="color:#43a047">yeşil = 0</strong>, <strong style="color:#e53935">kırmızı = geç</strong>.</span></p>
-                        <select id="chartTypeTedarikciOrtGecikme" style="margin-bottom:8px;width:120px">
+                        <p class="filter-hint"><span>En yüksek ortalama gecikme — <strong>ilk 12 tedarikçi</strong> (tam liste için 🔍 büyüt). Ortalama sapma günü: <strong style="color:#29b6f6">mavi = erken</strong>, <strong style="color:#43a047">yeşil = 0</strong>, <strong style="color:#e53935">kırmızı = geç</strong>.</span></p>
+                        <select id="chartTypeTedarikciOrtGecikme" style="width:120px">
                             <option value="bar">Çubuk</option>
                             <option value="line">Çizgi</option>
                             <option value="pie">Pasta</option>
@@ -291,8 +301,8 @@
     <script src="common.js"></script>
     <script src="toast.js"></script>
     <script>window.API_BASE = '/api';</script>
-    <script src="raporModul.js?v=20260812s"></script>
-    <script src="satinalma-kabuller-schema.js?v=20260812o"></script>
+    <script src="raporModul.js?v=20260814m"></script>
+    <script src="satinalma-kabuller-schema.js?v=20260814d"></script>
     <script>RaporTheme.bindToggle();</script>
 </body>
 </html>

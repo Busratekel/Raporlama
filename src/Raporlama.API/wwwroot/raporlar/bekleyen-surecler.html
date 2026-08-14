@@ -6,7 +6,12 @@
     <title>Bellona Raporlama Sistemi</title>
     
     <link id="dxThemeCss" rel="stylesheet" href="../lib/css/dx.dark.css" />
-    <link rel="stylesheet" href="rapor-ortak.css" />
+    <link rel="stylesheet" href="rapor-ortak.css?v=20260814j" />
+    <style>
+        .chart-container .filter-hint { margin: 0 0 16px !important; }
+        .chart-container select { margin-bottom: 18px !important; }
+        .chart-container > div[id$="Chart"] { margin-top: 28px !important; }
+    </style>
     <script src="theme.js"></script>
     <script>RaporTheme.init({ dxBase: '../lib/css/' });</script>
 </head>
@@ -20,70 +25,54 @@
     <div class="main-layout">
         <!-- SOL PANEL: FİLTRELER -->
         <div class="sidebar">
-            <h3>🔍 Filtreler</h3>
-            
-            <div class="filter-group">
-                <label class="filter-label">Bekleten Müdürlük Adı</label>
-                <select id="filterMudurluk">
-                    <option value="">Tümü</option>
-                </select>
-            </div>
-            
-            <div class="filter-group">
-                <label class="filter-label">Bekleten Direktörlük Adı</label>
-                <select id="filterDirektorluk">
-                    <option value="">Tümü</option>
-                </select>
+            <h3 class="sidebar-title">🔍 Filtreler</h3>
+
+            <div class="filter-grid">
+                <div class="filter-group">
+                    <label class="filter-label">Bekleten Müdürlük Adı</label>
+                    <select id="filterMudurluk"><option value="">Tümü</option></select>
+                </div>
+                <div class="filter-group">
+                    <label class="filter-label">Bekleten Direktörlük Adı</label>
+                    <select id="filterDirektorluk"><option value="">Tümü</option></select>
+                </div>
+                <div class="filter-group">
+                    <label class="filter-label">Formu Dolduran Şirket</label>
+                    <select id="filterDolduranSirket"><option value="">Tümü</option></select>
+                </div>
+                <div class="filter-group">
+                    <label class="filter-label">Formu Bekleten Şirket</label>
+                    <select id="filterBekletenSirket"><option value="">Tümü</option></select>
+                </div>
+                <div class="filter-group">
+                    <label class="filter-label">Form Adı</label>
+                    <select id="filterForm"><option value="">Tümü</option></select>
+                </div>
+                <div class="filter-group">
+                    <label class="filter-label">Formu Dolduran Kişi</label>
+                    <select id="filterDolduranKisi"><option value="">Tümü</option></select>
+                </div>
+                <div class="filter-group">
+                    <label class="filter-label">Formu Bekleten Kişi</label>
+                    <select id="filterBekletenKisi"><option value="">Tümü</option></select>
+                </div>
             </div>
 
-            <div class="filter-group">
-                <label class="filter-label">Formu Dolduran Şirket</label>
-                <select id="filterDolduranSirket">
-                    <option value="">Tümü</option>
-                </select>
+            <div class="filter-dates">
+                <div class="filter-group">
+                    <label class="filter-label">Süreç Başlangıç Tarihi</label>
+                    <input type="date" id="filterTarihBaslangic">
+                </div>
+                <div class="filter-group">
+                    <label class="filter-label">Süreç Bekletene Geliş Tarihi</label>
+                    <input type="date" id="filterTarihBitis">
+                </div>
             </div>
 
-            <div class="filter-group">
-                <label class="filter-label">Formu Bekleten Şirket</label>
-                <select id="filterBekletenSirket">
-                    <option value="">Tümü</option>
-                </select>
+            <div class="filter-actions">
+                <button type="button" class="clear-filters">⊘ Temizle</button>
+                <button type="button" id="saveDefaultReport_bekleyen" class="filter-btn filter-btn--save">⭐ Varsayılan olarak kaydet</button>
             </div>
-
-            <div class="filter-group">
-                <label class="filter-label">Form Adı</label>
-                <select id="filterForm">
-                    <option value="">Tümü</option>
-                </select>
-            </div>
-
-            <div class="filter-group">
-                <label class="filter-label">Formu Dolduran Kişi</label>
-                <select id="filterDolduranKisi">
-                    <option value="">Tümü</option>
-                </select>
-            </div>
-
-            <div class="filter-group">
-                <label class="filter-label">Formu Bekleten Kişi</label>
-                <select id="filterBekletenKisi">
-                    <option value="">Tümü</option>
-                </select>
-            </div>
-
-            <div class="filter-group">
-                <label class="filter-label">Süreç Başlangıç Tarihi</label>
-                <input type="date" id="filterTarihBaslangic">
-            </div>
-            
-            <div class="filter-group">
-                <label class="filter-label">Süreç Bekletene Geliş Tarihi</label>
-                <input type="date" id="filterTarihBitis">
-            </div>
-            
-            <!-- Filtrele butonu kaldırıldı, filtreler otomatik çalışıyor -->
-            <button class="clear-filters">⊘ Temizle</button>
-            <button id="saveDefaultReport_bekleyen" class="filter-btn" style="margin-top:12px;background:orange;color:#181A20;font-weight:bold;">⭐ Varsayılan olarak kaydet</button>
         </div>
         
         <!-- SAĞ PANEL: VERİ VE GRAFİKLER -->
@@ -117,8 +106,9 @@
                 <div class="charts-grid">
                     <div class="chart-container">
                         <h4>FORMU DOLDURAN İŞLETMELER GRAFİĞİ</h4>
+                        <p class="filter-hint"><span>Her değer şirketin <strong>bekleyen süreç sayısını</strong> gösterir — ana ekranda <strong>ilk 10</strong> (tam liste için 🔍 büyüt).</span></p>
                         <select id="chartTypeDolduran">
-                            <option value="pie">Pasta</option>
+                            <option value="pie" selected>Pasta</option>
                             <option value="bar">Çubuk</option>
                             <option value="line">Çizgi</option>
                         </select>
@@ -132,8 +122,9 @@
                     </div>
                     <div class="chart-container">
                         <h4>FORMU BEKLETEN İŞLETMELER GRAFİĞİ</h4>
+                        <p class="filter-hint"><span>Her değer şirketin <strong>bekletilen süreç sayısını</strong> gösterir — ana ekranda <strong>ilk 10</strong> (tam liste için 🔍 büyüt).</span></p>
                         <select id="chartTypeBekleten">
-                            <option value="pie">Pasta</option>
+                            <option value="pie" selected>Pasta</option>
                             <option value="bar">Çubuk</option>
                             <option value="line">Çizgi</option>
                         </select>
@@ -147,6 +138,7 @@
                     </div>
                     <div class="chart-container">
                         <h4>BEKLEME SÜRESİ DAĞILIMI (Gün) GRAFİĞİ</h4>
+                        <p class="filter-hint"><span>Her aralıkta kaç <strong>sürecin</strong> kaç gündür beklediğini gösterir (0–7, 8–15 gün…).</span></p>
                         <select id="chartTypeBekleme">
                             <option value="bar">Çubuk</option>
                             <option value="pie">Pasta</option>
@@ -162,6 +154,7 @@
                     </div>
                     <div class="chart-container">
                         <h4>KİŞİLERE GÖRE DOLDURAN GRAFİĞİ</h4>
+                        <p class="filter-hint"><span>En çok form dolduran <strong>ilk 10 kişi</strong> — süreç sayısı (tam liste için 🔍 büyüt).</span></p>
                         <select id="chartTypePersonDolduran">
                             <option value="bar">Çubuk</option>
                             <option value="pie">Pasta</option>
@@ -177,6 +170,7 @@
                     </div>
                     <div class="chart-container">
                         <h4>KİŞİLERE GÖRE BEKLETEN GRAFİĞİ</h4>
+                        <p class="filter-hint"><span>En çok bekleten <strong>ilk 10 kişi</strong> — süreç sayısı (tam liste için 🔍 büyüt).</span></p>
                         <select id="chartTypePersonBekleten">
                             <option value="bar">Çubuk</option>
                             <option value="pie">Pasta</option>
@@ -192,6 +186,7 @@
                     </div>
                     <div class="chart-container">
                         <h4>MÜDÜRLÜKLERE GÖRE DAĞILIM GRAFİĞİ</h4>
+                        <p class="filter-hint"><span>Bekleten müdürlüğe göre <strong>süreç sayısı</strong> — ana ekranda <strong>ilk 10</strong> (tam liste için 🔍 büyüt).</span></p>
                         <select id="chartTypeMudurluk">
                             <option value="pie">Pasta</option>
                             <option value="bar">Çubuk</option>
@@ -207,6 +202,7 @@
                     </div>
                     <div class="chart-container">
                         <h4>FORMLARA GÖRE DAĞILIM</h4>
+                        <p class="filter-hint"><span>En çok bekleyen <strong>ilk 10 form</strong> — süreç sayısı (tam liste için 🔍 büyüt).</span></p>
                         <select id="chartTypeForm">
                             <option value="bar" selected>Çubuk</option>
                             <option value="pie">Pasta</option>
@@ -246,8 +242,8 @@
     <script>
         window.API_BASE = '/api';
     </script>
-    <script src="raporModul.js?v=20260812s"></script>
-    <script src="bekleyen-schema.js"></script>
+    <script src="raporModul.js?v=20260814m"></script>
+    <script src="bekleyen-schema.js?v=20260814h"></script>
     <script>RaporTheme.bindToggle();</script>
     </body>
     </html>

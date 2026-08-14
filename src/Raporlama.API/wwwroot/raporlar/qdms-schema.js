@@ -72,8 +72,8 @@ function qdmsEnrichRow(row) {
     let gecikti = normalized[qdmsF.geciktiMi];
     if (gecikti != null && String(gecikti).trim() !== '') {
         const g = String(gecikti).trim().toLowerCase();
-        if (g === '1' || g === 'true' || g === 'evet' || g === 'yes') gecikti = 'Evet';
-        else if (g === '0' || g === 'false' || g === 'hayır' || g === 'hayir' || g === 'no') gecikti = 'Hayır';
+        if (g === '1' || g === 'true' || g === 'evet' || g === 'yes' || g === 'e') gecikti = 'Evet';
+        else if (g === '0' || g === 'false' || g === 'hayır' || g === 'hayir' || g === 'no' || g === 'h') gecikti = 'Hayır';
         else gecikti = String(gecikti).trim();
     } else {
         gecikti = 'Hayır';
@@ -209,8 +209,8 @@ const qdmsSchema = {
         { field: qdmsF.tip, elementId: '#tipChart', typeSelector: '#chartTypeTip', filterElementId: '#filterTip', defaultType: 'pie', legend: qdmsPieLegend },
         { field: qdmsF.mudurluk, elementId: '#mudurlukChart', typeSelector: '#chartTypeMudurluk', filterElementId: '#filterMudurluk', defaultType: 'bar', legend: qdmsPieLegend },
         { field: qdmsF.sorumluBirim, elementId: '#sirketChart', typeSelector: '#chartTypeSirket', filterElementId: '#filterSirket', defaultType: 'pie', legend: qdmsPieLegend },
-        { field: qdmsF.sistemeGirenKisi, elementId: '#kisiChart', typeSelector: '#chartTypeKisi', filterElementId: '#filterKisi', defaultType: 'line', limit: 15, legend: qdmsPieLegend },
-        { field: qdmsF.isiYapacak, elementId: '#yoneticiChart', typeSelector: '#chartTypeYonetici', filterElementId: '#filterIsiYapacak', defaultType: 'bar', limit: 15, legend: qdmsPieLegend },
+        { field: qdmsF.sistemeGirenKisi, elementId: '#kisiChart', typeSelector: '#chartTypeKisi', filterElementId: '#filterKisi', defaultType: 'line', limit: 10, legend: qdmsPieLegend },
+        { field: qdmsF.isiYapacak, elementId: '#yoneticiChart', typeSelector: '#chartTypeYonetici', filterElementId: '#filterIsiYapacak', defaultType: 'bar', limit: 10, legend: qdmsPieLegend },
         { field: qdmsF.geciktiMi, elementId: '#geciktiChart', typeSelector: '#chartTypeGecikti', filterElementId: '#filterGecikti', defaultType: 'pie', legend: qdmsPieLegend },
         { field: qdmsF.gunSayisi, elementId: '#beklemeChart', typeSelector: '#chartTypeBekleme', defaultType: 'bar', useBuckets: true, legend: qdmsPieLegend }
     ],

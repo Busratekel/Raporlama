@@ -98,7 +98,10 @@ namespace Raporlama.API.Services
             if (columnSet.Count > 0)
             {
                 var selectColumns = string.Join(",", columnSet.Select(QuoteSqlColumn));
-                query = ReplaceSelectStar(query, selectColumns);
+                var replaced = ReplaceSelectStar(query, selectColumns);
+                query = replaced == query
+                    ? MergeSelectColumns(query, columnSet)
+                    : replaced;
             }
 
             if (!string.IsNullOrWhiteSpace(rowFilter))
@@ -233,6 +236,38 @@ namespace Raporlama.API.Services
             var fromIdx = query.IndexOf("FROM", starIdx, StringComparison.OrdinalIgnoreCase);
             if (fromIdx < 0) return query;
             return query[..idx] + "SELECT " + selectColumns + " " + query[fromIdx..];
+        }
+
+        private static string MergeSelectColumns(string query, IReadOnlyCollection<string> requiredColumns)
+        {
+            var selectIdx = query.IndexOf("SELECT", StringComparison.OrdinalIgnoreCase);
+            if (selectIdx < 0) return query;
+            var fromIdx = query.IndexOf("FROM", selectIdx + 6, StringComparison.OrdinalIgnoreCase);
+            if (fromIdx < 0) return query;
+
+            var existingPart = query.Substring(selectIdx + 6, fromIdx - selectIdx - 6);
+            var existingCols = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+            foreach (var part in existingPart.Split(','))
+            {
+                var col = part.Trim();
+                if (col.Length == 0) continue;
+                var bracket = col.LastIndexOf(']');
+                if (col.StartsWith('[') && bracket > 0)
+                    existingCols.Add(col[1..bracket]);
+                else
+                {
+                    var token = col.Split(new[] { ' ', '\t', '\r', '\n' }, StringSplitOptions.RemoveEmptyEntries)[0];
+                    existingCols.Add(token.Trim('[', ']'));
+                }
+            }
+
+            var missing = requiredColumns.Where(c => !existingCols.Contains(c)).ToList();
+            if (missing.Count == 0) return query;
+
+            var merged = existingPart.TrimEnd().TrimEnd(',')
+                + ", "
+                + string.Join(", ", missing.Select(QuoteSqlColumn));
+            return query[..(selectIdx + 6)] + " " + merged + " " + query[fromIdx..];
         }
 
         private string GenerateCacheKey(string databaseName, string query, Dictionary<string, object>? parameters, string userName, int reportId)

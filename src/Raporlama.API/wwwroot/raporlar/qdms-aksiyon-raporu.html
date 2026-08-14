@@ -12,7 +12,13 @@
 
     <link id="dxThemeCss" rel="stylesheet" href="../lib/css/dx.dark.css" />
 
-    <link rel="stylesheet" href="rapor-ortak.css" />
+    <link rel="stylesheet" href="rapor-ortak.css?v=20260814j" />
+
+    <style>
+        .chart-container .filter-hint { margin: 0 0 16px !important; }
+        .chart-container select { margin-bottom: 18px !important; }
+        .chart-container > div[id$="Chart"] { margin-top: 28px !important; }
+    </style>
 
     <script src="theme.js"></script>
 
@@ -157,7 +163,9 @@
 
                         <h4>FORM DURUMU GRAFİĞİ</h4>
 
-                        <select id="chartTypeDurum" style="margin-bottom:8px;width:120px">
+                        <p class="filter-hint"><span>Her değer <strong>duruma göre aksiyon kayıt sayısını</strong> gösterir (Açık, Kapalı…).</span></p>
+
+                        <select id="chartTypeDurum" style="width:120px">
 
                             <option value="pie">Pasta</option>
 
@@ -187,7 +195,9 @@
 
                         <h4>FORM TİPİ GRAFİĞİ</h4>
 
-                        <select id="chartTypeTip" style="margin-bottom:8px;width:120px">
+                        <p class="filter-hint"><span>Her değer <strong>aksiyon tipine göre kayıt sayısını</strong> gösterir.</span></p>
+
+                        <select id="chartTypeTip" style="width:120px">
 
                             <option value="pie">Pasta</option>
 
@@ -217,7 +227,9 @@
 
                         <h4>SİSTEME GİREN KİŞİNİN MÜDÜRLÜĞÜNE GÖRE DAĞILIM GRAFİĞİ</h4>
 
-                        <select id="chartTypeMudurluk" style="margin-bottom:8px;width:120px">
+                        <p class="filter-hint"><span>Sisteme giren kişinin müdürlüğüne göre <strong>aksiyon kayıt sayısı</strong> dağılımı.</span></p>
+
+                        <select id="chartTypeMudurluk" style="width:120px">
 
                             <option value="pie">Pasta</option>
 
@@ -247,7 +259,9 @@
 
                         <h4>SORUMLU BİRİMLERE GÖRE DAĞILIM GRAFİĞİ</h4>
 
-                        <select id="chartTypeSirket" style="margin-bottom:8px;width:120px">
+                        <p class="filter-hint"><span>Sorumlu birime göre <strong>aksiyon kayıt sayısı</strong> dağılımı.</span></p>
+
+                        <select id="chartTypeSirket" style="width:120px">
 
                             <option value="pie">Pasta</option>
 
@@ -277,7 +291,9 @@
 
                         <h4>SİSTEME GİREN KİŞİ GRAFİĞİ</h4>
 
-                        <select id="chartTypeKisi" style="margin-bottom:8px;width:120px">
+                        <p class="filter-hint"><span>En çok kayıt giren <strong>ilk 10 kişi</strong> (tam liste için 🔍 büyüt).</span></p>
+
+                        <select id="chartTypeKisi" style="width:120px">
 
                             <option value="bar">Çubuk</option>
 
@@ -307,7 +323,9 @@
 
                         <h4>İŞİ YAPACAK KİŞİYE GÖRE DAĞILIM GRAFİĞİ</h4>
 
-                        <select id="chartTypeYonetici" style="margin-bottom:8px;width:120px">
+                        <p class="filter-hint"><span>En çok atanan <strong>ilk 10 kişi</strong> — kayıt sayısı (tam liste için 🔍 büyüt).</span></p>
+
+                        <select id="chartTypeYonetici" style="width:120px">
 
                             <option value="bar">Çubuk</option>
 
@@ -337,7 +355,9 @@
 
                         <h4>SÜREÇ GECİKTİ Mİ?</h4>
 
-                        <select id="chartTypeGecikti" style="margin-bottom:8px;width:120px">
+                        <p class="filter-hint"><span><strong>Gecikme durumuna</strong> göre kayıt sayısı (Evet / Hayır).</span></p>
+
+                        <select id="chartTypeGecikti" style="width:120px">
 
                             <option value="pie">Pasta</option>
 
@@ -367,7 +387,9 @@
 
                         <h4>GÜN SAYISI DAĞILIM GRAFİĞİ</h4>
 
-                        <select id="chartTypeBekleme" style="margin-bottom:8px;width:120px">
+                        <p class="filter-hint"><span>Her aralıkta kaç <strong>aksiyon kaydı</strong> olduğunu gösterir (0–7, 8–15 gün…).</span></p>
+
+                        <select id="chartTypeBekleme" style="width:120px">
 
                             <option value="bar">Çubuk</option>
 
@@ -425,9 +447,9 @@
         window.API_BASE = '/api';
     </script>
 
-    <script src="raporModul.js?v=20260812s"></script>
+    <script src="raporModul.js?v=20260814m"></script>
 
-    <script src="qdms-schema.js"></script>
+    <script src="qdms-schema.js?v=20260814k"></script>
 
     <script>RaporTheme.bindToggle();</script>
 

@@ -12,7 +12,11 @@ const gfF = {
     tip: 'Seyahat Tipi',
     gidilenYer: 'Gidilen Yer',
     sebep: 'Seyahat Sebebi',
-    aciklama: 'Açıklama'
+    aciklama: 'Açıklama',
+    sure: 'Seyahat Sayısı',
+    aylik: 'Aylık Seyahat Sayısı',
+    yurtIci: 'YurtIci',
+    yurtDisi: 'YurtDisi'
 };
 
 function gfParseTrDate(value) {
@@ -68,8 +72,10 @@ function gfEnrichRow(row) {
     const bitIso = gfParseTrDate(normalized[gfF.bitis]);
     normalized.SeyahatBaslangicIso = basIso || '';
     normalized.SeyahatBitisIso = bitIso || '';
-    normalized.SeyahatGun = gfDayDiff(basIso, bitIso);
-    if (basIso) normalized.AyYil = basIso.substring(0, 7);
+    normalized[gfF.sure] = gfDayDiff(basIso, bitIso);
+    if (basIso) normalized[gfF.aylik] = basIso.substring(0, 7);
+    normalized[gfF.yurtIci] = gfIsYurtIci(normalized) ? 'Evet' : '';
+    normalized[gfF.yurtDisi] = gfIsYurtIci(normalized) ? '' : 'Evet';
 
     if (basIso) normalized[gfF.baslangic] = gfFormatTrDate(basIso);
     if (bitIso) normalized[gfF.bitis] = gfFormatTrDate(bitIso);
@@ -98,7 +104,7 @@ function gfDistinctCount(data, field) {
 }
 
 function gfAvgGun(data) {
-    const vals = data.map(d => d.SeyahatGun).filter(n => Number.isFinite(n));
+    const vals = data.map(d => d[gfF.sure]).filter(n => Number.isFinite(n));
     if (!vals.length) return null;
     return Math.round((vals.reduce((a, b) => a + b, 0) / vals.length) * 10) / 10;
 }
@@ -156,7 +162,7 @@ const gfKpiTop10Cols = [
     gfF.uretimYeri,
     gfF.baslangic,
     gfF.bitis,
-    'SeyahatGun',
+    gfF.sure,
     gfF.gidilenYer,
     gfF.sebep,
     gfF.tip,
@@ -167,7 +173,7 @@ const gfKpiTop10Cols = [
 function gfBuildAylikTrend(rows) {
     const grouped = new Map();
     rows.forEach(d => {
-        const ay = d.AyYil;
+        const ay = d[gfF.aylik];
         if (!ay) return;
         grouped.set(ay, (grouped.get(ay) || 0) + 1);
     });
@@ -213,21 +219,25 @@ const gorevFormuSeyahatSchema = {
         [gfF.uretimYeri]: 'Üretim Yeri',
         [gfF.baslangic]: 'Başlangıç Tarihi',
         [gfF.bitis]: 'Bitiş Tarihi',
-        SeyahatGun: 'Süre (gün)',
-        PersonelSeyahatSayisi: 'Seyahat Sayısı',
         [gfF.gidilenYer]: 'Gidilen Yer',
         [gfF.sebep]: 'Seyahat Sebebi',
         [gfF.tip]: 'Seyahat Tipi',
         [gfF.vekalet]: 'Vekalet Personeli',
-        [gfF.aciklama]: 'Açıklama'
+        [gfF.aylik]: 'Aylık Seyahat Sayısı',
+        [gfF.sure]: 'Süre (gün)',
+        [gfF.aciklama]: 'Açıklama',
+        [gfF.yurtIci]: 'Yurt İçi',
+        [gfF.yurtDisi]: 'Yurt Dışı',
+        SeyahatBaslangicIso: 'Başlangıç (ISO)',
+        SeyahatBitisIso: 'Bitiş (ISO)'
     },
     pivotValueResolvers: { Adet: () => 1 },
     beklemeSuresiBuckets: gfGunBuckets,
     bucketFilters: {
-        SeyahatGun: { buckets: gfGunBuckets, fields: ['SeyahatGun'] }
+        [gfF.sure]: { buckets: gfGunBuckets, fields: [gfF.sure] }
     },
     virtualFilters: {
-        AyYil: { fields: ['AyYil'] }
+        [gfF.aylik]: { fields: [gfF.aylik] }
     },
     filters: [
         { field: gfF.departman, elementId: 'filterDepartman', label: 'Departman' },
@@ -241,6 +251,7 @@ const gorevFormuSeyahatSchema = {
     ],
     summaries: [
         {
+            //top10 Seyahat Kayıtları
             elementId: '#totalSeyahat',
             calc: (data) => data.length.toLocaleString('tr-TR'),
             detailModal: {
@@ -256,6 +267,7 @@ const gorevFormuSeyahatSchema = {
             }
         },
         {
+            //top10 Personel Seyahat Kayıtları
             elementId: '#totalPersonel',
             calc: (data) => gfDistinctCount(data, gfF.personel).toLocaleString('tr-TR'),
             detailModal: {
@@ -282,6 +294,7 @@ const gorevFormuSeyahatSchema = {
             }
         },
         {
+            //top10 En Uzun Süreli Seyahatler
             elementId: '#ortSeyahatGun',
             calc: (data) => {
                 const avg = gfAvgGun(data);
@@ -289,7 +302,7 @@ const gorevFormuSeyahatSchema = {
             },
             detailModal: {
                 title: 'En Uzun Süreli Seyahatler — Top 10',
-                sortField: 'SeyahatGun',
+                sortField: gfF.sure,
                 sortOrder: 'desc',
                 topN: 10,
                 subtitle: gfKpiDetayAltYazi({
@@ -300,6 +313,7 @@ const gorevFormuSeyahatSchema = {
             }
         },
         {
+            //top10 Yurt İçi Seyahatler
             elementId: '#yurtIciSayisi',
             calc: (data) => data.filter(d => gfIsYurtIci(d)).length.toLocaleString('tr-TR'),
             detailModal: {
@@ -325,11 +339,14 @@ const gorevFormuSeyahatSchema = {
         { dataField: gfF.uretimYeri, caption: 'Üretim Yeri' },
         { dataField: gfF.baslangic, caption: 'Seyahat Başlangıç' },
         { dataField: gfF.bitis, caption: 'Seyahat Bitiş' },
-        { dataField: 'SeyahatGun', caption: 'Süre (gün)', dataType: 'number' },
+        { dataField: gfF.sure, caption: 'Süre (gün)', dataType: 'number' },
         { dataField: gfF.vekalet, caption: 'Vekalet Edecek Personel' },
         { dataField: gfF.tip, caption: 'Seyahat Tipi' },
         { dataField: gfF.gidilenYer, caption: 'Gidilen Yer' },
         { dataField: gfF.sebep, caption: 'Seyahat Sebebi' },
+        { dataField: gfF.yurtIci, caption: 'Yurt İçi' },
+        { dataField: gfF.yurtDisi, caption: 'Yurt Dışı' },
+        { dataField: gfF.aylik, caption: 'Aylık Seyahat Sayısı' },
         { dataField: gfF.aciklama, caption: 'Açıklama' }
     ],
     charts: [
@@ -339,8 +356,8 @@ const gorevFormuSeyahatSchema = {
             typeSelector: '#chartTypePersonel',
             filterElementId: '#filterPersonel',
             defaultType: 'bar',
-            limit: 20,
-            legend: { visible: false }
+            limit: 10,
+            legend: gfPieLegend
         },
         {
             field: gfF.tip,
@@ -357,7 +374,7 @@ const gorevFormuSeyahatSchema = {
             typeSelector: '#chartTypeSebep',
             filterElementId: '#filterSebep',
             defaultType: 'bar',
-            limit: 0,
+            limit: 10,
             legend: gfPieLegend
         },
         {
@@ -375,26 +392,25 @@ const gorevFormuSeyahatSchema = {
             typeSelector: '#chartTypeDepartman',
             filterElementId: '#filterDepartman',
             defaultType: 'bar',
-            limit: 0,
+            limit: 10,
             legend: gfPieLegend
         },
         {
+            field: gfF.aylik,
             elementId: '#aylikTrendChart',
             typeSelector: '#chartTypeAylik',
             defaultType: 'line',
             buildData: gfBuildAylikTrend,
-            chartClickFilter: { field: 'AyYil', valueKey: 'monthKey' },
-            seriesName: 'Seyahat Sayısı',
-            legend: { visible: false }
+            chartClickFilter: { field: gfF.aylik, valueKey: 'monthKey' },
+            legend: gfPieLegend
         },
         {
-            field: 'SeyahatGun',
+            field: gfF.sure,
             elementId: '#sureChart',
             typeSelector: '#chartTypeSure',
             defaultType: 'bar',
             useBuckets: true,
             bucketLabelSuffix: '',
-            seriesName: 'Kayıt Sayısı',
             legend: gfPieLegend
         }
     ],

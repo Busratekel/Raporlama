@@ -55,7 +55,7 @@ const bekleyenPieLegend = {
 
     font: { size: 10 },
 
-    margin: 32,
+    margin: 8,
 
     verticalAlignment: 'bottom',
 
@@ -72,6 +72,16 @@ window.bekleyenSchema = {
     enrichRow: bekleyenEnrichRow,
 
     beklemeSuresiBuckets: bekleyenBeklemeBuckets,
+
+    summaryColumnLabels: {
+        FormuDolduranSirketi: 'Dolduran Şirket',
+        FormuBekletenSirketi: 'Bekleten Şirket',
+        BekleyenGun: 'Bekleme Süresi (gün)',
+        FormuDolduran: 'Formu Dolduran Kişi',
+        FormuBekleten: 'Formu Bekleten Kişi',
+        MudurlukAdi: 'Müdürlük',
+        FormAdi: 'Form Adı'
+    },
 
     bucketFilters: {
 
@@ -189,6 +199,10 @@ window.bekleyenSchema = {
 
             defaultType: 'pie',
 
+            limit: 10,
+
+            seriesName: 'Dolduran Şirket',
+
             legend: bekleyenPieLegend
 
         },
@@ -204,6 +218,10 @@ window.bekleyenSchema = {
             filterElementId: '#filterBekletenSirket',
 
             defaultType: 'pie',
+
+            limit: 10,
+
+            seriesName: 'Bekleten Şirket',
 
             legend: bekleyenPieLegend
 
@@ -221,6 +239,8 @@ window.bekleyenSchema = {
 
             useBuckets: true,
 
+            seriesName: 'Bekleme Süresi (gün)',
+
             legend: bekleyenPieLegend
 
         },
@@ -237,7 +257,9 @@ window.bekleyenSchema = {
 
             defaultType: 'bar',
 
-            limit: 15,
+            limit: 10,
+
+            seriesName: 'Formu Dolduran Kişi',
 
             legend: bekleyenPieLegend
 
@@ -255,7 +277,9 @@ window.bekleyenSchema = {
 
             defaultType: 'bar',
 
-            limit: 15,
+            limit: 10,
+
+            seriesName: 'Formu Bekleten Kişi',
 
             legend: bekleyenPieLegend
 
@@ -273,6 +297,10 @@ window.bekleyenSchema = {
 
             defaultType: 'pie',
 
+            limit: 10,
+
+            seriesName: 'Müdürlük',
+
             legend: bekleyenPieLegend
 
         },
@@ -289,7 +317,9 @@ window.bekleyenSchema = {
 
             defaultType: 'bar',
 
-            limit: 15,
+            limit: 10,
+
+            seriesName: 'Form Adı',
 
             legend: bekleyenPieLegend
 
