@@ -16,20 +16,26 @@ public class AuthController : ControllerBase
 {
     private readonly ISsoTokenValidator _ssoTokenValidator;
     private readonly ICustomAuthorizationService _authorizationService;
+    private readonly ILoginOtpService _loginOtpService;
     private readonly PortalAuthOptions _portalOptions;
+    private readonly LocalAuthOptions _localAuthOptions;
     private readonly IWebHostEnvironment _environment;
     private readonly ILogger<AuthController> _logger;
 
     public AuthController(
         ISsoTokenValidator ssoTokenValidator,
         ICustomAuthorizationService authorizationService,
+        ILoginOtpService loginOtpService,
         IOptions<PortalAuthOptions> portalOptions,
+        IOptions<LocalAuthOptions> localAuthOptions,
         IWebHostEnvironment environment,
         ILogger<AuthController> logger)
     {
         _ssoTokenValidator = ssoTokenValidator;
         _authorizationService = authorizationService;
+        _loginOtpService = loginOtpService;
         _portalOptions = portalOptions.Value;
+        _localAuthOptions = localAuthOptions.Value;
         _environment = environment;
         _logger = logger;
     }
@@ -51,7 +57,7 @@ public class AuthController : ControllerBase
                 return Content(validation.ErrorMessage, "text/plain; charset=utf-8");
 
             var normalized = NormalizeUserName(validation.UserName);
-            await SignInUserAsync(normalized);
+            await SignInUserAsync(normalized, "portal");
             _logger.LogInformation("Portal SSO giriş: {UserName}", normalized);
 
             return Redirect(SafeReturnUrl(returnUrl));
@@ -76,15 +82,169 @@ public class AuthController : ControllerBase
     [AllowAnonymous]
     public async Task<IActionResult> Cikis()
     {
+        var loginSource = User.FindFirst("login_source")?.Value;
         await HttpContext.SignOutAsync(CookieAuthenticationDefaults.AuthenticationScheme);
-        if (!string.IsNullOrWhiteSpace(_portalOptions.PortalLoginUrl))
-            return Redirect(_portalOptions.PortalLoginUrl);
-        return Redirect("/menu.html");
+
+        return loginSource switch
+        {
+            "portal" when !string.IsNullOrWhiteSpace(_portalOptions.PortalLoginUrl)
+                => Redirect(_portalOptions.PortalLoginUrl.Trim()),
+            "sms" or "dev" => Redirect("/login.html"),
+            _ => Redirect("/menu.html")
+        };
+    }
+
+    /// <summary>Dış giriş adım 1: AD kullanıcı adı + şifre → SMS OTP gönderilir.</summary>
+    [HttpPost("login")]
+    [AllowAnonymous]
+    public async Task<IActionResult> Login([FromBody] LoginRequest request, CancellationToken cancellationToken)
+    {
+        if (string.IsNullOrWhiteSpace(request.UserName) || string.IsNullOrEmpty(request.Password))
+            return BadRequest(new { error = "Kullanıcı adı ve şifre gerekli." });
+
+        var result = await _loginOtpService.StartLoginAsync(request.UserName.Trim(), request.Password, cancellationToken);
+        if (!result.Success)
+            return Unauthorized(new { error = result.Error });
+
+        if (result.RequiresPhoneSetup)
+        {
+            return Ok(new
+            {
+                requiresPhoneSetup = true,
+                setupChallengeId = result.SetupChallengeId,
+                message = "SMS doğrulama için cep telefonunuzu kaydedin."
+            });
+        }
+
+        return Ok(new
+        {
+            challengeId = result.ChallengeId,
+            maskedPhone = result.MaskedPhone,
+            expiresInSeconds = result.ExpiresInSeconds,
+            message = "Doğrulama kodu SMS ile gönderildi."
+        });
+    }
+
+    /// <summary>İlk giriş: cep telefonu kaydet → SMS OTP gönder.</summary>
+    [HttpPost("setup-phone")]
+    [AllowAnonymous]
+    public async Task<IActionResult> SetupPhone([FromBody] SetupPhoneRequest request, CancellationToken cancellationToken)
+    {
+        if (string.IsNullOrWhiteSpace(request.SetupChallengeId) || string.IsNullOrWhiteSpace(request.CepTelefonu))
+            return BadRequest(new { error = "Telefon numarası gerekli." });
+
+        var result = await _loginOtpService.RegisterPhoneAndSendOtpAsync(
+            request.SetupChallengeId.Trim(), request.CepTelefonu.Trim(), cancellationToken);
+        if (!result.Success)
+            return Unauthorized(new { error = result.Error });
+
+        return Ok(new
+        {
+            challengeId = result.ChallengeId,
+            maskedPhone = result.MaskedPhone,
+            expiresInSeconds = result.ExpiresInSeconds,
+            message = "Telefon kaydedildi. Doğrulama kodu SMS ile gönderildi."
+        });
+    }
+
+    /// <summary>Dış giriş: yeni SMS OTP gönder (cooldown + limit korumalı).</summary>
+    [HttpPost("resend-otp")]
+    [AllowAnonymous]
+    public async Task<IActionResult> ResendOtp([FromBody] ResendOtpRequest request, CancellationToken cancellationToken)
+    {
+        if (string.IsNullOrWhiteSpace(request.ChallengeId))
+            return BadRequest(new { error = "Geçersiz oturum." });
+
+        var result = await _loginOtpService.ResendOtpAsync(request.ChallengeId.Trim(), cancellationToken);
+        if (!result.Success)
+            return Unauthorized(new { error = result.Error });
+
+        return Ok(new
+        {
+            challengeId = result.ChallengeId,
+            maskedPhone = result.MaskedPhone,
+            expiresInSeconds = result.ExpiresInSeconds,
+            message = "Yeni doğrulama kodu gönderildi."
+        });
+    }
+
+    /// <summary>Dış giriş adım 2: SMS kodu doğrula → oturum aç.</summary>
+    [HttpPost("verify-otp")]
+    [AllowAnonymous]
+    public async Task<IActionResult> VerifyOtp([FromBody] VerifyOtpRequest request)
+    {
+        if (string.IsNullOrWhiteSpace(request.ChallengeId) || string.IsNullOrWhiteSpace(request.OtpCode))
+            return BadRequest(new { error = "Doğrulama kodu gerekli." });
+
+        var result = await _loginOtpService.VerifyOtpAsync(request.ChallengeId, request.OtpCode);
+        if (!result.Success || string.IsNullOrEmpty(result.UserName))
+            return Unauthorized(new { error = result.Error });
+
+        await SignInUserAsync(result.UserName, "sms");
+        _logger.LogInformation("SMS OTP giriş: {UserName}", result.UserName);
+
+        return Ok(new { success = true, redirectUrl = SafeReturnUrl(request.ReturnUrl) });
+    }
+
+    public sealed class LoginRequest
+    {
+        public string UserName { get; set; } = "";
+        public string Password { get; set; } = "";
+    }
+
+    public sealed class VerifyOtpRequest
+    {
+        public string ChallengeId { get; set; } = "";
+        public string OtpCode { get; set; } = "";
+        public string? ReturnUrl { get; set; }
+    }
+
+    public sealed class SetupPhoneRequest
+    {
+        public string SetupChallengeId { get; set; } = "";
+        public string CepTelefonu { get; set; } = "";
+    }
+
+    public sealed class ResendOtpRequest
+    {
+        public string ChallengeId { get; set; } = "";
     }
 
     [HttpGet("portal-url")]
     [AllowAnonymous]
     public IActionResult PortalUrl() => Ok(new { loginUrl = _portalOptions.PortalLoginUrl });
+
+    [HttpGet("login-options")]
+    [AllowAnonymous]
+    public IActionResult LoginOptions()
+    {
+        var portalUrl = string.IsNullOrWhiteSpace(_portalOptions.PortalLoginUrl)
+            ? null
+            : _portalOptions.PortalLoginUrl.Trim();
+
+        var isLocal = _environment.IsDevelopment() || IsLocalRequest();
+
+        return Ok(new
+        {
+            portalLoginUrl = portalUrl,
+            localAuthEnabled = _localAuthOptions.Enabled,
+            isDevelopment = _environment.IsDevelopment(),
+            isLocalEnvironment = isLocal
+        });
+    }
+
+    private bool IsLocalRequest()
+    {
+        var host = HttpContext.Request.Host.Host;
+        if (host.Equals("localhost", StringComparison.OrdinalIgnoreCase) || host == "127.0.0.1")
+            return true;
+
+        var remote = HttpContext.Connection.RemoteIpAddress;
+        if (remote != null && System.Net.IPAddress.IsLoopback(remote))
+            return true;
+
+        return false;
+    }
 
     [HttpGet("dev-login")]
     [AllowAnonymous]
@@ -94,7 +254,7 @@ public class AuthController : ControllerBase
             return NotFound();
 
         var name = NormalizeUserName(string.IsNullOrWhiteSpace(userName) ? Environment.UserName : userName);
-        await SignInUserAsync(name);
+        await SignInUserAsync(name, "dev");
         return Redirect("/menu.html");
     }
 
@@ -110,7 +270,7 @@ public class AuthController : ControllerBase
         return userName;
     }
 
-    private async Task SignInUserAsync(string userName)
+    private async Task SignInUserAsync(string userName, string loginSource = "unknown")
     {
         await _authorizationService.EnsureUserExistsAsync(userName, userName, "", "");
 
@@ -120,7 +280,8 @@ public class AuthController : ControllerBase
         var claims = new List<Claim>
         {
             new(ClaimTypes.Name, canonicalName),
-            new(ClaimTypes.GivenName, resolved.DisplayName ?? canonicalName)
+            new(ClaimTypes.GivenName, resolved.DisplayName ?? canonicalName),
+            new("login_source", loginSource)
         };
 
         var identity = new ClaimsIdentity(claims, CookieAuthenticationDefaults.AuthenticationScheme);

@@ -40,8 +40,10 @@
             btn = btn || document.getElementById('themeToggle');
             if (!btn) return;
             const isDark = getTheme() === 'dark';
-            btn.textContent = isDark ? '☀️ Açık Tema' : '🌙 Koyu Tema';
-            btn.setAttribute('aria-label', isDark ? 'Açık temaya geç' : 'Koyu temaya geç');
+            btn.textContent = isDark ? '☀️' : '🌙';
+            const label = isDark ? 'Açık temaya geç' : 'Koyu temaya geç';
+            btn.title = label;
+            btn.setAttribute('aria-label', label);
         },
         cssVar(name, fallback) {
             const v = getComputedStyle(document.documentElement).getPropertyValue(name).trim();

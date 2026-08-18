@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Çevrimdışı — Raporlama</title>
+    <link rel="stylesheet" href="/raporlar/rapor-ortak.css">
+    <style>
+        body {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            margin: 0;
+            padding: 24px;
+            text-align: center;
+        }
+        .box {
+            background: var(--bg-panel, #23272b);
+            padding: 32px 24px;
+            border-radius: 12px;
+            max-width: 360px;
+        }
+        h1 { color: var(--text-accent, #00eaff); font-size: 1.25rem; margin: 0 0 12px; }
+        p { color: #bfc7d5; margin: 0 0 20px; line-height: 1.5; }
+        a {
+            display: inline-block;
+            padding: 12px 20px;
+            background: #1976d2;
+            color: #fff;
+            text-decoration: none;
+            border-radius: 8px;
+            font-weight: 600;
+        }
+    </style>
+</head>
+<body>
+    <div class="box">
+        <h1>İnternet bağlantısı yok</h1>
+        <p>Rapor verileri çevrimdışı görüntülenemez. Bağlantınızı kontrol edip tekrar deneyin.</p>
+        <a href="/login.html">Yeniden dene</a>
+    </div>
+</body>
+</html>

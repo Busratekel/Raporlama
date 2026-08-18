@@ -12,8 +12,14 @@ builder.Services.AddSwaggerGen();
 
 builder.Services.Configure<PortalAuthOptions>(builder.Configuration.GetSection(PortalAuthOptions.SectionName));
 builder.Services.Configure<AppAuthorizationOptions>(builder.Configuration.GetSection(AppAuthorizationOptions.SectionName));
+builder.Services.Configure<LocalAuthOptions>(builder.Configuration.GetSection(LocalAuthOptions.SectionName));
+builder.Services.Configure<SmsOptions>(builder.Configuration.GetSection(SmsOptions.SectionName));
+builder.Services.Configure<PushOptions>(builder.Configuration.GetSection(PushOptions.SectionName));
 builder.Services.AddSingleton<IAdminService, AdminService>();
 builder.Services.AddSingleton<ISsoTokenValidator, SsoTokenValidator>();
+builder.Services.AddSingleton<IActiveDirectoryAuthService, ActiveDirectoryAuthService>();
+builder.Services.AddSingleton<ISmsSender, SmsSender>();
+builder.Services.AddSingleton<ILoginOtpService, LoginOtpService>();
 builder.Services.AddHttpClient();
 
 builder.Services.AddAuthentication(CookieAuthenticationDefaults.AuthenticationScheme)
@@ -57,6 +63,7 @@ builder.Services.AddScoped<ICustomAuthorizationService, AuthorizationService>();
 builder.Services.AddScoped<IDataSourceService, DataSourceService>();
 builder.Services.AddScoped<IUserMudurlukService, UserMudurlukService>();
 builder.Services.AddScoped<IDepartmentOptionsService, DepartmentOptionsService>();
+builder.Services.AddScoped<IPushNotificationService, PushNotificationService>();
 builder.Services.AddScoped<ETLGorevService>();
 
 var app = builder.Build();

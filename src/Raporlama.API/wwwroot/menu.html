@@ -3,32 +3,84 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="theme-color" content="#1976d2">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-title" content="Raporlar">
+    <link rel="manifest" href="/manifest.webmanifest">
+    <link rel="apple-touch-icon" href="/images/pwa-icon.png">
     <title>Rapor Seçimi</title>
-    <link rel="stylesheet" href="raporlar/rapor-ortak.css" />
-    <script src="raporlar/theme.js"></script>
+    <link rel="stylesheet" href="raporlar/rapor-ortak.css?v=20260818g" />
+    <script src="/pwa.js?v=20260818h" defer></script>
+    <script src="raporlar/theme.js?v=20260818"></script>
     <script>RaporTheme.init({ dxBase: 'lib/css/' });</script>
     <style>
-                .top-buttons {
-                    position: absolute;
-                    top: 32px;
-                    right: 40px;
+                .page-header {
+                    max-width: 800px;
+                    margin: 0 auto 20px;
                     display: flex;
-                    gap: 10px;
-                    z-index: 10;
+                    flex-wrap: wrap;
+                    align-items: flex-start;
+                    justify-content: flex-start;
+                    gap: 12px;
+                }
+                .page-header h2 {
+                    margin: 0;
+                    flex: 1 1 100%;
+                    text-align: left;
+                }
+                .top-buttons,
+                .admin-bar {
+                    display: flex;
+                    flex-wrap: wrap;
+                    gap: 8px;
+                    justify-content: flex-end;
+                    align-items: center;
+                }
+                .menu-top-right {
+                    position: fixed;
+                    top: 14px;
+                    right: 14px;
+                    z-index: 1000;
+                    display: flex;
+                    flex-direction: column;
+                    align-items: flex-end;
+                    gap: 8px;
+                    max-width: min(440px, calc(100vw - 28px));
+                }
+                .menu-top-right .corner-actions {
+                    position: static;
+                    top: auto;
+                    right: auto;
+                }
+                body.menu-page {
+                    padding-top: 58px;
+                }
+                body.menu-page.has-admin-bar {
+                    padding-top: 98px;
                 }
                 .mini-btn {
-                    padding: 7px 16px;
-                    font-size: 1rem;
-                    border-radius: 8px;
-                    border: none;
-                    background: #1976d2;
+                    padding: 5px 11px;
+                    font-size: 0.82rem;
+                    border-radius: 6px;
+                    border: 1px solid rgba(255, 255, 255, 0.15);
+                    background: #1565c0;
                     color: #fff;
-                    font-weight: 500;
+                    font-weight: 600;
+                    letter-spacing: 0.02em;
+                    line-height: 1.25;
                     cursor: pointer;
-                    transition: background 0.2s;
-                    box-shadow: 0 2px 8px #0003;
+                    transition: background 0.2s, transform 0.15s;
+                    box-shadow: 0 1px 4px rgba(0, 0, 0, 0.2);
                 }
                 .mini-btn:hover {
+                    background: #0d47a1;
+                    transform: translateY(-1px);
+                }
+                html[data-theme="light"] .mini-btn {
+                    background: #1976d2;
+                    border-color: transparent;
+                }
+                html[data-theme="light"] .mini-btn:hover {
                     background: #1565c0;
                 }
         body {
@@ -136,20 +188,88 @@
         }
         h2 {
             color: var(--text-accent);
-            text-align: center;
             margin-bottom: 20px;
+        }
+        @media (max-width: 640px) {
+            body.menu-page {
+                padding: 12px;
+                padding-top: 54px;
+            }
+            body.menu-page.has-admin-bar {
+                padding-top: 94px;
+            }
+            .menu-top-right {
+                top: 10px;
+                right: 10px;
+                gap: 6px;
+            }
+            .page-header {
+                margin-bottom: 14px;
+            }
+            .page-header h2 {
+                font-size: 1.15rem;
+                line-height: 1.35;
+                margin-bottom: 0;
+            }
+            .admin-bar {
+                gap: 6px;
+                width: 100%;
+            }
+            .admin-bar .mini-btn {
+                font-size: 0.72rem;
+                padding: 5px 8px;
+                flex: 0 1 auto;
+                max-width: none;
+                white-space: nowrap;
+            }
+            .reports-container {
+                grid-template-columns: 1fr;
+            }
+            .report-button {
+                padding: 18px 16px;
+                font-size: 1.05rem;
+            }
         }
     </style>
 </head>
-<body>
-    <div class="top-buttons">
-        <button type="button" id="themeToggle" class="theme-toggle">☀️ Açık Tema</button>
+<body class="has-corner-actions menu-page">
+    <div class="menu-top-right">
+    <div class="corner-actions">
+        <button type="button" id="themeToggle" class="corner-btn corner-btn--theme" title="Açık temaya geç" aria-label="Açık temaya geç">☀️</button>
+        <div class="inbox-wrap" id="inboxWrap" style="display:none;">
+            <button type="button" id="inboxBtn" class="corner-btn corner-btn--notify" title="Bildirimler" aria-label="Bildirimler">🔔</button>
+            <span id="inboxBadge" class="inbox-badge" style="display:none;">0</span>
+            <div id="inboxPanel" class="inbox-panel" hidden>
+                <div class="inbox-panel__header">
+                    <span>Bildirimler</span>
+                    <div class="inbox-panel__actions">
+                        <button type="button" id="inboxMarkAllBtn">Tümünü oku</button>
+                        <button type="button" id="inboxCloseBtn">✕</button>
+                    </div>
+                </div>
+                <div id="inboxList" class="inbox-panel__list"></div>
+                <div class="inbox-panel__footer" id="inboxSettingsFooter">
+                    <label class="inbox-setting-row">
+                        <span id="pushEnabledToggleLabel">Bildirimler kapalı</span>
+                        <input type="checkbox" id="pushEnabledToggle">
+                    </label>
+                </div>
+            </div>
+        </div>
+        <button type="button" id="installPwaBtn" class="corner-btn corner-btn--install" style="display:none;" title="Ana ekrana ekle" aria-label="Ana ekrana ekle">📱</button>
+        <a href="/Auth/cikis" id="logoutBtn" class="corner-btn corner-btn--logout" style="display:none;" title="Çıkış yap" aria-label="Çıkış yap">🔒</a>
+    </div>
+    <div class="admin-bar" id="adminBar" style="display:none;">
         <button class="mini-btn" id="adminBtn" style="display:none;" onclick="window.location.href='yetki-yonetimi.html'">🔐 Yetki Yönetimi</button>
         <button class="mini-btn" id="etlBtn" style="display:none;" onclick="window.location.href='etl.html'">⚙️ ETL Yönetimi</button>
     </div>
+    </div>
     <div class="container">
-        <h2>📊 Rapor Seçimi</h2>
+        <header class="page-header">
+            <h2>📊 Rapor Seçimi</h2>
+        </header>
         
+        <div id="inboxBanner" class="inbox-banner" style="display:none;"></div>
         <div class="user-info" id="userInfo">
             <div class="loading">Kullanıcı bilgileri yükleniyor...</div>
         </div>
@@ -185,37 +305,62 @@
                 if (resp.ok) {
                     const data = await resp.json();
                     if (data.isAdmin) {
+                        document.getElementById('adminBar').style.display = 'flex';
                         document.getElementById('adminBtn').style.display = 'inline-block';
                         document.getElementById('etlBtn').style.display = 'inline-block';
+                        document.body.classList.add('has-admin-bar');
                     }
                 }
             } catch (_) { /* ignore */ }
         }
         async function showNotLoggedIn() {
-            let portalLink = '';
-            let devLink = '';
+            document.getElementById('logoutBtn').style.display = 'none';
+            document.getElementById('inboxWrap').style.display = 'none';
+            closeInboxPanel();
+            let portalLoginUrl = null;
+            let localAuthEnabled = false;
+            let isLocalEnvironment = isLocalDev();
             try {
-                const portalResp = await fetch(window.location.origin + '/auth/portal-url', { credentials: 'include' });
-                if (portalResp.ok) {
-                    const data = await portalResp.json();
-                    if (data.loginUrl) {
-                        portalLink = `<p style="margin-top:12px;"><a href="${escapeHtml(data.loginUrl)}" style="color:#fff;font-weight:600;">Portala git ve giriş yap →</a></p>`;
-                    }
+                const resp = await fetch(window.location.origin + '/Auth/login-options', { credentials: 'include' });
+                if (resp.ok) {
+                    const data = await resp.json();
+                    portalLoginUrl = data.portalLoginUrl || null;
+                    localAuthEnabled = !!data.localAuthEnabled;
+                    isLocalEnvironment = !!(data.isLocalEnvironment || data.isDevelopment || isLocalDev());
                 }
             } catch (_) { /* ignore */ }
-            if (isLocalDev()) {
-                devLink = `
-                    <p style="margin-top:16px;padding:12px;background:#1a3a1a;border-radius:8px;">
-                        <strong>Local geliştirme:</strong><br>
-                        <a href="${devLoginUrl('busra.tekel')}" style="color:#7fff7f;font-weight:600;">Dev giriş (busra.tekel) →</a>
-                    </p>`;
+
+            let intro = '';
+            let links = '';
+
+            if (isLocalEnvironment) {
+                intro = '<p>Local ortam — SMS giriş akışını test edebilir veya hızlı dev giriş kullanabilirsiniz.</p>';
+                if (localAuthEnabled) {
+                    links = `<p style="margin-top:12px;"><a href="/login.html" style="color:#7fff7f;font-weight:600;">Kullanıcı adı + SMS ile giriş →</a></p>`;
+                } else {
+                    links = '<p style="margin-top:12px;color:#ffccbc;">SMS girişi kapalı. appsettings.json içinde <strong>LocalAuth:Enabled</strong> = true yapın.</p>';
+                }
+                links += `<p style="margin-top:10px;font-size:0.95rem;"><a href="${devLoginUrl('busra.tekel')}" style="color:#ccc;">Dev giriş (atla) →</a></p>`;
+            } else if (portalLoginUrl && localAuthEnabled) {
+                intro = '<p>Ofis ağında portaldan, dışarıdan SMS ile giriş yapabilirsiniz.</p>';
+                links = `
+                    <p style="margin-top:12px;"><a href="${escapeHtml(portalLoginUrl)}" style="color:#fff;font-weight:600;">Kurumsal portaldan giriş →</a></p>
+                    <p style="margin-top:8px;"><a href="/login.html" style="color:#7fff7f;font-weight:600;">Dış erişim: kullanıcı adı + SMS →</a></p>`;
+            } else if (portalLoginUrl) {
+                intro = '<p>Raporlara erişmek için kurumsal portaldan giriş yapın.</p>';
+                links = `<p style="margin-top:12px;"><a href="${escapeHtml(portalLoginUrl)}" style="color:#fff;font-weight:600;">Portala git ve giriş yap →</a></p>`;
+            } else if (localAuthEnabled) {
+                intro = '<p>Raporlara erişmek için kullanıcı adı ve SMS doğrulaması ile giriş yapın.</p>';
+                links = `<p style="margin-top:12px;"><a href="/login.html" style="color:#7fff7f;font-weight:600;">Giriş yap →</a></p>`;
+            } else {
+                intro = '<p>Giriş yapılandırması eksik. Sistem yöneticisine başvurun.</p>';
             }
+
             document.getElementById('userInfo').innerHTML = `
                 <div class="error">
                     <h3>⚠️ Giriş Yapılmamış</h3>
-                    <p>Raporlara erişmek için kurumsal portaldan giriş yapıp <strong>Raporlar</strong> linkine tıklayın.</p>
-                    ${portalLink}
-                    ${devLink}
+                    ${intro}
+                    ${links}
                 </div>
             `;
             document.getElementById('reportsContainer').innerHTML = `
@@ -235,10 +380,12 @@
                     throw new Error(`HTTP ${response.status}: ${errorText}`);
                 }
                 const userInfo = await response.json();
+                document.getElementById('logoutBtn').style.display = 'inline-flex';
+                document.getElementById('inboxWrap').style.display = 'inline-flex';
+                await refreshInbox();
                 document.getElementById('userInfo').innerHTML = `
                     <h3>👤 Kullanıcı Bilgileri</h3>
-                    <p><strong>Kullanıcı Adı:</strong> ${escapeHtml(userInfo.userName || 'Bilinmiyor')}</p>
-                `;
+                    <p><strong>Kullanıcı Adı:</strong> ${escapeHtml(userInfo.userName || 'Bilinmiyor')}</p>`;
                 return true;
             } catch (error) {
                 document.getElementById('userInfo').innerHTML = `
@@ -321,16 +468,8 @@
                 }
                 const reportsHtml = reports
                     .filter(report => report.url && report.url.length > 0)
-                    .map(report => {
-                        let url = report.url;
-                        if (!url.startsWith('raporlar/')) {
-                            url = 'raporlar/' + url.replace(/^\/+/, '');
-                        }
-                        if (!url.endsWith('.html')) {
-                            url += '.html';
-                        }
-                        return renderReportButton(report, url);
-                    }).join('');
+                    .map(report => renderReportButton(report, normalizeReportUrl(report.url)))
+                    .join('');
                 document.getElementById('reportsContainer').innerHTML = reportsHtml;
             } catch (error) {
                 document.getElementById('reportsContainer').innerHTML = `
@@ -358,6 +497,162 @@
             const div = document.createElement('div');
             div.textContent = text;
             return div.innerHTML;
+        }
+
+        function normalizeReportUrl(raw) {
+            if (!raw || !String(raw).trim()) return '/menu.html';
+            let url = String(raw).trim().replace(/\\/g, '/');
+            if (/^https?:\/\//i.test(url)) return url;
+            url = url.replace(/^\/+/, '');
+            if (!url.toLowerCase().startsWith('raporlar/')) {
+                url = 'raporlar/' + url;
+            }
+            if (!url.toLowerCase().endsWith('.html')) {
+                url += '.html';
+            }
+            return url;
+        }
+
+        function formatNotifTime(iso) {
+            try {
+                const d = new Date(iso);
+                return d.toLocaleString('tr-TR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' });
+            } catch (_) { return ''; }
+        }
+
+        function updateInboxBadge(count) {
+            const badge = document.getElementById('inboxBadge');
+            if (!badge) return;
+            if (count > 0) {
+                badge.style.display = 'block';
+                badge.textContent = count > 99 ? '99+' : String(count);
+            } else {
+                badge.style.display = 'none';
+            }
+        }
+
+        function updateInboxBanner(count) {
+            const banner = document.getElementById('inboxBanner');
+            if (!banner) return;
+            if (count > 0) {
+                banner.style.display = 'block';
+                banner.innerHTML = `<strong>${count}</strong> okunmamış bildiriminiz var — görmek için tıklayın`;
+            } else {
+                banner.style.display = 'none';
+            }
+        }
+
+        function renderInboxList(items) {
+            const list = document.getElementById('inboxList');
+            if (!list) return;
+            if (!items || !items.length) {
+                list.innerHTML = '<div class="inbox-panel__empty">Bildirim yok</div>';
+                return;
+            }
+            list.innerHTML = items.map(item => `
+                <button type="button" class="inbox-item${item.isRead ? '' : ' is-unread'}" data-id="${item.notificationKey}" data-url="${escapeHtml(item.url || '/menu.html')}">
+                    <div class="inbox-item__title">${escapeHtml(item.title)}</div>
+                    <div class="inbox-item__body">${escapeHtml(item.body)}</div>
+                    <div class="inbox-item__time">${formatNotifTime(item.createdAt)}</div>
+                </button>`).join('');
+            list.querySelectorAll('.inbox-item').forEach(btn => {
+                btn.addEventListener('click', async () => {
+                    const id = Number(btn.dataset.id);
+                    const url = normalizeReportUrl(btn.dataset.url);
+                    await window.RaporPwa?.markNotificationRead(id);
+                    closeInboxPanel();
+                    await refreshInbox();
+                    window.location.href = url;
+                });
+            });
+        }
+
+        function updatePushToggleLabel(enabled) {
+            const label = document.getElementById('pushEnabledToggleLabel');
+            if (label) {
+                label.textContent = enabled ? 'Bildirimler açık' : 'Bildirimler kapalı';
+            }
+        }
+
+        async function refreshInbox() {
+            if (!window.RaporPwa) return;
+            const data = await window.RaporPwa.getInbox(30);
+            updateInboxBadge(data.unreadCount || 0);
+            updateInboxBanner(data.unreadCount || 0);
+            renderInboxList(data.items || []);
+
+            const status = await window.RaporPwa.getPushStatus();
+            const toggle = document.getElementById('pushEnabledToggle');
+            if (toggle) {
+                toggle.disabled = !status.enabled || !window.RaporPwa.isPushSupported();
+                toggle.checked = !!status.pushNotificationsEnabled;
+                updatePushToggleLabel(toggle.checked);
+            }
+        }
+
+        function openInboxPanel() {
+            const panel = document.getElementById('inboxPanel');
+            if (panel) panel.hidden = false;
+            refreshInbox();
+        }
+
+        function closeInboxPanel() {
+            const panel = document.getElementById('inboxPanel');
+            if (panel) panel.hidden = true;
+        }
+
+        function toggleInboxPanel() {
+            const panel = document.getElementById('inboxPanel');
+            if (!panel) return;
+            if (panel.hidden) openInboxPanel();
+            else closeInboxPanel();
+        }
+
+        function updateInstallButton() {
+            const btn = document.getElementById('installPwaBtn');
+            if (!btn || !window.RaporPwa) return;
+            btn.style.display = window.RaporPwa.canInstall() ? 'inline-flex' : 'none';
+        }
+
+        window.addEventListener('rapor-pwa-installable', updateInstallButton);
+        window.addEventListener('rapor-pwa-install-changed', updateInstallButton);
+        window.addEventListener('rapor-push-changed', refreshInbox);
+        window.addEventListener('rapor-inbox-changed', refreshInbox);
+
+        document.getElementById('inboxBtn')?.addEventListener('click', toggleInboxPanel);
+        document.getElementById('inboxBanner')?.addEventListener('click', openInboxPanel);
+        document.getElementById('inboxCloseBtn')?.addEventListener('click', closeInboxPanel);
+        document.getElementById('inboxMarkAllBtn')?.addEventListener('click', async () => {
+            await window.RaporPwa?.markAllNotificationsRead();
+            await refreshInbox();
+        });
+        document.getElementById('pushEnabledToggle')?.addEventListener('change', async (e) => {
+            const enabled = e.target.checked;
+            updatePushToggleLabel(enabled);
+            const result = await window.RaporPwa?.setPushNotificationsEnabled(enabled);
+            if (result?.error) {
+                alert(result.error);
+                e.target.checked = !enabled;
+                updatePushToggleLabel(e.target.checked);
+            }
+            await refreshInbox();
+        });
+        document.addEventListener('click', (e) => {
+            const wrap = document.getElementById('inboxWrap');
+            if (!wrap || wrap.contains(e.target)) return;
+            closeInboxPanel();
+        });
+
+        document.getElementById('installPwaBtn')?.addEventListener('click', async () => {
+            if (!window.RaporPwa?.canInstall()) return;
+            const result = await window.RaporPwa.promptInstall();
+            if (result.outcome === 'accepted') {
+                document.getElementById('installPwaBtn').style.display = 'none';
+            }
+        });
+
+        if (window.matchMedia('(display-mode: standalone)').matches) {
+            document.getElementById('installPwaBtn')?.style.setProperty('display', 'none');
         }
     </script>
     <script>RaporTheme.bindToggle();</script>

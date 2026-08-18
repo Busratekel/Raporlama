@@ -358,7 +358,7 @@
         <div class="panel">
             <div id="noUserSelected" class="empty">
                 <p style="margin:0 0 8px;font-size:1rem;color:#ccc;">Kullanıcı seçin</p>
-                <p class="hint">Soldan bir kullanıcı seçerek müdürlük ataması ve rapor yetkilerini yönetebilirsiniz.</p>
+                <p class="hint">Soldan bir kullanıcı seçerek cep telefonu, müdürlük ataması ve rapor yetkilerini yönetebilirsiniz.</p>
             </div>
             <div id="permissionPanel" style="display:none;">
 
@@ -370,6 +370,16 @@
                     </div>
                     <button class="btn btn-sm btn-danger" id="toggleUserBtn" onclick="toggleUserActive()">Pasifleştir</button>
                 </div>
+
+                <section class="step-card">
+                    <div class="step-head"><span class="step-num">📱</span> Cep telefonu (SMS girişi)</div>
+                    <p class="step-desc hint">Dış giriş ekranında SMS doğrulama kodu bu numaraya gönderilir. Boş bırakırsanız SMS ile giriş yapamaz.</p>
+                    <div class="mudurluk-row">
+                        <input type="tel" id="userCepTelefonuInput" placeholder="05xxxxxxxxx" autocomplete="off" style="flex:1;">
+                        <button class="btn btn-success btn-sm" type="button" onclick="saveUserCepTelefonu()">Kaydet</button>
+                        <button class="btn btn-primary btn-sm" type="button" onclick="clearUserCepTelefonu()">Temizle</button>
+                    </div>
+                </section>
 
                 <!-- Adım 1 -->
                 <section class="step-card">
@@ -761,11 +771,13 @@
                 const key = u.userKey ?? u.UserKey;
                 const name = u.userName ?? u.UserName;
                 const active = u.isActive ?? u.IsActive;
+                const phone = u.cepTelefonu ?? u.CepTelefonu;
+                const phoneBadge = phone ? ' <span class="badge badge-ok" title="SMS girişi tanımlı">📱</span>' : '';
                 const isSel = selectedUser && (selectedUser.userKey ?? selectedUser.UserKey) === key;
                 return `<div class="user-item ${isSel ? 'active' : ''}" onclick="selectUser(${key})">
                     <div class="name">${esc(name)}</div>
                     <div class="meta">UserKey: ${key}
-                        <span class="badge ${active ? 'badge-ok' : 'badge-off'}">${active ? 'Aktif' : 'Pasif'}</span>
+                        <span class="badge ${active ? 'badge-ok' : 'badge-off'}">${active ? 'Aktif' : 'Pasif'}</span>${phoneBadge}
                     </div>
                 </div>`;
             }).join('');
@@ -781,6 +793,19 @@
             }).join('');
         }
 
+        function formatPhoneForDisplay(stored) {
+            if (!stored) return '';
+            const digits = String(stored).replace(/\D/g, '');
+            if (digits.startsWith('90') && digits.length === 12)
+                return '0' + digits.slice(2);
+            return stored;
+        }
+
+        function setUserCepTelefonuInput(user) {
+            const raw = user?.cepTelefonu ?? user?.CepTelefonu ?? '';
+            document.getElementById('userCepTelefonuInput').value = formatPhoneForDisplay(raw);
+        }
+
         async function selectUser(userKey) {
             selectedUser = allUsers.find(u => (u.userKey ?? u.UserKey) === userKey);
             if (!selectedUser) return;
@@ -788,8 +813,11 @@
             document.getElementById('noUserSelected').style.display = 'none';
             document.getElementById('permissionPanel').style.display = 'block';
             document.getElementById('selectedUserName').textContent = selectedUser.userName ?? selectedUser.UserName;
+            const phoneRaw = selectedUser.cepTelefonu ?? selectedUser.CepTelefonu;
+            const phoneHint = phoneRaw ? ' · SMS: ' + formatPhoneForDisplay(phoneRaw) : ' · SMS: tanımlı değil';
             document.getElementById('selectedUserMeta').textContent =
-                `UserKey: ${userKey} · ${selectedUser.displayName ?? selectedUser.DisplayName ?? ''}`;
+                `UserKey: ${userKey} · ${selectedUser.displayName ?? selectedUser.DisplayName ?? ''}${phoneHint}`;
+            setUserCepTelefonuInput(selectedUser);
             setMudurlukList(getUserMudurlukList(selectedUser));
             clearMudurlukInput();
             const active = selectedUser.isActive ?? selectedUser.IsActive;
@@ -1064,6 +1092,40 @@
             } catch (e) {
                 alert('Hata: ' + e.message);
             }
+        }
+
+        async function saveUserCepTelefonu() {
+            if (!selectedUser) return;
+            const userKey = selectedUser.userKey ?? selectedUser.UserKey;
+            const cepTelefonu = document.getElementById('userCepTelefonuInput').value.trim();
+            try {
+                const res = await api(`/users/${userKey}/cep-telefonu`, {
+                    method: 'PATCH',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ cepTelefonu: cepTelefonu || null })
+                });
+                const saved = res.cepTelefonu ?? res.CepTelefonu ?? null;
+                selectedUser.cepTelefonu = saved;
+                selectedUser.CepTelefonu = saved;
+                const idx = allUsers.findIndex(u => (u.userKey ?? u.UserKey) === userKey);
+                if (idx >= 0) {
+                    allUsers[idx].cepTelefonu = saved;
+                    allUsers[idx].CepTelefonu = saved;
+                }
+                setUserCepTelefonuInput(selectedUser);
+                const phoneHint = saved ? ' · SMS: ' + formatPhoneForDisplay(saved) : ' · SMS: tanımlı değil';
+                document.getElementById('selectedUserMeta').textContent =
+                    `UserKey: ${userKey} · ${selectedUser.displayName ?? selectedUser.DisplayName ?? ''}${phoneHint}`;
+                renderUsers(document.getElementById('userSearch').value.trim().toLowerCase());
+                alert(res.message || 'Cep telefonu kaydedildi.');
+            } catch (e) {
+                alert('Hata: ' + e.message);
+            }
+        }
+
+        function clearUserCepTelefonu() {
+            document.getElementById('userCepTelefonuInput').value = '';
+            saveUserCepTelefonu();
         }
 
         async function toggleUserActive() {

@@ -17,6 +17,7 @@ namespace Raporlama.API.Controllers
         private readonly IAdminService _adminService;
         private readonly IDepartmentOptionsService _departmentOptionsService;
         private readonly IUserMudurlukService _userMudurlukService;
+        private readonly IPushNotificationService _pushNotificationService;
         private readonly PortalAuthOptions _portalOptions;
         private readonly ILogger<AuthorizationController> _logger;
 
@@ -26,6 +27,7 @@ namespace Raporlama.API.Controllers
             IAdminService adminService,
             IDepartmentOptionsService departmentOptionsService,
             IUserMudurlukService userMudurlukService,
+            IPushNotificationService pushNotificationService,
             IOptions<PortalAuthOptions> portalOptions,
             ILogger<AuthorizationController> logger)
         {
@@ -34,6 +36,7 @@ namespace Raporlama.API.Controllers
             _adminService = adminService;
             _departmentOptionsService = departmentOptionsService;
             _userMudurlukService = userMudurlukService;
+            _pushNotificationService = pushNotificationService;
             _portalOptions = portalOptions.Value;
             _logger = logger;
         }
@@ -114,7 +117,7 @@ namespace Raporlama.API.Controllers
             {
                 var users = (await _databaseService.QueryAsync<UserInfo>(
                     "BellonaRapor",
-                    "SELECT UserKey, UserName, DisplayName, Email, Groups, MudurlukAdi, Aktif as IsActive FROM [User] ORDER BY UserName"
+                    "SELECT UserKey, UserName, DisplayName, Email, Groups, MudurlukAdi, CepTelefonu, Aktif as IsActive FROM [User] ORDER BY UserName"
                 )).ToList();
 
                 var mudurlukMap = await _userMudurlukService.GetMudurlukAdlariByUserKeysAsync(users.Select(u => u.UserKey));
@@ -204,6 +207,35 @@ namespace Raporlama.API.Controllers
             if (!string.IsNullOrWhiteSpace(_portalOptions.UserNameDomain))
                 return $"{_portalOptions.UserNameDomain}\\{userName}";
             return userName;
+        }
+
+        [HttpPatch("users/{userKey}/cep-telefonu")]
+        public async Task<IActionResult> SetUserCepTelefonu(int userKey, [FromBody] SetUserCepTelefonuRequest request)
+        {
+            if (!RequireAdmin(out var denied)) return denied!;
+            try
+            {
+                if (!PhoneNormalizer.TryNormalizeForStorage(request.CepTelefonu, out var normalized, out var error))
+                    return BadRequest(new { error });
+
+                await _databaseService.QueryAsync<int>(
+                    "BellonaRapor",
+                    "UPDATE [User] SET CepTelefonu = @CepTelefonu WHERE UserKey = @UserKey",
+                    new { UserKey = userKey, CepTelefonu = normalized }
+                );
+
+                return Ok(new
+                {
+                    message = normalized == null ? "Cep telefonu temizlendi" : "Cep telefonu kaydedildi",
+                    cepTelefonu = normalized,
+                    cepTelefonuDisplay = PhoneNormalizer.FormatForDisplay(normalized)
+                });
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error updating user cep telefonu");
+                return StatusCode(500, new { error = ex.Message });
+            }
         }
 
         [HttpPatch("users/{userKey}/mudurluk-adi")]
@@ -314,6 +346,7 @@ namespace Raporlama.API.Controllers
                 );
 
                 int permissionKeyId;
+                var isNewPermission = !existingPermission.Any();
                 if (existingPermission.Any())
                 {
                     await _databaseService.QueryAsync<int>(
@@ -372,6 +405,29 @@ namespace Raporlama.API.Controllers
                             "INSERT INTO PermissionColumn (PermissionKey, ColumnName) VALUES (@PermissionKey, @ColumnName)",
                             new { PermissionKey = permissionKeyId, ColumnName = column.Trim() }
                         );
+                    }
+                }
+
+                if (isNewPermission && request.Aktif)
+                {
+                    try
+                    {
+                        var reportInfo = await _databaseService.QueryAsync<dynamic>(
+                            "BellonaRapor",
+                            "SELECT ReportName, Url FROM [Report] WHERE ReportKey = @ReportKey",
+                            new { ReportKey = request.ReportKey });
+                        var row = reportInfo.FirstOrDefault();
+                        var reportName = (string?)row?.ReportName ?? "Yeni rapor";
+                        var reportUrl = (string?)row?.Url ?? "/menu.html";
+                        await _pushNotificationService.NotifyUserAsync(
+                            request.UserKey,
+                            "Yeni rapor erişiminiz var",
+                            reportName,
+                            reportUrl);
+                    }
+                    catch (Exception ex)
+                    {
+                        _logger.LogWarning(ex, "Push bildirimi gönderilemedi (UserKey={UserKey})", request.UserKey);
                     }
                 }
 
@@ -472,6 +528,11 @@ namespace Raporlama.API.Controllers
         {
             public string? MudurlukAdi { get; set; }
             public List<string>? MudurlukAdlari { get; set; }
+        }
+
+        public class SetUserCepTelefonuRequest
+        {
+            public string? CepTelefonu { get; set; }
         }
 
         public class SetUserActiveRequest
