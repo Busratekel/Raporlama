@@ -117,7 +117,7 @@ namespace Raporlama.API.Controllers
             {
                 var users = (await _databaseService.QueryAsync<UserInfo>(
                     "BellonaRapor",
-                    "SELECT UserKey, UserName, DisplayName, Email, Groups, MudurlukAdi, CepTelefonu, Aktif as IsActive FROM [User] ORDER BY UserName"
+                    "SELECT UserKey, UserName, DisplayName, Email, Groups, MudurlukAdi, CepTelefonu, Sicil, Aktif as IsActive FROM [User] ORDER BY UserName"
                 )).ToList();
 
                 var mudurlukMap = await _userMudurlukService.GetMudurlukAdlariByUserKeysAsync(users.Select(u => u.UserKey));

@@ -58,13 +58,13 @@
             <button type="button" id="btnLogin">Devam</button>
         </div>
 
-        <div id="stepPhone" class="step">
-            <p class="info">İlk girişiniz — SMS doğrulama için cep telefonunuzu girin..</p>
-            <label for="cepTelefonu">Cep telefonu</label>
-            <input type="tel" id="cepTelefonu" autocomplete="tel" inputmode="tel" placeholder="05xxxxxxxxx">
-            <div id="errorPhone" class="error" style="display:none;"></div>
-            <button type="button" id="btnSavePhone">Kaydet ve SMS gönder</button>
-            <button type="button" class="secondary" id="btnBackPhone">Geri</button>
+        <div id="stepSicil" class="step">
+            <p class="info">İlk girişiniz — SMS doğrulama için sicil numaranızı girin.</p>
+            <label for="sicilNo">Sicil numarası</label>
+            <input type="text" id="sicilNo" autocomplete="off" inputmode="numeric" placeholder="Örn. 12345">
+            <div id="errorSicil" class="error" style="display:none;"></div>
+            <button type="button" id="btnSaveSicil">Doğrula ve SMS gönder</button>
+            <button type="button" class="secondary" id="btnBackSicil">Geri</button>
         </div>
 
         <div id="step2" class="step">
@@ -173,13 +173,14 @@
                 setResendVisible(false);
             }
             document.getElementById('step1').classList.toggle('active', step === 1);
-            document.getElementById('stepPhone').classList.toggle('active', step === 'phone');
+            document.getElementById('stepSicil').classList.toggle('active', step === 'sicil');
             document.getElementById('step2').classList.toggle('active', step === 2);
         }
 
         function goOtpStep(maskedPhone, expiresInSeconds) {
-            document.getElementById('phoneHint').textContent =
-                'Kod ' + (maskedPhone || 'telefonunuza') + ' numarasına gönderildi.';
+            document.getElementById('phoneHint').textContent = maskedPhone
+                ? ('Kod ' + maskedPhone + ' numarasına gönderildi.')
+                : 'Doğrulama kodu telefonunuza gönderildi.';
             goStep(2);
             document.getElementById('otpCode').value = '';
             showError('error2', '');
@@ -209,12 +210,20 @@
                     showError('error1', data.error || 'Giriş başarısız.');
                     return;
                 }
-                if (data.requiresPhoneSetup) {
+                if (data.success && data.redirectUrl) {
+                    window.location.href = data.redirectUrl;
+                    return;
+                }
+                if (data.requiresSicilSetup || data.requiresPhoneSetup) {
                     setupChallengeId = data.setupChallengeId;
-                    document.getElementById('cepTelefonu').value = '';
-                    showError('errorPhone', '');
-                    goStep('phone');
-                    document.getElementById('cepTelefonu').focus();
+                    document.getElementById('sicilNo').value = '';
+                    showError('errorSicil', '');
+                    goStep('sicil');
+                    document.getElementById('sicilNo').focus();
+                    return;
+                }
+                if (!data.challengeId) {
+                    showError('error1', data.message || 'Beklenmeyen sunucu yanıtı. API yeniden başlatılmalı.');
                     return;
                 }
                 challengeId = data.challengeId;
@@ -224,30 +233,30 @@
             }
         };
 
-        document.getElementById('btnSavePhone').onclick = async () => {
-            showError('errorPhone', '');
-            const cepTelefonu = document.getElementById('cepTelefonu').value.trim();
-            if (!setupChallengeId || !cepTelefonu) {
-                showError('errorPhone', 'Cep telefonu gerekli.');
+        document.getElementById('btnSaveSicil').onclick = async () => {
+            showError('errorSicil', '');
+            const sicil = document.getElementById('sicilNo').value.trim();
+            if (!setupChallengeId || !sicil) {
+                showError('errorSicil', 'Sicil numarası gerekli.');
                 return;
             }
             try {
-                const r = await fetch('/Auth/setup-phone', {
+                const r = await fetch('/Auth/setup-sicil', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     credentials: 'include',
-                    body: JSON.stringify({ setupChallengeId, cepTelefonu })
+                    body: JSON.stringify({ setupChallengeId, sicil })
                 });
                 const data = await r.json().catch(() => ({}));
                 if (!r.ok) {
-                    showError('errorPhone', data.error || 'Kayıt başarısız.');
+                    showError('errorSicil', data.error || 'Doğrulama başarısız.');
                     return;
                 }
                 setupChallengeId = null;
                 challengeId = data.challengeId;
                 goOtpStep(data.maskedPhone, data.expiresInSeconds);
             } catch (e) {
-                showError('errorPhone', 'Sunucuya ulaşılamadı.');
+                showError('errorSicil', 'Sunucuya ulaşılamadı.');
             }
         };
 
@@ -310,9 +319,9 @@
             }
         };
 
-        document.getElementById('btnBackPhone').onclick = () => {
+        document.getElementById('btnBackSicil').onclick = () => {
             setupChallengeId = null;
-            showError('errorPhone', '');
+            showError('errorSicil', '');
             goStep(1);
         };
 

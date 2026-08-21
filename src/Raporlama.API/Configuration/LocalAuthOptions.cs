@@ -28,8 +28,18 @@ public class LocalAuthOptions
     /// <summary>Development ortamında SMS yerine log/consola yaz (OTP asla response'da dönmez).</summary>
     public bool LogOtpInDevelopment { get; set; } = true;
 
-    /// <summary>Telefonu olmayan kullanıcı ilk girişte kendi numarasını kaydedebilir.</summary>
-    public bool AllowSelfPhoneRegistration { get; set; } = true;
+    /// <summary>Sicili olmayan kullanıcı ilk girişte sicil girerek TWOF kaydı ile eşleşir.</summary>
+    public bool AllowSelfSicilRegistration { get; set; } = true;
+
+    /// <summary>Çalışan cep telefonu kaynağı (cross-database).</summary>
+    public string EmployeePhoneDatabase { get; set; } = "eBA6";
+
+    public string EmployeePhoneTable { get; set; } = "TWOF_CEPTEL";
+
+    /// <summary>OTP doğrulaması sonrası aynı cihazda SMS atlama (gün).</summary>
+    public bool TrustedDeviceEnabled { get; set; } = true;
+
+    public int TrustedDeviceDays { get; set; } = 7;
 }
 
 public class SmsOptions

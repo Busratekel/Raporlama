@@ -17,6 +17,7 @@ public class AuthController : ControllerBase
     private readonly ISsoTokenValidator _ssoTokenValidator;
     private readonly ICustomAuthorizationService _authorizationService;
     private readonly ILoginOtpService _loginOtpService;
+    private readonly ITrustedDeviceService _trustedDeviceService;
     private readonly PortalAuthOptions _portalOptions;
     private readonly LocalAuthOptions _localAuthOptions;
     private readonly IWebHostEnvironment _environment;
@@ -26,6 +27,7 @@ public class AuthController : ControllerBase
         ISsoTokenValidator ssoTokenValidator,
         ICustomAuthorizationService authorizationService,
         ILoginOtpService loginOtpService,
+        ITrustedDeviceService trustedDeviceService,
         IOptions<PortalAuthOptions> portalOptions,
         IOptions<LocalAuthOptions> localAuthOptions,
         IWebHostEnvironment environment,
@@ -34,6 +36,7 @@ public class AuthController : ControllerBase
         _ssoTokenValidator = ssoTokenValidator;
         _authorizationService = authorizationService;
         _loginOtpService = loginOtpService;
+        _trustedDeviceService = trustedDeviceService;
         _portalOptions = portalOptions.Value;
         _localAuthOptions = localAuthOptions.Value;
         _environment = environment;
@@ -83,7 +86,13 @@ public class AuthController : ControllerBase
     public async Task<IActionResult> Cikis()
     {
         var loginSource = User.FindFirst("login_source")?.Value;
+        var trustedToken = Request.Cookies[ITrustedDeviceService.CookieName];
         await HttpContext.SignOutAsync(CookieAuthenticationDefaults.AuthenticationScheme);
+        if (!string.IsNullOrWhiteSpace(trustedToken))
+        {
+            await _trustedDeviceService.RevokeTokenAsync(trustedToken);
+            Response.Cookies.Delete(ITrustedDeviceService.CookieName);
+        }
 
         return loginSource switch
         {
@@ -102,17 +111,27 @@ public class AuthController : ControllerBase
         if (string.IsNullOrWhiteSpace(request.UserName) || string.IsNullOrEmpty(request.Password))
             return BadRequest(new { error = "Kullanıcı adı ve şifre gerekli." });
 
-        var result = await _loginOtpService.StartLoginAsync(request.UserName.Trim(), request.Password, cancellationToken);
+        var trustedToken = Request.Cookies[ITrustedDeviceService.CookieName];
+        var result = await _loginOtpService.StartLoginAsync(
+            request.UserName.Trim(), request.Password, trustedToken, cancellationToken);
         if (!result.Success)
             return Unauthorized(new { error = result.Error });
 
-        if (result.RequiresPhoneSetup)
+        if (result.TrustedDeviceLogin)
+        {
+            var userName = result.UserName ?? NormalizeUserName(request.UserName.Trim());
+            await SignInUserAsync(userName, "sms");
+            _logger.LogInformation("Güvenilir cihaz girişi: {UserName}", userName);
+            return Ok(new { success = true, redirectUrl = "/menu.html", trustedDevice = true });
+        }
+
+        if (result.RequiresSicilSetup)
         {
             return Ok(new
             {
-                requiresPhoneSetup = true,
+                requiresSicilSetup = true,
                 setupChallengeId = result.SetupChallengeId,
-                message = "SMS doğrulama için cep telefonunuzu kaydedin."
+                message = "SMS doğrulama için sicil numaranızı girin."
             });
         }
 
@@ -125,16 +144,16 @@ public class AuthController : ControllerBase
         });
     }
 
-    /// <summary>İlk giriş: cep telefonu kaydet → SMS OTP gönder.</summary>
-    [HttpPost("setup-phone")]
+    /// <summary>İlk giriş: sicil kaydet → TWOF'tan telefon al → SMS OTP gönder.</summary>
+    [HttpPost("setup-sicil")]
     [AllowAnonymous]
-    public async Task<IActionResult> SetupPhone([FromBody] SetupPhoneRequest request, CancellationToken cancellationToken)
+    public async Task<IActionResult> SetupSicil([FromBody] SetupSicilRequest request, CancellationToken cancellationToken)
     {
-        if (string.IsNullOrWhiteSpace(request.SetupChallengeId) || string.IsNullOrWhiteSpace(request.CepTelefonu))
-            return BadRequest(new { error = "Telefon numarası gerekli." });
+        if (string.IsNullOrWhiteSpace(request.SetupChallengeId) || string.IsNullOrWhiteSpace(request.Sicil))
+            return BadRequest(new { error = "Sicil numarası gerekli." });
 
-        var result = await _loginOtpService.RegisterPhoneAndSendOtpAsync(
-            request.SetupChallengeId.Trim(), request.CepTelefonu.Trim(), cancellationToken);
+        var result = await _loginOtpService.RegisterSicilAndSendOtpAsync(
+            request.SetupChallengeId.Trim(), request.Sicil.Trim(), cancellationToken);
         if (!result.Success)
             return Unauthorized(new { error = result.Error });
 
@@ -143,7 +162,7 @@ public class AuthController : ControllerBase
             challengeId = result.ChallengeId,
             maskedPhone = result.MaskedPhone,
             expiresInSeconds = result.ExpiresInSeconds,
-            message = "Telefon kaydedildi. Doğrulama kodu SMS ile gönderildi."
+            message = "Sicil doğrulandı. Doğrulama kodu SMS ile gönderildi."
         });
     }
 
@@ -181,9 +200,26 @@ public class AuthController : ControllerBase
             return Unauthorized(new { error = result.Error });
 
         await SignInUserAsync(result.UserName, "sms");
+        await SetTrustedDeviceCookieAsync(result.UserName);
         _logger.LogInformation("SMS OTP giriş: {UserName}", result.UserName);
 
         return Ok(new { success = true, redirectUrl = SafeReturnUrl(request.ReturnUrl) });
+    }
+
+    private async Task SetTrustedDeviceCookieAsync(string userName)
+    {
+        if (!_localAuthOptions.TrustedDeviceEnabled)
+            return;
+
+        var token = await _trustedDeviceService.IssueTokenAsync(userName);
+        Response.Cookies.Append(ITrustedDeviceService.CookieName, token, new CookieOptions
+        {
+            HttpOnly = true,
+            Secure = Request.IsHttps,
+            SameSite = SameSiteMode.Lax,
+            Expires = DateTimeOffset.UtcNow.AddDays(_localAuthOptions.TrustedDeviceDays),
+            Path = "/"
+        });
     }
 
     public sealed class LoginRequest
@@ -199,10 +235,10 @@ public class AuthController : ControllerBase
         public string? ReturnUrl { get; set; }
     }
 
-    public sealed class SetupPhoneRequest
+    public sealed class SetupSicilRequest
     {
         public string SetupChallengeId { get; set; } = "";
-        public string CepTelefonu { get; set; } = "";
+        public string Sicil { get; set; } = "";
     }
 
     public sealed class ResendOtpRequest

@@ -19,6 +19,8 @@ builder.Services.AddSingleton<IAdminService, AdminService>();
 builder.Services.AddSingleton<ISsoTokenValidator, SsoTokenValidator>();
 builder.Services.AddSingleton<IActiveDirectoryAuthService, ActiveDirectoryAuthService>();
 builder.Services.AddSingleton<ISmsSender, SmsSender>();
+builder.Services.AddSingleton<ITrustedDeviceService, TrustedDeviceService>();
+builder.Services.AddSingleton<IEmployeeDirectoryService, EmployeeDirectoryService>();
 builder.Services.AddSingleton<ILoginOtpService, LoginOtpService>();
 builder.Services.AddHttpClient();
 

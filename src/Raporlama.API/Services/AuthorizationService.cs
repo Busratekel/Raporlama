@@ -24,6 +24,7 @@ namespace Raporlama.API.Services
         public List<string> MudurlukAdlari { get; set; } = new();
         public bool IsActive { get; set; }
         public string? CepTelefonu { get; set; }
+        public string? Sicil { get; set; }
     }
     public class AuthorizationService : ICustomAuthorizationService
     {
@@ -111,7 +112,7 @@ namespace Raporlama.API.Services
 
             var users = await _databaseService.QueryAsync<UserInfo>(
                 "BellonaRapor",
-                $@"SELECT TOP 1 UserKey, UserName, DisplayName, Email, Groups, MudurlukAdi, CepTelefonu, Aktif as IsActive
+                $@"SELECT TOP 1 UserKey, UserName, DisplayName, Email, Groups, MudurlukAdi, CepTelefonu, Sicil, Aktif as IsActive
                    FROM [User]
                    WHERE (
                        UserName COLLATE SQL_Latin1_General_CP1_CI_AS = @UserName
